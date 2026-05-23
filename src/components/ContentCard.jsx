@@ -1,0 +1,274 @@
+import { useState } from 'react'
+import { Star, TrendingUp, ChevronDown, ChevronUp, User } from 'lucide-react'
+import PosterImg from './PosterImg.jsx'
+import { PLATFORMS } from '../constants/index.js'
+
+const PLAT_MAP = Object.fromEntries(PLATFORMS.map(p => [p.id, p]))
+
+// ── Skor Rozeti ────────────────────────────────────────────────────────────────
+function ScoreBadge({ imdb, rt }) {
+  if (!imdb && !rt) return null
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      {imdb && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+          <Star size={11} fill="var(--accent)" color="var(--accent)" />
+          <span style={{ color: 'var(--accent)', fontSize: 13, fontWeight: 800, fontFamily: 'monospace' }}>{imdb}</span>
+          <span style={{ color: 'var(--text-faint)', fontSize: 9 }}>/10</span>
+        </div>
+      )}
+      {rt && (
+        <span style={{
+          fontSize: 9.5, fontWeight: 700, padding: '2px 5px', borderRadius: 3,
+          background: rt >= 60 ? 'rgba(76,175,80,0.13)' : 'rgba(244,67,54,0.13)',
+          border: `1px solid ${rt >= 60 ? 'rgba(76,175,80,0.3)' : 'rgba(244,67,54,0.3)'}`,
+          color: rt >= 60 ? '#81c784' : '#e57373',
+        }}>🍅 {rt}%</span>
+      )}
+    </div>
+  )
+}
+
+// ── Oyuncu Kartı ───────────────────────────────────────────────────────────────
+function ActorCard({ actor }) {
+  const [imgErr, setImgErr] = useState(false)
+  const hasImg = actor.profilePath && !imgErr
+
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+      width: 62, flexShrink: 0,
+    }}>
+      <div style={{
+        width: 52, height: 52, borderRadius: '50%', overflow: 'hidden',
+        border: '1.5px solid var(--border)',
+        background: 'rgba(var(--accent-rgb),0.08)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        {hasImg ? (
+          <img
+            src={`https://image.tmdb.org/t/p/w185${actor.profilePath}`}
+            alt={actor.name}
+            onError={() => setImgErr(true)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
+          <User size={22} color="var(--text-faint)" />
+        )}
+      </div>
+      <span style={{
+        color: 'var(--text-muted)', fontSize: 8.5, textAlign: 'center',
+        lineHeight: 1.25, maxWidth: 60, overflow: 'hidden',
+        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+      }}>{actor.name}</span>
+      {actor.character && (
+        <span style={{
+          color: 'var(--text-faint)', fontSize: 7.5, textAlign: 'center',
+          fontStyle: 'italic', lineHeight: 1.2, maxWidth: 60,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%',
+        }}>{actor.character}</span>
+      )}
+    </div>
+  )
+}
+
+// ── Yorum Kartı ───────────────────────────────────────────────────────────────
+function ReviewCard({ review }) {
+  return (
+    <div style={{
+      background: 'rgba(var(--accent-rgb),0.05)',
+      border: '1px solid rgba(var(--accent-rgb),0.15)',
+      borderRadius: 7, padding: '8px 10px',
+    }}>
+      <p style={{
+        color: 'var(--text-muted)', fontSize: 10.5, lineHeight: 1.65,
+        fontStyle: 'italic', margin: 0,
+      }}>"{review.quote}"</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5 }}>
+        <span style={{
+          background: 'rgba(var(--accent-rgb),0.15)',
+          borderRadius: 3, padding: '1px 6px',
+          fontSize: 8.5, fontWeight: 700, color: 'var(--accent)',
+        }}>{review.source}</span>
+        {review.author && (
+          <span style={{ color: 'var(--text-faint)', fontSize: 8.5 }}>— {review.author}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Ana Bileşen ───────────────────────────────────────────────────────────────
+export default function ContentCard({ item, isTrend }) {
+  const [open, setOpen] = useState(false)
+
+  const hasCast    = Array.isArray(item.cast)    && item.cast.length    > 0
+  const hasReviews = Array.isArray(item.reviews) && item.reviews.length > 0
+
+  return (
+    <div
+      onClick={() => setOpen(o => !o)}
+      style={{
+        background: isTrend ? 'var(--bg-card-trend)' : 'var(--bg-card)',
+        border: `1px solid ${isTrend ? 'var(--border-trend)' : 'var(--border)'}`,
+        backdropFilter: 'var(--card-backdrop)',
+        WebkitBackdropFilter: 'var(--card-backdrop)',
+        borderRadius: 10, overflow: 'hidden', cursor: 'pointer',
+        transition: 'border-color 0.18s, transform 0.18s',
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.borderColor = 'var(--hover-border)'
+        e.currentTarget.style.transform   = 'translateY(-3px)'
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.borderColor = isTrend ? 'var(--border-trend)' : 'var(--border)'
+        e.currentTarget.style.transform   = 'translateY(0)'
+      }}
+    >
+      {isTrend && <div style={{ height: 2, background: 'var(--trend-bar)' }} />}
+
+      <div style={{ display: 'flex', minHeight: 148 }}>
+        {/* Poster */}
+        <div style={{ width: 98, flexShrink: 0 }}>
+          <PosterImg path={item.posterPath} title={item.title} />
+        </div>
+
+        {/* Bilgi */}
+        <div style={{ flex: 1, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 }}>
+            <span style={{
+              color: 'var(--text)', fontSize: 13, fontWeight: 700, lineHeight: 1.3, flex: 1,
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+            }}>{item.title}</span>
+            <span style={{ color: 'var(--text-faint)', fontSize: 9.5, flexShrink: 0, paddingTop: 1 }}>{item.year}</span>
+          </div>
+
+          <ScoreBadge imdb={item.imdbScore} rt={item.rottenTomatoesScore} />
+
+          {/* Türler */}
+          <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+            {(item.genres || []).slice(0, 3).map(g => (
+              <span key={g} style={{
+                background: 'rgba(255,255,255,0.055)', borderRadius: 3,
+                padding: '1.5px 5px', fontSize: 9, color: 'var(--text-muted)',
+              }}>{g}</span>
+            ))}
+            {isTrend && item.type && (
+              <span style={{
+                background: item.type === 'film' ? 'rgba(229,9,20,0.18)' : 'rgba(0,168,224,0.18)',
+                border: `1px solid ${item.type === 'film' ? 'rgba(229,9,20,0.35)' : 'rgba(0,168,224,0.35)'}`,
+                borderRadius: 3, padding: '1.5px 5px', fontSize: 9, fontWeight: 800,
+                color: item.type === 'film' ? '#ff7070' : '#70ccf0', letterSpacing: '0.04em',
+              }}>{item.type === 'film' ? 'FİLM' : 'DİZİ'}</span>
+            )}
+          </div>
+
+          {/* Sosyal skor çubuğu */}
+          {isTrend && item.socialScore && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <TrendingUp size={9} color="var(--accent)" />
+              <div style={{ flex: 1, height: 3, background: 'rgba(255,255,255,0.07)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{
+                  width: `${item.socialScore}%`, height: '100%',
+                  background: 'var(--trend-bar)', borderRadius: 2,
+                }} />
+              </div>
+              <span style={{ color: 'var(--accent)', fontSize: 9, fontWeight: 800, minWidth: 18 }}>{item.socialScore}</span>
+            </div>
+          )}
+
+          {/* Platform rozetleri */}
+          <div style={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap' }}>
+            {(item.platforms || []).map(p => {
+              const plat = PLAT_MAP[p]
+              return (
+                <span key={p} style={{
+                  background: plat?.color || '#333',
+                  borderRadius: 2, padding: '1.5px 5px',
+                  fontSize: 7.5, fontWeight: 900, color: '#fff', letterSpacing: '0.06em',
+                }}>{plat?.badge || p.substring(0, 3).toUpperCase()}</span>
+              )
+            })}
+            {item.duration && (
+              <span style={{ color: 'var(--text-faint)', fontSize: 9, marginLeft: 2 }}>⏱ {item.duration}dk</span>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'flex-start', padding: '10px 10px 0 0' }}>
+          {open
+            ? <ChevronUp   size={13} color="var(--text-faint)" />
+            : <ChevronDown size={13} color="var(--text-faint)" />}
+        </div>
+      </div>
+
+      {/* ── Genişletilmiş Detay ────────────────────────────────────────────── */}
+      {open && (
+        <div
+          style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.35)' }}
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Büyük poster + açıklama yan yana */}
+          <div style={{ display: 'flex', gap: 12, padding: '12px 12px 0' }}>
+            {/* Büyük poster */}
+            <div style={{ width: 110, flexShrink: 0, borderRadius: 8, overflow: 'hidden', height: 162 }}>
+              <PosterImg path={item.posterPath} title={item.title} />
+            </div>
+            {/* Açıklama */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {item.description && (
+                <p style={{ color: 'var(--text-muted)', fontSize: 11.5, margin: 0, lineHeight: 1.7 }}>
+                  {item.description}
+                </p>
+              )}
+              {item.trendReason && (
+                <p style={{ color: 'var(--accent)', fontSize: 11, margin: 0, fontStyle: 'italic', lineHeight: 1.5, opacity: 0.85 }}>
+                  🔥 {item.trendReason}
+                </p>
+              )}
+              {item.originalTitle && item.originalTitle !== item.title && (
+                <p style={{ color: 'var(--text-faint)', fontSize: 9.5, margin: 0 }}>
+                  Orijinal adı: {item.originalTitle}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Oyuncular */}
+          {hasCast && (
+            <div style={{ padding: '12px 12px 0' }}>
+              <p style={{
+                color: 'var(--text-faint)', fontSize: 9, fontWeight: 700,
+                letterSpacing: '0.1em', marginBottom: 8, textTransform: 'uppercase',
+              }}>Oyuncular</p>
+              <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
+                {item.cast.slice(0, 8).map((actor, i) => (
+                  <ActorCard key={i} actor={actor} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Öne Çıkan Yorumlar */}
+          {hasReviews && (
+            <div style={{ padding: '12px 12px 12px' }}>
+              <p style={{
+                color: 'var(--text-faint)', fontSize: 9, fontWeight: 700,
+                letterSpacing: '0.1em', marginBottom: 8, textTransform: 'uppercase',
+              }}>Öne Çıkan Yorumlar</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {item.reviews.slice(0, 3).map((review, i) => (
+                  <ReviewCard key={i} review={review} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Cast/review yoksa eski boşluk */}
+          {!hasCast && !hasReviews && <div style={{ height: 12 }} />}
+        </div>
+      )}
+    </div>
+  )
+}
