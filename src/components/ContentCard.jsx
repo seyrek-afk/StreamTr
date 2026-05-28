@@ -7,7 +7,7 @@ const PLAT_MAP = Object.fromEntries(PLATFORMS.map(p => [p.id, p]))
 
 const TMDB_KEY = import.meta.env.VITE_TMDB_KEY
 
-// TMDB provider_id → platform ID'si (Türkiye'deki servisler)
+// TMDB provider_id → platform adı (Türkiye)
 const TMDB_PROVIDER_MAP = {
   8:    'Netflix',
   119:  'Amazon Prime',
@@ -17,6 +17,12 @@ const TMDB_PROVIDER_MAP = {
   384:  'HBO Max',
   11:   'Mubi',
   341:  'BluTV',
+  479:  'PUHUTV',
+  531:  'Paramount+',
+  533:  'Gain',
+  584:  'TOD',
+  1759: 'MUBI',
+  2:    'Apple TV+',
 }
 
 // ── Skor Rozeti ────────────────────────────────────────────────────────────────
@@ -153,10 +159,13 @@ export default function ContentCard({ item, isTrend }) {
   const [open, setOpen] = useState(false)
   // null = henüz çekilmedi, [] = çekildi ama bulunamadı, [...] = bulundu
   const [watchPlatforms, setWatchPlatforms] = useState(null)
+  const [trailerKey, setTrailerKey]         = useState(item.trailerKey || null)
+  // trailerKey undefined ise daha çekilmedi; null ise çekildi ama bulunamadı
+  const [trailerFetched, setTrailerFetched] = useState(item.trailerKey !== undefined)
 
-  // Trend kartı açılınca Türkiye'deki platformu lazy çek
+  // Kart açılınca Türkiye platformlarını lazy çek (trend + arama sonuçları)
   useEffect(() => {
-    if (!open || !isTrend || !item._tmdbId || !TMDB_KEY) return
+    if (!open || !item._tmdbId || !item._mediaType || !TMDB_KEY) return
     if (watchPlatforms !== null) return
     fetch(
       `https://api.themoviedb.org/3/${item._mediaType}/${item._tmdbId}/watch/providers?api_key=${TMDB_KEY}`
@@ -164,14 +173,34 @@ export default function ContentCard({ item, isTrend }) {
       .then(r => r.json())
       .then(json => {
         const tr = json.results?.TR
-        const list = (tr?.flatrate || [])
-          .map(p => TMDB_PROVIDER_MAP[p.provider_id])
-          .filter(Boolean)
-          .filter((v, i, a) => a.indexOf(v) === i)
+        const all = [...(tr?.flatrate || []), ...(tr?.free || [])]
+        const seen = new Set()
+        const list = []
+        for (const p of all) {
+          const mapped = TMDB_PROVIDER_MAP[p.provider_id]
+          const key = mapped || p.provider_name
+          if (key && !seen.has(key)) { seen.add(key); list.push(key) }
+        }
         setWatchPlatforms(list)
       })
       .catch(() => setWatchPlatforms([]))
-  }, [open, isTrend, item._tmdbId, item._mediaType, watchPlatforms])
+  }, [open, item._tmdbId, item._mediaType, watchPlatforms])
+
+  // Kart açılınca fragman lazy çek (henüz trailerKey'i olmayan trend kartları)
+  useEffect(() => {
+    if (!open || trailerFetched || !item._tmdbId || !item._mediaType || !TMDB_KEY) return
+    setTrailerFetched(true)
+    fetch(
+      `https://api.themoviedb.org/3/${item._mediaType}/${item._tmdbId}/videos?api_key=${TMDB_KEY}&language=tr-TR`
+    )
+      .then(r => r.json())
+      .then(json => {
+        const trailer = (json.results || []).find(v => v.type === 'Trailer' && v.site === 'YouTube')
+          || (json.results || []).find(v => v.site === 'YouTube')
+        if (trailer) setTrailerKey(trailer.key)
+      })
+      .catch(() => {})
+  }, [open, trailerFetched, item._tmdbId, item._mediaType])
 
   const hasCast    = Array.isArray(item.cast)    && item.cast.length    > 0
   const hasReviews = Array.isArray(item.reviews) && item.reviews.length > 0
@@ -305,7 +334,7 @@ export default function ContentCard({ item, isTrend }) {
                 }}>{plat?.badge || p.substring(0, 3).toUpperCase()}</span>
               )
             })}
-            {isTrend && item.platforms?.length === 0 && (
+            {item._tmdbId && item.platforms?.length === 0 && (
               <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: 8 }}>📺 Genişlet → TR platformları</span>
             )}
             {item.duration && (
@@ -353,11 +382,29 @@ export default function ContentCard({ item, isTrend }) {
                   📅 Yayın tarihi: {new Date(item.releaseDate).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })}
                 </p>
               )}
+              {trailerKey && (
+                <a
+                  href={`https://www.youtube.com/watch?v=${trailerKey}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={e => e.stopPropagation()}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    background: 'rgba(255,50,50,0.12)',
+                    border: '1px solid rgba(255,50,50,0.3)',
+                    borderRadius: 6, padding: '5px 12px', marginTop: 4,
+                    fontSize: 11, fontWeight: 700, color: '#ff5555',
+                    textDecoration: 'none', alignSelf: 'flex-start',
+                  }}
+                >
+                  ▶ Fragmanı İzle
+                </a>
+              )}
             </div>
           </div>
 
-          {/* ── Türkiye'de İzle (trend — lazy) ─────────────────────────────── */}
-          {isTrend && item._tmdbId && (
+          {/* ── Türkiye'de İzle (tüm TMDB içerikler — lazy) ───────────────── */}
+          {item._tmdbId && (
             <div style={{ padding: '12px 14px 0', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
               <p style={{
                 color: 'var(--text-faint)', fontSize: 9, fontWeight: 700,

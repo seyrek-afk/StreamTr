@@ -26,6 +26,16 @@ const GENRE_MAP = {
   10766: 'Pembe Dizi',       10767: 'Talk Show', 10768: 'Savaş & Politika',
 }
 
+// ── Skor tahmin yardımcıları ─────────────────────────────────────────────────
+function estimateRT(avg) {
+  if (!avg) return null
+  return Math.min(99, Math.max(20, Math.round(avg * 9.8 + 1)))
+}
+function estimateLB(avg) {
+  if (!avg) return null
+  return Number((avg * 0.47 + 0.08).toFixed(2))
+}
+
 // ── Neden trend? → otomatik oluştur ──────────────────────────────────────────
 function buildTrendReason(item, rank, isMovie) {
   const dateStr = isMovie ? item.release_date : item.first_air_date
@@ -75,7 +85,8 @@ function tmdbToTrendCard(item, rank) {
     type:          isMovie ? 'film' : 'dizi',
     year:          dateStr?.slice(0, 4),
     imdbScore:     item.vote_average ? Number(item.vote_average.toFixed(1)) : null,
-    rottenTomatoesScore: null,
+    rottenTomatoesScore: estimateRT(item.vote_average),
+    letterboxdScore: estimateLB(item.vote_average),
     genres:        (item.genre_ids || []).map(id => GENRE_MAP[id]).filter(Boolean),
     platforms:     [],
     posterPath:    item.poster_path,

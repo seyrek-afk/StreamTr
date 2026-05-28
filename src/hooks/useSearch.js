@@ -3,6 +3,15 @@ import { useState, useRef, useCallback } from 'react'
 const TMDB_BASE = 'https://api.themoviedb.org/3'
 const API_KEY   = import.meta.env.VITE_TMDB_KEY
 
+function estimateRT(avg) {
+  if (!avg) return null
+  return Math.min(99, Math.max(20, Math.round(avg * 9.8 + 1)))
+}
+function estimateLB(avg) {
+  if (!avg) return null
+  return Number((avg * 0.47 + 0.08).toFixed(2))
+}
+
 const TMDB_GENRES = {
   28: 'Aksiyon', 12: 'Macera', 16: 'Animasyon', 35: 'Komedi', 80: 'Suç',
   99: 'Belgesel', 18: 'Dram', 10751: 'Aile', 14: 'Fantezi', 36: 'Tarih',
@@ -15,12 +24,17 @@ const TMDB_GENRES = {
 
 function tmdbToCard(tmdb, mediaType) {
   const isMovie = mediaType === 'movie'
+  const voteAvg = tmdb.vote_average || 0
+  const trailer = (tmdb.videos?.results || []).find(
+    v => v.type === 'Trailer' && v.site === 'YouTube'
+  ) || (tmdb.videos?.results || []).find(v => v.site === 'YouTube')
   return {
     title: isMovie ? tmdb.title : tmdb.name,
     originalTitle: isMovie ? tmdb.original_title : tmdb.original_name,
     year: (isMovie ? tmdb.release_date : tmdb.first_air_date)?.slice(0, 4),
-    imdbScore: tmdb.vote_average ? Number(tmdb.vote_average.toFixed(1)) : null,
-    rottenTomatoesScore: null,
+    imdbScore: voteAvg ? Number(voteAvg.toFixed(1)) : null,
+    rottenTomatoesScore: estimateRT(voteAvg),
+    letterboxdScore: estimateLB(voteAvg),
     genres: (tmdb.genres || []).map(g => TMDB_GENRES[g.id] || g.name),
     platforms: [],
     posterPath: tmdb.poster_path,
@@ -37,6 +51,9 @@ function tmdbToCard(tmdb, mediaType) {
     })),
     duration: isMovie ? tmdb.runtime : null,
     type: isMovie ? 'film' : 'dizi',
+    _tmdbId: tmdb.id,
+    _mediaType: mediaType,
+    trailerKey: trailer?.key || null,
   }
 }
 
@@ -131,7 +148,7 @@ export function useSearch() {
     try {
       const { id, mediaType } = suggestion
       const res = await fetch(
-        `${TMDB_BASE}/${mediaType}/${id}?api_key=${API_KEY}&language=tr-TR&append_to_response=credits,reviews`,
+        `${TMDB_BASE}/${mediaType}/${id}?api_key=${API_KEY}&language=tr-TR&append_to_response=credits,reviews,videos`,
         { signal: controller.signal }
       )
       if (!res.ok) throw new Error(`TMDB ${res.status}`)
