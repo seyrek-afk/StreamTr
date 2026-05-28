@@ -33,33 +33,24 @@ function ScoreBadge({ imdb, rt }) {
 function ActorCard({ actor }) {
   const [imgErr, setImgErr] = useState(false)
   const hasImg = actor.profilePath && !imgErr
-
   return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-      width: 62, flexShrink: 0,
-    }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 62, flexShrink: 0 }}>
       <div style={{
         width: 52, height: 52, borderRadius: '50%', overflow: 'hidden',
         border: '1.5px solid var(--border)',
         background: 'rgba(var(--accent-rgb),0.08)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
       }}>
-        {hasImg ? (
-          <img
-            src={`https://image.tmdb.org/t/p/w185${actor.profilePath}`}
-            alt={actor.name}
-            onError={() => setImgErr(true)}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          />
-        ) : (
-          <User size={22} color="var(--text-faint)" />
-        )}
+        {hasImg
+          ? <img src={`https://image.tmdb.org/t/p/w185${actor.profilePath}`} alt={actor.name}
+              onError={() => setImgErr(true)}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <User size={22} color="var(--text-faint)" />
+        }
       </div>
       <span style={{
-        color: 'var(--text-muted)', fontSize: 8.5, textAlign: 'center',
-        lineHeight: 1.25, maxWidth: 60, overflow: 'hidden',
+        color: 'var(--text-muted)', fontSize: 8.5, textAlign: 'center', lineHeight: 1.25,
+        maxWidth: 60, overflow: 'hidden',
         display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
       }}>{actor.name}</span>
       {actor.character && (
@@ -81,19 +72,51 @@ function ReviewCard({ review }) {
       border: '1px solid rgba(var(--accent-rgb),0.15)',
       borderRadius: 7, padding: '8px 10px',
     }}>
-      <p style={{
-        color: 'var(--text-muted)', fontSize: 10.5, lineHeight: 1.65,
-        fontStyle: 'italic', margin: 0,
-      }}>"{review.quote}"</p>
+      <p style={{ color: 'var(--text-muted)', fontSize: 10.5, lineHeight: 1.65, fontStyle: 'italic', margin: 0 }}>
+        "{review.quote}"
+      </p>
       <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5 }}>
         <span style={{
-          background: 'rgba(var(--accent-rgb),0.15)',
-          borderRadius: 3, padding: '1px 6px',
+          background: 'rgba(var(--accent-rgb),0.15)', borderRadius: 3, padding: '1px 6px',
           fontSize: 8.5, fontWeight: 700, color: 'var(--accent)',
         }}>{review.source}</span>
         {review.author && (
           <span style={{ color: 'var(--text-faint)', fontSize: 8.5 }}>— {review.author}</span>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ── Kriter Çubuğu (genişletilmiş trend detayı) ────────────────────────────────
+function CriteriaBar({ criterion }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+      <span style={{ fontSize: 13, flexShrink: 0, width: 18, textAlign: 'center' }}>{criterion.icon}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: 10, fontWeight: 600 }}>{criterion.label}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+            <span style={{ color: 'var(--text)', fontSize: 11, fontWeight: 700, fontFamily: 'monospace' }}>
+              {criterion.value}
+            </span>
+            <span style={{
+              color: 'var(--accent)', fontSize: 9, fontWeight: 800,
+              background: 'rgba(var(--accent-rgb),0.12)',
+              borderRadius: 3, padding: '1px 5px', minWidth: 24, textAlign: 'center',
+            }}>{criterion.score}</span>
+          </div>
+        </div>
+        <div style={{ height: 5, background: 'rgba(255,255,255,0.07)', borderRadius: 3, overflow: 'hidden' }}>
+          <div style={{
+            width: `${criterion.score}%`, height: '100%',
+            background: 'var(--trend-bar)', borderRadius: 3,
+            transition: 'width 0.4s ease',
+          }} />
+        </div>
+        <span style={{ color: 'var(--text-faint)', fontSize: 8, marginTop: 2, display: 'block' }}>
+          Kaynak: {criterion.source}
+        </span>
       </div>
     </div>
   )
@@ -105,6 +128,7 @@ export default function ContentCard({ item, isTrend }) {
 
   const hasCast    = Array.isArray(item.cast)    && item.cast.length    > 0
   const hasReviews = Array.isArray(item.reviews) && item.reviews.length > 0
+  const hasCriteria = isTrend && Array.isArray(item.popularityCriteria) && item.popularityCriteria.length > 0
 
   return (
     <div
@@ -130,8 +154,36 @@ export default function ContentCard({ item, isTrend }) {
 
       <div style={{ display: 'flex', minHeight: 148 }}>
         {/* Poster */}
-        <div style={{ width: 98, flexShrink: 0 }}>
+        <div style={{ width: 98, flexShrink: 0, position: 'relative' }}>
           <PosterImg path={item.posterPath} title={item.title} />
+
+          {/* Trend sırası rozeti */}
+          {isTrend && item.trendRank && (
+            <div style={{
+              position: 'absolute', top: 5, left: 5,
+              background: item.trendRank <= 3
+                ? 'linear-gradient(135deg,#f5a623,#e50914)'
+                : item.trendRank <= 10
+                  ? 'linear-gradient(135deg,rgba(var(--accent-rgb),0.9),rgba(var(--accent-rgb),0.6))'
+                  : 'rgba(0,0,0,0.75)',
+              borderRadius: 5, padding: '2px 6px',
+              fontFamily: 'monospace', fontSize: item.trendRank <= 9 ? 13 : 11,
+              fontWeight: 900, color: '#fff',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
+              border: item.trendRank <= 3 ? '1px solid rgba(255,200,0,0.4)' : '1px solid rgba(255,255,255,0.12)',
+              backdropFilter: 'blur(4px)',
+            }}>#{item.trendRank}</div>
+          )}
+
+          {/* Yeni yayın rozeti */}
+          {isTrend && item.isNewRelease && (
+            <div style={{
+              position: 'absolute', bottom: 5, left: 5,
+              background: 'rgba(76,175,80,0.85)',
+              borderRadius: 3, padding: '1px 5px',
+              fontSize: 7.5, fontWeight: 900, color: '#fff', letterSpacing: '0.06em',
+            }}>YENİ</div>
+          )}
         </div>
 
         {/* Bilgi */}
@@ -146,7 +198,7 @@ export default function ContentCard({ item, isTrend }) {
 
           <ScoreBadge imdb={item.imdbScore} rt={item.rottenTomatoesScore} />
 
-          {/* Türler */}
+          {/* Tür etiketleri */}
           <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
             {(item.genres || []).slice(0, 3).map(g => (
               <span key={g} style={{
@@ -165,16 +217,33 @@ export default function ContentCard({ item, isTrend }) {
           </div>
 
           {/* Sosyal skor çubuğu */}
-          {isTrend && item.socialScore && (
+          {isTrend && item.socialScore != null && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <TrendingUp size={9} color="var(--accent)" />
               <div style={{ flex: 1, height: 3, background: 'rgba(255,255,255,0.07)', borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{
-                  width: `${item.socialScore}%`, height: '100%',
-                  background: 'var(--trend-bar)', borderRadius: 2,
-                }} />
+                <div style={{ width: `${item.socialScore}%`, height: '100%', background: 'var(--trend-bar)', borderRadius: 2 }} />
               </div>
-              <span style={{ color: 'var(--accent)', fontSize: 9, fontWeight: 800, minWidth: 18 }}>{item.socialScore}</span>
+              <span style={{ color: 'var(--accent)', fontSize: 9, fontWeight: 800, minWidth: 22 }}>
+                {item.socialScore}
+              </span>
+            </div>
+          )}
+
+          {/* Trend için mini kriter etiketleri (sadece kart kapalıyken) */}
+          {isTrend && !open && item.popularityCriteria && (
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 1 }}>
+              {item.popularityCriteria.map(c => (
+                <span key={c.label} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 3,
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 4, padding: '1px 6px',
+                  fontSize: 8.5, color: 'var(--text-faint)',
+                }}>
+                  <span style={{ fontSize: 9 }}>{c.icon}</span>
+                  <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{c.value}</span>
+                </span>
+              ))}
             </div>
           )}
 
@@ -184,12 +253,14 @@ export default function ContentCard({ item, isTrend }) {
               const plat = PLAT_MAP[p]
               return (
                 <span key={p} style={{
-                  background: plat?.color || '#333',
-                  borderRadius: 2, padding: '1.5px 5px',
+                  background: plat?.color || '#333', borderRadius: 2, padding: '1.5px 5px',
                   fontSize: 7.5, fontWeight: 900, color: '#fff', letterSpacing: '0.06em',
                 }}>{plat?.badge || p.substring(0, 3).toUpperCase()}</span>
               )
             })}
+            {isTrend && item.platforms?.length === 0 && (
+              <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: 8 }}>Platform: TMDB'de göster</span>
+            )}
             {item.duration && (
               <span style={{ color: 'var(--text-faint)', fontSize: 9, marginLeft: 2 }}>⏱ {item.duration}dk</span>
             )}
@@ -209,13 +280,11 @@ export default function ContentCard({ item, isTrend }) {
           style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.35)' }}
           onClick={e => e.stopPropagation()}
         >
-          {/* Büyük poster + açıklama yan yana */}
+          {/* Poster + açıklama */}
           <div style={{ display: 'flex', gap: 12, padding: '12px 12px 0' }}>
-            {/* Büyük poster */}
             <div style={{ width: 110, flexShrink: 0, borderRadius: 8, overflow: 'hidden', height: 162 }}>
               <PosterImg path={item.posterPath} title={item.title} />
             </div>
-            {/* Açıklama */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {item.description && (
                 <p style={{ color: 'var(--text-muted)', fontSize: 11.5, margin: 0, lineHeight: 1.7 }}>
@@ -232,8 +301,51 @@ export default function ContentCard({ item, isTrend }) {
                   Orijinal adı: {item.originalTitle}
                 </p>
               )}
+              {isTrend && item.releaseDate && (
+                <p style={{ color: 'var(--text-faint)', fontSize: 9.5, margin: 0 }}>
+                  📅 Yayın tarihi: {new Date(item.releaseDate).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                </p>
+              )}
             </div>
           </div>
+
+          {/* Popülerlik Kriterleri */}
+          {hasCriteria && (
+            <div style={{ padding: '14px 14px 4px' }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                marginBottom: 10,
+              }}>
+                <p style={{
+                  color: 'var(--text-faint)', fontSize: 9, fontWeight: 700,
+                  letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0,
+                }}>Popülerlik Kriterleri</p>
+                <span style={{
+                  fontSize: 8.5, color: 'rgba(255,255,255,0.25)',
+                  background: 'rgba(255,255,255,0.05)',
+                  borderRadius: 3, padding: '1px 6px',
+                }}>Kaynak: TMDB</span>
+              </div>
+              {item.popularityCriteria.map(c => (
+                <CriteriaBar key={c.label} criterion={c} />
+              ))}
+              <div style={{
+                marginTop: 6, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              }}>
+                <span style={{ color: 'var(--text-faint)', fontSize: 9 }}>Bileşik Sosyal Skor</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 80, height: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 2, overflow: 'hidden' }}>
+                    <div style={{ width: `${item.socialScore}%`, height: '100%', background: 'var(--trend-bar)', borderRadius: 2 }} />
+                  </div>
+                  <span style={{
+                    color: 'var(--accent)', fontSize: 13, fontWeight: 900, fontFamily: 'monospace',
+                  }}>{item.socialScore}</span>
+                  <span style={{ color: 'var(--text-faint)', fontSize: 9 }}>/100</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Oyuncular */}
           {hasCast && (
@@ -250,7 +362,7 @@ export default function ContentCard({ item, isTrend }) {
             </div>
           )}
 
-          {/* Öne Çıkan Yorumlar */}
+          {/* Yorumlar */}
           {hasReviews && (
             <div style={{ padding: '12px 12px 12px' }}>
               <p style={{
@@ -265,7 +377,6 @@ export default function ContentCard({ item, isTrend }) {
             </div>
           )}
 
-          {/* Cast/review yoksa eski boşluk */}
           {!hasCast && !hasReviews && <div style={{ height: 12 }} />}
         </div>
       )}
