@@ -6,20 +6,19 @@ export default function SearchBar({ search }) {
   const {
     query, suggestions, suggesting,
     selectedItem, detailLoading, detailError,
-    handleQueryChange, selectSuggestion, clearSearch,
+    handleQueryChange, selectSuggestion, retryDetail, clearSearch,
+    noApiKey,
   } = search
 
   const inputRef    = useRef(null)
   const dropdownRef = useRef(null)
 
-  // Dışarı tıklayınca öneri listesini kapat
   useEffect(() => {
     const handler = (e) => {
       if (
         dropdownRef.current && !dropdownRef.current.contains(e.target) &&
         inputRef.current    && !inputRef.current.contains(e.target)
       ) {
-        // Sadece öneri listesini kapat, seçili öğeyi silme
         handleQueryChange(query)
       }
     }
@@ -32,11 +31,31 @@ export default function SearchBar({ search }) {
 
   return (
     <section style={{ padding: '10px 20px 14px' }}>
-      {/* Başlık */}
       <p style={{
         color: 'var(--text-faint)', fontSize: 9.5, fontWeight: 700,
         letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 7,
-      }}>Film / Dizi Ara</p>
+      }}>
+        Film / Dizi Ara
+        <span style={{ marginLeft: 8, color: 'rgba(var(--accent-rgb),0.6)', fontWeight: 500, letterSpacing: 0 }}>
+          — Tüm dünya filmleri
+        </span>
+      </p>
+
+      {/* API anahtarı yoksa uyarı */}
+      {noApiKey && (
+        <div style={{
+          marginBottom: 8,
+          background: 'rgba(255,180,0,0.07)',
+          border: '1px solid rgba(255,180,0,0.25)',
+          borderRadius: 8, padding: '8px 12px',
+          color: 'rgba(255,200,60,0.85)', fontSize: 10.5,
+        }}>
+          ⚠ TMDB API anahtarı eksik. <code style={{ fontSize: 10 }}>.env</code> dosyasına{' '}
+          <code style={{ fontSize: 10 }}>VITE_TMDB_KEY=&lt;anahtarın&gt;</code> ekle.
+          Ücretsiz anahtar:{' '}
+          <strong>themoviedb.org → Ayarlar → API</strong>
+        </div>
+      )}
 
       {/* Arama kutusu */}
       <div style={{ position: 'relative' }}>
@@ -58,6 +77,7 @@ export default function SearchBar({ search }) {
             ref={inputRef}
             type="text"
             value={query}
+            maxLength={200}
             onChange={e => handleQueryChange(e.target.value)}
             placeholder="Film veya dizi adı yaz… (Ör: Inception, Breaking Bad)"
             style={{
@@ -93,10 +113,10 @@ export default function SearchBar({ search }) {
               boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
             }}
           >
-            {suggestions.map((title, i) => (
+            {suggestions.map((s, i) => (
               <button
-                key={i}
-                onClick={() => selectSuggestion(title)}
+                key={s.id}
+                onClick={() => selectSuggestion(s)}
                 style={{
                   width: '100%', background: 'none', border: 'none',
                   padding: '9px 14px', textAlign: 'left', cursor: 'pointer',
@@ -109,18 +129,34 @@ export default function SearchBar({ search }) {
                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--accent-rgb),0.08)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'none'}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Search size={10} color="var(--text-faint)" />
-                  <span style={{ fontSize: 12 }}>{title}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  <Search size={10} color="var(--text-faint)" style={{ flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {s.title}
+                  </span>
+                  {s.year && (
+                    <span style={{ fontSize: 9.5, color: 'var(--text-faint)', flexShrink: 0 }}>{s.year}</span>
+                  )}
                 </div>
-                <ChevronRight size={11} color="var(--text-faint)" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                  <span style={{
+                    fontSize: 8.5, fontWeight: 700,
+                    color: s.mediaType === 'movie' ? 'rgba(229,9,20,0.8)' : 'rgba(0,168,224,0.8)',
+                    background: s.mediaType === 'movie' ? 'rgba(229,9,20,0.1)' : 'rgba(0,168,224,0.1)',
+                    border: `1px solid ${s.mediaType === 'movie' ? 'rgba(229,9,20,0.2)' : 'rgba(0,168,224,0.2)'}`,
+                    borderRadius: 3, padding: '1px 5px',
+                  }}>
+                    {s.mediaType === 'movie' ? 'FİLM' : 'DİZİ'}
+                  </span>
+                  <ChevronRight size={11} color="var(--text-faint)" />
+                </div>
               </button>
             ))}
           </div>
         )}
       </div>
 
-      {/* Yükleniyor durumu */}
+      {/* Yükleniyor */}
       {detailLoading && (
         <div style={{
           marginTop: 12, textAlign: 'center',
@@ -143,7 +179,7 @@ export default function SearchBar({ search }) {
         }}>
           <span style={{ color: 'rgba(255,120,120,0.85)', fontSize: 11.5 }}>⚠ {detailError}</span>
           <button
-            onClick={() => selectSuggestion(query)}
+            onClick={retryDetail}
             style={{
               background: 'rgba(229,9,20,0.12)', border: '1px solid rgba(229,9,20,0.3)',
               borderRadius: 6, padding: '4px 10px', color: '#ff7070',
@@ -156,12 +192,10 @@ export default function SearchBar({ search }) {
         </div>
       )}
 
-      {/* Seçilen Film/Dizi Detay Kartı */}
+      {/* Seçilen Detay Kartı */}
       {selectedItem && !detailLoading && (
         <div style={{ marginTop: 12 }} className="card-enter">
-          <div style={{
-            marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6,
-          }}>
+          <div style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{
               background: 'rgba(var(--accent-rgb),0.12)',
               border: '1px solid rgba(var(--accent-rgb),0.3)',
@@ -170,10 +204,7 @@ export default function SearchBar({ search }) {
             }}>ARAMA SONUCU</span>
             <span style={{ color: 'var(--text-faint)', fontSize: 9.5 }}>{query}</span>
           </div>
-          <ContentCard
-            item={selectedItem}
-            isTrend={false}
-          />
+          <ContentCard item={selectedItem} isTrend={false} />
         </div>
       )}
     </section>
