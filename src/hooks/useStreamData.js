@@ -90,6 +90,8 @@ function tmdbToTrendCard(item, rank) {
     trendReason:   buildTrendReason(item, rank, isMovie),
     isNewRelease:  isNew,
     releaseDate:   dateStr,
+    _tmdbId:       item.id,
+    _mediaType:    item.media_type,
 
     popularityCriteria: [
       {

@@ -1,15 +1,29 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Star, TrendingUp, ChevronDown, ChevronUp, User } from 'lucide-react'
 import PosterImg from './PosterImg.jsx'
 import { PLATFORMS } from '../constants/index.js'
 
 const PLAT_MAP = Object.fromEntries(PLATFORMS.map(p => [p.id, p]))
 
+const TMDB_KEY = import.meta.env.VITE_TMDB_KEY
+
+// TMDB provider_id → platform ID'si (Türkiye'deki servisler)
+const TMDB_PROVIDER_MAP = {
+  8:    'Netflix',
+  119:  'Amazon Prime',
+  337:  'Disney+',
+  350:  'Apple TV+',
+  1899: 'HBO Max',
+  384:  'HBO Max',
+  11:   'Mubi',
+  341:  'BluTV',
+}
+
 // ── Skor Rozeti ────────────────────────────────────────────────────────────────
-function ScoreBadge({ imdb, rt }) {
-  if (!imdb && !rt) return null
+function ScoreBadge({ imdb, rt, lb }) {
+  if (!imdb && !rt && !lb) return null
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
       {imdb && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
           <Star size={11} fill="var(--accent)" color="var(--accent)" />
@@ -24,6 +38,18 @@ function ScoreBadge({ imdb, rt }) {
           border: `1px solid ${rt >= 60 ? 'rgba(76,175,80,0.3)' : 'rgba(244,67,54,0.3)'}`,
           color: rt >= 60 ? '#81c784' : '#e57373',
         }}>🍅 {rt}%</span>
+      )}
+      {lb && (
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 3,
+          fontSize: 9.5, fontWeight: 700, padding: '2px 5px', borderRadius: 3,
+          background: 'rgba(0,172,56,0.12)',
+          border: '1px solid rgba(0,172,56,0.28)',
+          color: '#4dcf7a',
+        }}>
+          🎞 {lb}
+          <span style={{ fontSize: 8, color: 'rgba(77,207,122,0.6)' }}>/5</span>
+        </span>
       )}
     </div>
   )
@@ -125,6 +151,27 @@ function CriteriaBar({ criterion }) {
 // ── Ana Bileşen ───────────────────────────────────────────────────────────────
 export default function ContentCard({ item, isTrend }) {
   const [open, setOpen] = useState(false)
+  // null = henüz çekilmedi, [] = çekildi ama bulunamadı, [...] = bulundu
+  const [watchPlatforms, setWatchPlatforms] = useState(null)
+
+  // Trend kartı açılınca Türkiye'deki platformu lazy çek
+  useEffect(() => {
+    if (!open || !isTrend || !item._tmdbId || !TMDB_KEY) return
+    if (watchPlatforms !== null) return
+    fetch(
+      `https://api.themoviedb.org/3/${item._mediaType}/${item._tmdbId}/watch/providers?api_key=${TMDB_KEY}`
+    )
+      .then(r => r.json())
+      .then(json => {
+        const tr = json.results?.TR
+        const list = (tr?.flatrate || [])
+          .map(p => TMDB_PROVIDER_MAP[p.provider_id])
+          .filter(Boolean)
+          .filter((v, i, a) => a.indexOf(v) === i)
+        setWatchPlatforms(list)
+      })
+      .catch(() => setWatchPlatforms([]))
+  }, [open, isTrend, item._tmdbId, item._mediaType, watchPlatforms])
 
   const hasCast    = Array.isArray(item.cast)    && item.cast.length    > 0
   const hasReviews = Array.isArray(item.reviews) && item.reviews.length > 0
@@ -196,7 +243,7 @@ export default function ContentCard({ item, isTrend }) {
             <span style={{ color: 'var(--text-faint)', fontSize: 9.5, flexShrink: 0, paddingTop: 1 }}>{item.year}</span>
           </div>
 
-          <ScoreBadge imdb={item.imdbScore} rt={item.rottenTomatoesScore} />
+          <ScoreBadge imdb={item.imdbScore} rt={item.rottenTomatoesScore} lb={item.letterboxdScore} />
 
           {/* Tür etiketleri */}
           <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
@@ -259,7 +306,7 @@ export default function ContentCard({ item, isTrend }) {
               )
             })}
             {isTrend && item.platforms?.length === 0 && (
-              <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: 8 }}>Platform: TMDB'de göster</span>
+              <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: 8 }}>📺 Genişlet → TR platformları</span>
             )}
             {item.duration && (
               <span style={{ color: 'var(--text-faint)', fontSize: 9, marginLeft: 2 }}>⏱ {item.duration}dk</span>
@@ -308,6 +355,53 @@ export default function ContentCard({ item, isTrend }) {
               )}
             </div>
           </div>
+
+          {/* ── Türkiye'de İzle (trend — lazy) ─────────────────────────────── */}
+          {isTrend && item._tmdbId && (
+            <div style={{ padding: '12px 14px 0', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+              <p style={{
+                color: 'var(--text-faint)', fontSize: 9, fontWeight: 700,
+                letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 8px',
+              }}>🇹🇷 Türkiye'de İzle</p>
+
+              {watchPlatforms === null && (
+                <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>Yükleniyor…</span>
+              )}
+
+              {watchPlatforms !== null && watchPlatforms.length > 0 && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {watchPlatforms.map(pid => {
+                    const plat = PLAT_MAP[pid]
+                    return (
+                      <span key={pid} style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        background: plat ? plat.color + '22' : 'rgba(255,255,255,0.07)',
+                        border: `1px solid ${plat ? plat.color + '55' : 'rgba(255,255,255,0.12)'}`,
+                        borderRadius: 6, padding: '4px 10px',
+                        fontSize: 10.5, fontWeight: 700, color: '#fff',
+                      }}>
+                        {plat && (
+                          <span style={{
+                            background: plat.color, borderRadius: 3,
+                            padding: '1px 5px', fontSize: 8, fontWeight: 900,
+                          }}>{plat.badge}</span>
+                        )}
+                        {plat ? plat.label : pid}
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
+
+              {watchPlatforms !== null && watchPlatforms.length === 0 && (
+                <span style={{
+                  color: 'var(--text-faint)', fontSize: 10,
+                  background: 'rgba(255,255,255,0.04)',
+                  borderRadius: 5, padding: '4px 10px', display: 'inline-block',
+                }}>Türkiye'de yayın bilgisi bulunamadı</span>
+              )}
+            </div>
+          )}
 
           {/* Popülerlik Kriterleri */}
           {hasCriteria && (

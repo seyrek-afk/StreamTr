@@ -5,10 +5,12 @@ export const GENRES = [
 ]
 
 export const PLATFORMS = [
-  { id: "Netflix",       label: "Netflix",      color: "#E50914", badge: "N"  },
-  { id: "Amazon Prime",  label: "Prime Video",  color: "#00A8E0", badge: "P"  },
-  { id: "Disney+",       label: "Disney+",      color: "#1A4BD4", badge: "D+" },
-  { id: "Apple TV+",     label: "Apple TV+",    color: "#555555", badge: "▶"  },
+  { id: "Netflix",       label: "Netflix",      color: "#E50914", badge: "N"   },
+  { id: "Amazon Prime",  label: "Prime Video",  color: "#00A8E0", badge: "P"   },
+  { id: "Disney+",       label: "Disney+",      color: "#1A4BD4", badge: "D+"  },
+  { id: "Apple TV+",     label: "Apple TV+",    color: "#555555", badge: "▶"   },
+  { id: "HBO Max",       label: "Max",          color: "#5822B4", badge: "MAX" },
+  { id: "Mubi",          label: "Mubi",         color: "#2E2D2C", badge: "M"   },
 ]
 
 export const POSTER_GRADIENTS = [
