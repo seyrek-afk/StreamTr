@@ -22,12 +22,28 @@ const TMDB_GENRES = {
   10766: 'Pembe Dizi', 10767: 'Talk Show', 10768: 'Savaş & Politika',
 }
 
+function toMiniItem(r) {
+  const isMovie = r.media_type === 'movie' || r.title !== undefined
+  return {
+    tmdbId: r.id,
+    mediaType: isMovie ? 'movie' : 'tv',
+    title: r.title || r.name,
+    year: (r.release_date || r.first_air_date || '').slice(0, 4),
+    posterPath: r.poster_path,
+  }
+}
+
 function tmdbToCard(tmdb, mediaType) {
   const isMovie = mediaType === 'movie'
   const voteAvg = tmdb.vote_average || 0
   const trailer = (tmdb.videos?.results || []).find(
     v => v.type === 'Trailer' && v.site === 'YouTube'
   ) || (tmdb.videos?.results || []).find(v => v.site === 'YouTube')
+
+  const dirEntry = (tmdb.credits?.crew || []).find(p => p.job === 'Director')
+    || tmdb.created_by?.[0]
+    || null
+
   return {
     title: isMovie ? tmdb.title : tmdb.name,
     originalTitle: isMovie ? tmdb.original_title : tmdb.original_name,
@@ -40,6 +56,7 @@ function tmdbToCard(tmdb, mediaType) {
     posterPath: tmdb.poster_path,
     description: tmdb.overview,
     cast: (tmdb.credits?.cast || []).slice(0, 8).map(c => ({
+      id: c.id,
       name: c.name,
       character: c.character,
       profilePath: c.profile_path,
@@ -54,6 +71,8 @@ function tmdbToCard(tmdb, mediaType) {
     _tmdbId: tmdb.id,
     _mediaType: mediaType,
     trailerKey: trailer?.key || null,
+    director: dirEntry ? { id: dirEntry.id, name: dirEntry.name } : null,
+    similarItems: (tmdb.recommendations?.results || []).slice(0, 12).map(toMiniItem),
   }
 }
 
@@ -148,7 +167,7 @@ export function useSearch() {
     try {
       const { id, mediaType } = suggestion
       const res = await fetch(
-        `${TMDB_BASE}/${mediaType}/${id}?api_key=${API_KEY}&language=tr-TR&append_to_response=credits,reviews,videos`,
+        `${TMDB_BASE}/${mediaType}/${id}?api_key=${API_KEY}&language=tr-TR&append_to_response=credits,reviews,videos,recommendations`,
         { signal: controller.signal }
       )
       if (!res.ok) throw new Error(`TMDB ${res.status}`)
