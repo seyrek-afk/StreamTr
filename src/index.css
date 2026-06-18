@@ -1,21 +1,21 @@
 /* ── Varsayılan CSS değişkenleri (Sinema Karanlığı teması) ─────────────────── */
 :root {
-  --bg:              #070710;
-  --bg-card:         #111120;
-  --bg-card-trend:   rgba(22,8,8,0.97);
-  --bg-header:       rgba(7,7,16,0.97);
+  --bg:              #0e0e1c;
+  --bg-card:         #161624;
+  --bg-card-trend:   rgba(20,10,10,0.97);
+  --bg-header:       rgba(14,14,28,0.97);
   --accent:          #F5C518;
-  --accent2:         #FF4B2B;
+  --accent2:         #E04528;
   --accent-rgb:      245,197,24;
-  --border:          rgba(255,255,255,0.065);
-  --border-trend:    rgba(245,100,0,0.18);
+  --border:          rgba(255,255,255,0.08);
+  --border-trend:    rgba(245,100,0,0.15);
   --text:            #ffffff;
-  --text-muted:      rgba(255,255,255,0.62);
-  --text-faint:      rgba(255,255,255,0.28);
+  --text-muted:      rgba(255,255,255,0.65);
+  --text-faint:      rgba(255,255,255,0.32);
   --tab-active:      #F5C518;
-  --hover-border:    rgba(245,197,24,0.35);
+  --hover-border:    rgba(245,197,24,0.30);
   --trend-bar:       linear-gradient(90deg,#F5C518,#E50914);
-  --logo-grad:       linear-gradient(120deg,#F5C518 0%,#FF4B2B 100%);
+  --logo-grad:       linear-gradient(120deg,#F5C518 0%,#E04528 100%);
   --card-backdrop:   none;
 }
 
@@ -65,4 +65,14 @@ body { background: var(--bg); color: var(--text); overflow-x: hidden; }
 [data-theme="glass"] .content-card {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+}
+
+/* ── Buton basınç efekti (emil: :active scale) ────────────────────────────── */
+.btn-pressable:active {
+  transform: scale(0.97);
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-pressable:active {
+    transform: none;
+  }
 }

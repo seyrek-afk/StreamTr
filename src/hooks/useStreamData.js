@@ -1,11 +1,17 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { MOCK_DIZILER, MOCK_FILMLER, MOCK_TREND } from '../data/mockData.js'
 
 const TMDB_BASE = 'https://api.themoviedb.org/3'
 const TMDB_KEY  = import.meta.env.VITE_TMDB_KEY
 
 const PAGE_SIZE = 10
-const MAX_ITEMS = 100
+const MAX_ITEMS = 250
+
+// diziler/filmler tabları için TMDB liste uç noktaları (en yüksek puanlılar)
+const LIST_ENDPOINT = {
+  diziler: { path: 'tv/top_rated',    mediaType: 'tv'    },
+  filmler: { path: 'movie/top_rated', mediaType: 'movie' },
+}
 
 // ── Yardımcı: sayı formatla ──────────────────────────────────────────────────
 function fmtCount(n) {
@@ -163,6 +169,44 @@ async function loadTrendFromTMDB() {
   return items.slice(0, MAX_ITEMS).map((item, i) => tmdbToTrendCard(item, i + 1))
 }
 
+// ── TMDB liste öğesi (top_rated) → kart formatına dönüştür ───────────────────
+function tmdbToListCard(item, mediaType) {
+  const isMovie = mediaType === 'movie'
+  const voteAvg = item.vote_average || 0
+  const dateStr = isMovie ? item.release_date : item.first_air_date
+  return {
+    title:         isMovie ? item.title : item.name,
+    originalTitle: isMovie ? item.original_title : item.original_name,
+    type:          isMovie ? 'film' : 'dizi',
+    year:          dateStr?.slice(0, 4),
+    imdbScore:     voteAvg ? Number(voteAvg.toFixed(1)) : null,
+    rottenTomatoesScore: estimateRT(voteAvg),
+    letterboxdScore: estimateLB(voteAvg),
+    genres:        (item.genre_ids || []).map(id => GENRE_MAP[id]).filter(Boolean),
+    platforms:     [],
+    posterPath:    item.poster_path,
+    description:   item.overview || '',
+    cast:          [],
+    reviews:       [],
+    duration:      null,
+    _tmdbId:       item.id,
+    _mediaType:    mediaType,
+  }
+}
+
+// ── TMDB liste tabından (diziler/filmler) tek sayfa getir ────────────────────
+async function loadListPage(tab, page) {
+  const { path, mediaType } = LIST_ENDPOINT[tab]
+  const res = await fetch(
+    `${TMDB_BASE}/${path}?language=tr-TR&page=${page}&api_key=${TMDB_KEY}`,
+    { signal: AbortSignal.timeout(10_000) }
+  )
+  if (!res.ok) throw new Error(`TMDB ${res.status}`)
+  const json = await res.json()
+  const items = (json.results || []).map(r => tmdbToListCard(r, mediaType))
+  return { items, totalPages: json.total_pages || page }
+}
+
 // ── emptyTab yardımcısı ──────────────────────────────────────────────────────
 function emptyTab(val) {
   return { diziler: val, filmler: val, trend: val }
@@ -173,6 +217,9 @@ const MOCK_SOURCE = {
   filmler: MOCK_FILMLER,
 }
 
+// İlk yüklemede diziler/filmler için kaç TMDB sayfası çekilsin (20 öğe/sayfa)
+const INITIAL_PAGES = 3
+
 // ── Hook ─────────────────────────────────────────────────────────────────────
 export function useStreamData() {
   const [data,        setData]        = useState(emptyTab([]))
@@ -182,6 +229,16 @@ export function useStreamData() {
   const [visible,     setVisible]     = useState(emptyTab(PAGE_SIZE))
   const [hasMore,     setHasMore]     = useState(emptyTab(true))
   const [loaded,      setLoaded]      = useState(emptyTab(false))
+
+  // TMDB liste tabları için sayfa imleci
+  const pageRef       = useRef({ diziler: 0, filmler: 0 })
+  const totalPagesRef = useRef({ diziler: Infinity, filmler: Infinity })
+
+  // Bu tabdan ağ üzerinden DAHA fazla içerik çekilebilir mi?
+  const networkMore = (tab, total) => {
+    if (!TMDB_KEY || !LIST_ENDPOINT[tab]) return false
+    return total < MAX_ITEMS && pageRef.current[tab] < totalPagesRef.current[tab]
+  }
 
   const fetchTab = async (tab, force = false) => {
     if (!force && loaded[tab]) return
@@ -200,15 +257,28 @@ export function useStreamData() {
           await new Promise(r => setTimeout(r, 400))
           items = MOCK_TREND
         }
+      } else if (LIST_ENDPOINT[tab] && TMDB_KEY) {
+        // diziler / filmler: TMDB en yüksek puanlılar — sayfalı (250'ye kadar)
+        pageRef.current[tab]       = 0
+        totalPagesRef.current[tab] = Infinity
+        const acc = []
+        for (let i = 0; i < INITIAL_PAGES && acc.length < MAX_ITEMS; i++) {
+          if (pageRef.current[tab] >= totalPagesRef.current[tab]) break
+          const { items: pageItems, totalPages } = await loadListPage(tab, pageRef.current[tab] + 1)
+          pageRef.current[tab]      += 1
+          totalPagesRef.current[tab] = totalPages
+          acc.push(...pageItems)
+        }
+        items = acc.slice(0, MAX_ITEMS)
       } else {
-        // diziler / filmler: mock veri (kısa gecikme simülasyonu)
+        // TMDB anahtarı yoksa mock veriye dön
         await new Promise(r => setTimeout(r, 400))
         items = MOCK_SOURCE[tab] || []
       }
 
       setData(p    => ({ ...p, [tab]: items }))
       setVisible(p => ({ ...p, [tab]: PAGE_SIZE }))
-      setHasMore(p => ({ ...p, [tab]: items.length > PAGE_SIZE }))
+      setHasMore(p => ({ ...p, [tab]: networkMore(tab, items.length) || items.length > PAGE_SIZE }))
       setLoaded(p  => ({ ...p, [tab]: true }))
     } catch (e) {
       setError(p => ({ ...p, [tab]: e.message || 'Bilinmeyen hata' }))
@@ -217,13 +287,39 @@ export function useStreamData() {
     }
   }
 
-  const showMore = (tab) => {
-    const next   = visible[tab] + PAGE_SIZE
-    const total  = data[tab].length
-    const capped = Math.min(next, MAX_ITEMS, total)
-    setVisible(p => ({ ...p, [tab]: capped }))
-    if (capped >= total || capped >= MAX_ITEMS) {
-      setHasMore(p => ({ ...p, [tab]: false }))
+  const showMore = async (tab) => {
+    const total   = data[tab].length
+    const desired = Math.min(visible[tab] + PAGE_SIZE, MAX_ITEMS)
+
+    // Yeterli yüklü veri var veya ağdan çekilemiyor → sadece görünürü artır
+    if (desired <= total || !networkMore(tab, total)) {
+      const capped = Math.min(desired, total)
+      setVisible(p => ({ ...p, [tab]: capped }))
+      if (capped >= total && !networkMore(tab, total)) {
+        setHasMore(p => ({ ...p, [tab]: false }))
+      }
+      return
+    }
+
+    // Ağdan daha fazla içerik getir (250 sınırına kadar)
+    setLoadingMore(p => ({ ...p, [tab]: true }))
+    try {
+      let acc = data[tab].slice()
+      while (acc.length < desired && acc.length < MAX_ITEMS &&
+             pageRef.current[tab] < totalPagesRef.current[tab]) {
+        const { items: pageItems, totalPages } = await loadListPage(tab, pageRef.current[tab] + 1)
+        pageRef.current[tab]      += 1
+        totalPagesRef.current[tab] = totalPages
+        acc.push(...pageItems)
+      }
+      acc = acc.slice(0, MAX_ITEMS)
+      setData(p    => ({ ...p, [tab]: acc }))
+      setVisible(p => ({ ...p, [tab]: Math.min(desired, acc.length) }))
+      setHasMore(p => ({ ...p, [tab]: networkMore(tab, acc.length) }))
+    } catch {
+      // sessizce bırak; mevcut veri korunur
+    } finally {
+      setLoadingMore(p => ({ ...p, [tab]: false }))
     }
   }
 

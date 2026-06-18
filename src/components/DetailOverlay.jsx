@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Star, User, X } from 'lucide-react'
 import { PLATFORMS } from '../constants/index.js'
 import FavoriteButton from './FavoriteButton.jsx'
+import TrailerEmbed from './TrailerEmbed.jsx'
 
 const TMDB_KEY = import.meta.env.VITE_TMDB_KEY
 const PLAT_MAP = Object.fromEntries(PLATFORMS.map(p => [p.id, p]))
@@ -209,20 +210,9 @@ export default function DetailOverlay({ item, onClose }) {
                   </p>
                 )}
 
-                {/* Butonlar */}
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-                  {trailerKey && (
-                    <a
-                      href={`https://www.youtube.com/watch?v=${trailerKey}`}
-                      target="_blank" rel="noopener noreferrer"
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 4,
-                        background: 'rgba(255,50,50,0.12)', border: '1px solid rgba(255,50,50,0.3)',
-                        borderRadius: 6, padding: '4px 10px',
-                        fontSize: 10, fontWeight: 700, color: '#ff5555', textDecoration: 'none',
-                      }}
-                    >▶ Fragmanı İzle</a>
-                  )}
+                {/* Butonlar: Fragman (gömülü oynatıcı) + Favori */}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 2 }}>
+                  <TrailerEmbed trailerKey={trailerKey} compact />
                   <FavoriteButton item={item} size={18} />
                 </div>
               </div>

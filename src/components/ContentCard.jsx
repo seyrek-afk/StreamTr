@@ -3,6 +3,7 @@ import { Star, TrendingUp, ChevronDown, ChevronUp, User } from 'lucide-react'
 import PosterImg from './PosterImg.jsx'
 import DetailOverlay from './DetailOverlay.jsx'
 import FavoriteButton from './FavoriteButton.jsx'
+import TrailerEmbed from './TrailerEmbed.jsx'
 import { PLATFORMS } from '../constants/index.js'
 
 const PLAT_MAP = Object.fromEntries(PLATFORMS.map(p => [p.id, p]))
@@ -614,24 +615,9 @@ export default function ContentCard({ item, isTrend }) {
                   </p>
                 )}
 
-                {/* Butonlar: Fragman + İzle */}
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-                  {trailerKey && (
-                    <a
-                      href={`https://www.youtube.com/watch?v=${trailerKey}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={e => e.stopPropagation()}
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        background: 'rgba(255,50,50,0.12)',
-                        border: '1px solid rgba(255,50,50,0.3)',
-                        borderRadius: 6, padding: '5px 12px',
-                        fontSize: 11, fontWeight: 700, color: '#ff5555',
-                        textDecoration: 'none', alignSelf: 'flex-start',
-                      }}
-                    >▶ Fragmanı İzle</a>
-                  )}
+                {/* Fragman (resmi/güvenilir kaynak — uygulama içi oynatıcı) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>
+                  <TrailerEmbed trailerKey={trailerKey} />
                 </div>
               </div>
             </div>

@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useStreamData } from '../hooks/useStreamData.js'
-import { MOCK_DIZILER, MOCK_FILMLER } from '../data/mockData.js'
 
 // Helper: build a minimal TMDB page response
 function makeTmdbPage(count = 5) {
@@ -64,7 +63,9 @@ describe('useStreamData', () => {
     expect(hasMore.diziler).toBe(true)
   })
 
-  it('fetchTab(diziler) sets loading true, then resolves with mock data', async () => {
+  // NOT: TMDB anahtarı varsa diziler/filmler TMDB'den (top_rated) yüklenir,
+  // yoksa mock veriye düşer. Testler her iki modu da tolere eder.
+  it('fetchTab(diziler) sets loading true, then resolves with data', async () => {
     const { result } = renderHook(() => useStreamData())
 
     act(() => { result.current.fetchTab('diziler') })
@@ -73,17 +74,17 @@ describe('useStreamData', () => {
     await flushAll()
 
     expect(result.current.loading.diziler).toBe(false)
-    expect(result.current.data.diziler).toEqual(MOCK_DIZILER)
+    expect(result.current.data.diziler.length).toBeGreaterThan(0)
     expect(result.current.error.diziler).toBeNull()
   })
 
-  it('fetchTab(filmler) resolves with MOCK_FILMLER', async () => {
+  it('fetchTab(filmler) resolves with data', async () => {
     const { result } = renderHook(() => useStreamData())
 
     act(() => { result.current.fetchTab('filmler') })
     await flushAll()
 
-    expect(result.current.data.filmler).toEqual(MOCK_FILMLER)
+    expect(result.current.data.filmler.length).toBeGreaterThan(0)
     expect(result.current.loading.filmler).toBe(false)
   })
 
@@ -171,12 +172,12 @@ describe('useStreamData', () => {
 
     act(() => { result.current.fetchTab('diziler') })
     await flushAll()
-    expect(result.current.data.diziler).toEqual(MOCK_DIZILER)
+    expect(result.current.data.diziler.length).toBeGreaterThan(0)
 
     act(() => { result.current.retry('diziler') })
     await flushAll()
 
-    expect(result.current.data.diziler).toEqual(MOCK_DIZILER)
+    expect(result.current.data.diziler.length).toBeGreaterThan(0)
     expect(result.current.error.diziler).toBeNull()
   })
 

@@ -18,6 +18,7 @@ export default function FavoriteButton({ item, size = 16 }) {
       title={active ? 'Favorilerden çıkar' : 'Favorilere ekle'}
       aria-label={active ? 'Favorilerden çıkar' : 'Favorilere ekle'}
       aria-pressed={active}
+      className="btn-pressable"
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         width: size + 14, height: size + 14,
@@ -26,7 +27,7 @@ export default function FavoriteButton({ item, size = 16 }) {
         border: `1px solid ${active ? 'var(--accent)' : 'rgba(255,255,255,0.18)'}`,
         cursor: 'pointer', padding: 0,
         backdropFilter: 'blur(4px)',
-        transition: 'all 0.15s',
+        transition: 'background 0.15s, border-color 0.15s, transform 0.1s',
       }}
     >
       <Star
