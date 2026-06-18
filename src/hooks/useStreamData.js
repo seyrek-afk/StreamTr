@@ -142,20 +142,24 @@ async function loadTrendFromTMDB() {
   const PAGES = 5
   const promises = Array.from({ length: PAGES }, (_, i) =>
     fetch(
-      `${TMDB_BASE}/trending/all/week?api_key=${TMDB_KEY}&language=tr-TR&page=${i + 1}`
+      `${TMDB_BASE}/trending/all/week?language=tr-TR&page=${i + 1}&api_key=${TMDB_KEY}`,
+      { signal: AbortSignal.timeout(10_000) }
     ).then(r => {
       if (!r.ok) throw new Error(`TMDB ${r.status}`)
       return r.json()
     })
   )
 
-  const pages = await Promise.all(promises)
+  const results = await Promise.allSettled(promises)
   const items = []
-  for (const page of pages) {
-    for (const r of (page.results || [])) {
-      if (r.media_type === 'movie' || r.media_type === 'tv') items.push(r)
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      for (const r of (result.value.results || [])) {
+        if (r.media_type === 'movie' || r.media_type === 'tv') items.push(r)
+      }
     }
   }
+  if (items.length === 0) throw new Error('TMDB trend verisi alınamadı')
   return items.slice(0, MAX_ITEMS).map((item, i) => tmdbToTrendCard(item, i + 1))
 }
 
@@ -179,8 +183,8 @@ export function useStreamData() {
   const [hasMore,     setHasMore]     = useState(emptyTab(true))
   const [loaded,      setLoaded]      = useState(emptyTab(false))
 
-  const fetchTab = async (tab) => {
-    if (loaded[tab]) return
+  const fetchTab = async (tab, force = false) => {
+    if (!force && loaded[tab]) return
 
     setLoading(p => ({ ...p, [tab]: true }))
     setError(p   => ({ ...p, [tab]: null }))
@@ -225,7 +229,7 @@ export function useStreamData() {
 
   const retry = (tab) => {
     setLoaded(p => ({ ...p, [tab]: false }))
-    fetchTab(tab)
+    fetchTab(tab, true)
   }
 
   return { data, loading, loadingMore, error, visible, hasMore, fetchTab, showMore, retry }

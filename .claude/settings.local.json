@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "PowerShell(cd \"C:\\\\Users\\\\seyre\\\\ProjectRepos\\\\devops-agents\"; $env:ANTHROPIC_API_KEY = \"test-key-placeholder\"; .\\\\.venv\\\\Scripts\\\\python orchestrator.py --list-teams)",
+      "PowerShell(cd \"C:\\\\Users\\\\seyre\\\\ProjectRepos\\\\devops-agents\"; $env:ANTHROPIC_API_KEY = \"test-key\"; .\\\\.venv\\\\Scripts\\\\python orchestrator.py --list-teams)",
+      "Bash(claude -p \"merhaba\" --help)",
+      "Bash(./.venv/Scripts/python -c ' *)",
+      "Bash(xargs -I{} ls \"C:/Users/seyre/ProjectRepos/devops-agents/workspace/runs/{}\")",
+      "Bash(awk '{print $1, $2, $11, $12}')",
+      "PowerShell(Start-Process -FilePath \"cmd.exe\" -ArgumentList '/c cd C:\\\\Users\\\\seyre\\\\ProjectRepos\\\\AgentManagement\\\\backend && python -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload > C:\\\\Users\\\\seyre\\\\agentmgmt_backend.txt 2>&1' -WindowStyle Hidden)",
+      "PowerShell(Start-Sleep -Seconds 4 ; try { $r = Invoke-WebRequest -Uri \"http://localhost:8000/health\" -UseBasicParsing -TimeoutSec 5; $r.StatusCode; $r.Content } catch { \"ERROR: $_\" })"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\seyre\\ProjectRepos\\AgentManagement\\backend\\app\\models"
+    ]
+  }
+}

@@ -3,6 +3,8 @@ import { RefreshCw, X, ChevronDown, Loader } from 'lucide-react'
 import { PLATFORMS, TABS } from './constants/index.js'
 import { useStreamData } from './hooks/useStreamData.js'
 import { useSearch }     from './hooks/useSearch.js'
+import { useRecommendations } from './hooks/useRecommendations.js'
+import { useFavorites } from './contexts/FavoritesContext.jsx'
 import ContentCard  from './components/ContentCard.jsx'
 import GenreFilter  from './components/GenreFilter.jsx'
 import SkeletonGrid from './components/SkeletonGrid.jsx'
@@ -22,7 +24,11 @@ export default function App() {
 
   const search = useSearch()
 
-  useEffect(() => { fetchTab(tab) }, [tab])
+  const { favorites } = useFavorites()
+  const { recommendations, loading: recLoading, error: recError } = useRecommendations(favorites)
+  const isSanaOzel = tab === 'sanaozel'
+
+  useEffect(() => { if (tab !== 'sanaozel') fetchTab(tab) }, [tab])
 
   const toggleGenre  = (g) =>
     setSelectedGenres(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g])
@@ -123,12 +129,14 @@ export default function App() {
       </header>
 
       {/* ── TÜR FİLTRESİ ──────────────────────────────────────────────────── */}
-      <GenreFilter
-        selectedGenres={selectedGenres}
-        onToggle={toggleGenre}
-        onClear={clearFilters}
-        showClear={hasActiveFilter}
-      />
+      {!isSanaOzel && (
+        <GenreFilter
+          selectedGenres={selectedGenres}
+          onToggle={toggleGenre}
+          onClear={clearFilters}
+          showClear={hasActiveFilter}
+        />
+      )}
 
       {/* ── ARAMA ÇUBUĞU ──────────────────────────────────────────────────── */}
       <div style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
@@ -138,6 +146,63 @@ export default function App() {
       {/* ── ANA İÇERİK ────────────────────────────────────────────────────── */}
       <main style={{ padding: '12px 20px 60px' }}>
 
+       {isSanaOzel ? (
+        <>
+          {/* ── FAVORİLERİM ──────────────────────────────────────────────── */}
+          <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: '4px 0 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            ⭐ Favorilerim <span style={{ color: 'var(--text-faint)', fontSize: 11, fontWeight: 500 }}>({favorites.length})</span>
+          </h2>
+
+          {favorites.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--text-faint)' }}>
+              <div style={{ fontSize: 44, marginBottom: 12, opacity: 0.6 }}>⭐</div>
+              <p style={{ fontSize: 13, marginBottom: 6 }}>Henüz favori eklemediniz</p>
+              <p style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+                Kartlardaki ⭐ simgesine dokunarak beğendiklerinizi işaretleyin — size özel öneriler burada çıkar.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 13 }}>
+              {favorites.map((item, i) => (
+                <div key={`fav-${item.key}`} className="card-enter"
+                  style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}>
+                  <ContentCard item={item} isTrend={false} />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── SANA ÖZEL ÖNERİLER ───────────────────────────────────────── */}
+          {favorites.length > 0 && (
+            <>
+              <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: '28px 0 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                ✨ Sana Özel Öneriler
+                {recLoading && <RefreshCw size={12} className="spin" />}
+              </h2>
+
+              {recLoading && recommendations.length === 0 && <SkeletonGrid count={6} />}
+
+              {!recLoading && recommendations.length === 0 && (
+                <p style={{ color: 'var(--text-faint)', fontSize: 12, padding: '20px 0' }}>
+                  {recError || 'Favorilerinize uygun yeni öneri bulunamadı. Daha fazla içerik favorileyin.'}
+                </p>
+              )}
+
+              {recommendations.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 13 }}>
+                  {recommendations.map((item, i) => (
+                    <div key={`rec-${item._tmdbId || item.title}-${i}`} className="card-enter"
+                      style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}>
+                      <ContentCard item={item} isTrend={false} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </>
+       ) : (
+        <>
         {/* Aktif filtre özeti */}
         {!loading[tab] && data[tab].length > 0 && (
           <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -185,7 +250,7 @@ export default function App() {
                 ⚠ Veri yüklenirken hata oluştu
               </p>
               <p style={{ color: 'rgba(255,100,100,0.55)', fontSize: 10.5, fontFamily: 'monospace' }}>
-                {error[tab]}
+                İçerik sunucusundan yüklenemedi. Lütfen tekrar deneyin.
               </p>
             </div>
             <button onClick={() => retry(tab)} style={{
@@ -272,6 +337,8 @@ export default function App() {
             Maksimum 100 içeriğe ulaşıldı
           </p>
         )}
+        </>
+       )}
       </main>
 
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}

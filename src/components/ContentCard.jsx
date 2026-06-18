@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Star, TrendingUp, ChevronDown, ChevronUp, User } from 'lucide-react'
 import PosterImg from './PosterImg.jsx'
 import DetailOverlay from './DetailOverlay.jsx'
+import FavoriteButton from './FavoriteButton.jsx'
 import { PLATFORMS } from '../constants/index.js'
 
 const PLAT_MAP = Object.fromEntries(PLATFORMS.map(p => [p.id, p]))
@@ -239,7 +240,10 @@ export default function ContentCard({ item, isTrend }) {
   const [watchPlatforms, setWatchPlatforms] = useState(null)
 
   // ── Trailer (lazy) ───────────────────────────────────────────────────────────
-  const [trailerKey,     setTrailerKey]     = useState(item.trailerKey || null)
+  const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{11}$/
+  const [trailerKey,     setTrailerKey]     = useState(
+    item.trailerKey && YOUTUBE_ID_RE.test(item.trailerKey) ? item.trailerKey : null
+  )
   const [trailerFetched, setTrailerFetched] = useState(item.trailerKey !== undefined)
 
   // ── Zengin detay: credits + recommendations (trend + mock için) ──────────────
@@ -275,8 +279,10 @@ export default function ContentCard({ item, isTrend }) {
     setTmdbResolveFetched(true)
     const q = encodeURIComponent((item.originalTitle || item.title || '').slice(0, 100))
     if (!q) return
+    const ctrl = new AbortController()
     fetch(
-      `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_KEY}&query=${q}&language=tr-TR&page=1&include_adult=false`
+      `https://api.themoviedb.org/3/search/multi?query=${q}&language=tr-TR&page=1&include_adult=false&api_key=${TMDB_KEY}`,
+      { signal: ctrl.signal }
     )
       .then(r => r.json())
       .then(json => {
@@ -287,6 +293,7 @@ export default function ContentCard({ item, isTrend }) {
         }
       })
       .catch(() => {})
+    return () => ctrl.abort()
   }, [open, tmdbResolveFetched, item._tmdbId, item.title, item.originalTitle])
 
   // ── Effect B: Trend + mock için zengin detay (credits + recommendations) ──────
@@ -295,9 +302,11 @@ export default function ContentCard({ item, isTrend }) {
     if (isSearchItem) return
     setRichFetched(true)
     setRichLoading(true)
+    const ctrl = new AbortController()
     fetch(
       `https://api.themoviedb.org/3/${effectiveMediaType}/${effectiveTmdbId}` +
-      `?api_key=${TMDB_KEY}&language=tr-TR&append_to_response=credits,recommendations`
+      `?language=tr-TR&append_to_response=credits,recommendations&api_key=${TMDB_KEY}`,
+      { signal: ctrl.signal }
     )
       .then(r => r.json())
       .then(json => {
@@ -317,16 +326,19 @@ export default function ContentCard({ item, isTrend }) {
           })),
         })
       })
-      .catch(() => setRichDetail({ cast: [], director: null, similarItems: [] }))
+      .catch(e => { if (e.name !== 'AbortError') setRichDetail({ cast: [], director: null, similarItems: [] }) })
       .finally(() => setRichLoading(false))
+    return () => ctrl.abort()
   }, [open, richFetched, effectiveTmdbId, effectiveMediaType, isSearchItem])
 
   // ── Effect C: Watch providers ─────────────────────────────────────────────────
   useEffect(() => {
     if (!open || !effectiveTmdbId || !effectiveMediaType || !TMDB_KEY) return
     if (watchPlatforms !== null) return
+    const ctrl = new AbortController()
     fetch(
-      `https://api.themoviedb.org/3/${effectiveMediaType}/${effectiveTmdbId}/watch/providers?api_key=${TMDB_KEY}`
+      `https://api.themoviedb.org/3/${effectiveMediaType}/${effectiveTmdbId}/watch/providers?api_key=${TMDB_KEY}`,
+      { signal: ctrl.signal }
     )
       .then(r => r.json())
       .then(json => {
@@ -341,33 +353,38 @@ export default function ContentCard({ item, isTrend }) {
         }
         setWatchPlatforms(list)
       })
-      .catch(() => setWatchPlatforms([]))
+      .catch(e => { if (e.name !== 'AbortError') setWatchPlatforms([]) })
+    return () => ctrl.abort()
   }, [open, effectiveTmdbId, effectiveMediaType, watchPlatforms])
 
   // ── Effect D: Trailer ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!open || trailerFetched || !effectiveTmdbId || !effectiveMediaType || !TMDB_KEY) return
     setTrailerFetched(true)
+    const ctrl = new AbortController()
     fetch(
-      `https://api.themoviedb.org/3/${effectiveMediaType}/${effectiveTmdbId}/videos?api_key=${TMDB_KEY}&language=tr-TR`
+      `https://api.themoviedb.org/3/${effectiveMediaType}/${effectiveTmdbId}/videos?language=tr-TR&api_key=${TMDB_KEY}`,
+      { signal: ctrl.signal }
     )
       .then(r => r.json())
       .then(json => {
         const trailer = (json.results || []).find(v => v.type === 'Trailer' && v.site === 'YouTube')
           || (json.results || []).find(v => v.site === 'YouTube')
-        if (trailer) setTrailerKey(trailer.key)
+        if (trailer?.key && YOUTUBE_ID_RE.test(trailer.key)) setTrailerKey(trailer.key)
       })
       .catch(() => {})
+    return () => ctrl.abort()
   }, [open, trailerFetched, effectiveTmdbId, effectiveMediaType])
 
   // ── Effect E: Yönetmenin diğer yapımları ─────────────────────────────────────
   useEffect(() => {
     if (!open || directorWorksFetched || !director?.id || !TMDB_KEY) return
     setDirectorWorksFetched(true)
+    const ctrl = new AbortController()
     const endpoint = (effectiveMediaType === 'tv' || item.type === 'dizi')
       ? `person/${director.id}/tv_credits`
       : `person/${director.id}/movie_credits`
-    fetch(`https://api.themoviedb.org/3/${endpoint}?api_key=${TMDB_KEY}&language=tr-TR`)
+    fetch(`https://api.themoviedb.org/3/${endpoint}?language=tr-TR&api_key=${TMDB_KEY}`, { signal: ctrl.signal })
       .then(r => r.json())
       .then(json => {
         const works = (json.crew || [])
@@ -383,14 +400,15 @@ export default function ContentCard({ item, isTrend }) {
           }))
         setDirectorWorks(works)
       })
-      .catch(() => setDirectorWorks([]))
+      .catch(e => { if (e.name !== 'AbortError') setDirectorWorks([]) })
+    return () => ctrl.abort()
   }, [open, directorWorksFetched, director, effectiveTmdbId, effectiveMediaType, item.type])
 
   // ── Oyuncu filmografi çek ─────────────────────────────────────────────────────
   const fetchActorFilmo = (personId) => {
     if (!personId || actorFilmo[personId] !== undefined || actorFilmoLoading[personId] || !TMDB_KEY) return
     setActorFilmoLoading(p => ({ ...p, [personId]: true }))
-    fetch(`https://api.themoviedb.org/3/person/${personId}/combined_credits?api_key=${TMDB_KEY}&language=tr-TR`)
+    fetch(`https://api.themoviedb.org/3/person/${personId}/combined_credits?language=tr-TR&api_key=${TMDB_KEY}`)
       .then(r => r.json())
       .then(json => {
         const items = (json.cast || [])
@@ -448,6 +466,11 @@ export default function ContentCard({ item, isTrend }) {
           {/* Poster */}
           <div style={{ width: 98, flexShrink: 0, position: 'relative' }}>
             <PosterImg path={item.posterPath} title={item.title} />
+
+            {/* ⭐ Favori tuşu — poster sağ-üst köşe */}
+            <div style={{ position: 'absolute', top: 5, right: 5, zIndex: 2 }}>
+              <FavoriteButton item={item} size={15} />
+            </div>
 
             {isTrend && item.trendRank && (
               <div style={{
@@ -608,22 +631,6 @@ export default function ContentCard({ item, isTrend }) {
                         textDecoration: 'none', alignSelf: 'flex-start',
                       }}
                     >▶ Fragmanı İzle</a>
-                  )}
-                  {typeof effectiveTmdbId === 'number' && (
-                    <a
-                      href={`https://vidsrc.to/embed/${effectiveMediaType === 'movie' ? 'movie' : 'tv'}/${effectiveTmdbId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={e => e.stopPropagation()}
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        background: 'rgba(0,200,100,0.12)',
-                        border: '1px solid rgba(0,200,100,0.3)',
-                        borderRadius: 6, padding: '5px 12px',
-                        fontSize: 11, fontWeight: 700, color: '#4dff9d',
-                        textDecoration: 'none', alignSelf: 'flex-start',
-                      }}
-                    >▶ İzle</a>
                   )}
                 </div>
               </div>

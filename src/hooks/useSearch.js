@@ -116,7 +116,7 @@ export function useSearch() {
       try {
         const safeQuery = val.trim().slice(0, 200)
         const res = await fetch(
-          `${TMDB_BASE}/search/multi?api_key=${API_KEY}&query=${encodeURIComponent(safeQuery)}&language=tr-TR&page=1&include_adult=false`,
+          `${TMDB_BASE}/search/multi?query=${encodeURIComponent(safeQuery)}&language=tr-TR&page=1&include_adult=false&api_key=${API_KEY}`,
           { signal: controller.signal }
         )
         if (!res.ok) throw new Error(`TMDB ${res.status}`)
@@ -167,7 +167,7 @@ export function useSearch() {
     try {
       const { id, mediaType } = suggestion
       const res = await fetch(
-        `${TMDB_BASE}/${mediaType}/${id}?api_key=${API_KEY}&language=tr-TR&append_to_response=credits,reviews,videos,recommendations`,
+        `${TMDB_BASE}/${mediaType}/${id}?language=tr-TR&append_to_response=credits,reviews,videos,recommendations&api_key=${API_KEY}`,
         { signal: controller.signal }
       )
       if (!res.ok) throw new Error(`TMDB ${res.status}`)
@@ -194,6 +194,12 @@ export function useSearch() {
     lastPickRef.current = null
   }, [])
 
+  const clearSuggestions = useCallback(() => {
+    clearTimeout(debounceRef.current)
+    abortSearchRef.current?.abort()
+    setSuggestions([])
+  }, [])
+
   return {
     query,
     suggestions,
@@ -205,6 +211,7 @@ export function useSearch() {
     selectSuggestion,
     retryDetail,
     clearSearch,
+    clearSuggestions,
     noApiKey: !API_KEY,
   }
 }

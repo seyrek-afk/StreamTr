@@ -7,7 +7,7 @@ export default function SearchBar({ search }) {
     query, suggestions, suggesting,
     selectedItem, detailLoading, detailError,
     handleQueryChange, selectSuggestion, retryDetail, clearSearch,
-    noApiKey,
+    clearSuggestions, noApiKey,
   } = search
 
   const inputRef    = useRef(null)
@@ -19,12 +19,12 @@ export default function SearchBar({ search }) {
         dropdownRef.current && !dropdownRef.current.contains(e.target) &&
         inputRef.current    && !inputRef.current.contains(e.target)
       ) {
-        handleQueryChange(query)
+        clearSuggestions()
       }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [query, handleQueryChange])
+  }, [clearSuggestions])
 
   const showSuggestions = suggestions.length > 0 && !detailLoading && !selectedItem
   const showSpinner     = suggesting || detailLoading

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(try { $body = '{\"team_key\":\"audit\",\"task\":\"test\"}' ; $r = Invoke-WebRequest -Uri \"http://localhost:8000/api/runs\" -Method POST -Body $body -ContentType \"application/json\" -UseBasicParsing -TimeoutSec 5; \"STATUS: $\\($r.StatusCode\\)\"; $r.Content } catch { \"ERROR: $\\($_.Exception.Message\\)\" })"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\seyre\\ProjectRepos\\devops-agents\\.claude\\agents"
+    ]
+  }
+}

@@ -20,9 +20,10 @@ export const POSTER_GRADIENTS = [
 ]
 
 export const TABS = [
-  { id: "diziler", emoji: "📺", label: "En İyi Diziler"  },
-  { id: "filmler", emoji: "🎬", label: "En İyi Filmler"  },
-  { id: "trend",   emoji: "🔥", label: "Sosyal Trend"    },
+  { id: "diziler",  emoji: "📺", label: "En İyi Diziler"  },
+  { id: "filmler",  emoji: "🎬", label: "En İyi Filmler"  },
+  { id: "trend",    emoji: "🔥", label: "Sosyal Trend"    },
+  { id: "sanaozel", emoji: "⭐", label: "Sana Özel"        },
 ]
 
 // ── Tema Sistemi ──────────────────────────────────────────────────────────────

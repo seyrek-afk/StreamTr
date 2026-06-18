@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Star, User, X } from 'lucide-react'
 import { PLATFORMS } from '../constants/index.js'
+import FavoriteButton from './FavoriteButton.jsx'
 
 const TMDB_KEY = import.meta.env.VITE_TMDB_KEY
 const PLAT_MAP = Object.fromEntries(PLATFORMS.map(p => [p.id, p]))
@@ -42,6 +43,7 @@ export default function DetailOverlay({ item, onClose }) {
   const [error, setError]                 = useState(null)
   const [trailerKey, setTrailerKey]       = useState(null)
   const [watchPlatforms, setWatchPlatforms] = useState(null)
+  const [posterErr, setPosterErr]         = useState(false)
 
   // Body scroll kilidi
   useEffect(() => {
@@ -68,7 +70,7 @@ export default function DetailOverlay({ item, onClose }) {
     Promise.all([
       fetch(
         `https://api.themoviedb.org/3/${item.mediaType}/${item.tmdbId}` +
-        `?api_key=${TMDB_KEY}&language=tr-TR&append_to_response=credits,reviews,videos`,
+        `?language=tr-TR&append_to_response=credits,reviews,videos&api_key=${TMDB_KEY}`,
         { signal: ctrl.signal }
       ).then(r => { if (!r.ok) throw new Error(`TMDB ${r.status}`); return r.json() }),
 
@@ -80,10 +82,11 @@ export default function DetailOverlay({ item, onClose }) {
       .then(([json, wp]) => {
         const isMovie = item.mediaType === 'movie'
 
-        // Trailer
+        // Trailer — validate key format before trusting API response
+        const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{11}$/
         const trailer = (json.videos?.results || []).find(v => v.type === 'Trailer' && v.site === 'YouTube')
           || (json.videos?.results || []).find(v => v.site === 'YouTube')
-        if (trailer) setTrailerKey(trailer.key)
+        if (trailer?.key && YOUTUBE_ID_RE.test(trailer.key)) setTrailerKey(trailer.key)
 
         // Watch providers
         const tr = wp.results?.TR
@@ -169,13 +172,16 @@ export default function DetailOverlay({ item, onClose }) {
           <>
             {/* Poster + başlık + açıklama */}
             <div style={{ display: 'flex', gap: 14, padding: 16 }}>
-              <div style={{ width: 110, flexShrink: 0, borderRadius: 8, overflow: 'hidden', height: 162, background: 'rgba(255,255,255,0.04)' }}>
-                {detail.posterPath && (
+              <div style={{ width: 110, flexShrink: 0, borderRadius: 8, overflow: 'hidden', height: 162, background: 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {detail.posterPath && !posterErr ? (
                   <img
                     src={`https://image.tmdb.org/t/p/w300${detail.posterPath}`}
                     alt={detail.title}
+                    onError={() => setPosterErr(true)}
                     style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                   />
+                ) : (
+                  <span style={{ fontSize: 28 }}>🎬</span>
                 )}
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -217,18 +223,7 @@ export default function DetailOverlay({ item, onClose }) {
                       }}
                     >▶ Fragmanı İzle</a>
                   )}
-                  {typeof item.tmdbId === 'number' && (
-                    <a
-                      href={`https://vidsrc.to/embed/${item.mediaType === 'movie' ? 'movie' : 'tv'}/${item.tmdbId}`}
-                      target="_blank" rel="noopener noreferrer"
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 4,
-                        background: 'rgba(0,200,100,0.12)', border: '1px solid rgba(0,200,100,0.3)',
-                        borderRadius: 6, padding: '4px 10px',
-                        fontSize: 10, fontWeight: 700, color: '#4dff9d', textDecoration: 'none',
-                      }}
-                    >▶ İzle</a>
-                  )}
+                  <FavoriteButton item={item} size={18} />
                 </div>
               </div>
             </div>
