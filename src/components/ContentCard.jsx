@@ -299,7 +299,9 @@ export default function ContentCard({ item, isTrend }) {
       })
       .catch(() => {})
     return () => ctrl.abort()
-  }, [open, tmdbResolveFetched, item._tmdbId, item.title, item.originalTitle])
+    // NOT: tmdbResolveFetched bağımlılıkta DEĞİL — efekt içinde set edildiğinden,
+    // bağımlılık olsaydı kendi fetch'ini iptal edip yeniden çalışmayı engellerdi.
+  }, [open, item._tmdbId, item.title, item.originalTitle])
 
   // ── Effect B: Trend + mock için zengin detay (credits + recommendations) ──────
   useEffect(() => {
@@ -340,7 +342,9 @@ export default function ContentCard({ item, isTrend }) {
       .catch(e => { if (e.name !== 'AbortError') setRichDetail({ cast: [], director: null, similarItems: [], reviews: [] }) })
       .finally(() => setRichLoading(false))
     return () => ctrl.abort()
-  }, [open, richFetched, effectiveTmdbId, effectiveMediaType, isSearchItem])
+    // NOT: richFetched bağımlılıkta DEĞİL (efekt içinde set ediliyor) — aksi halde
+    // bayrak true olunca cleanup tetiklenip uçuştaki fetch iptal olur, detay hiç gelmezdi.
+  }, [open, effectiveTmdbId, effectiveMediaType, isSearchItem])
 
   // ── Effect C: Watch providers ─────────────────────────────────────────────────
   useEffect(() => {
@@ -386,7 +390,8 @@ export default function ContentCard({ item, isTrend }) {
       })
       .catch(() => {})
     return () => ctrl.abort()
-  }, [open, trailerFetched, effectiveTmdbId, effectiveMediaType])
+    // NOT: trailerFetched bağımlılıkta DEĞİL — kendi fetch'ini iptal etmesini önler.
+  }, [open, effectiveTmdbId, effectiveMediaType])
 
   // ── Effect E: Yönetmenin diğer yapımları ─────────────────────────────────────
   useEffect(() => {
@@ -414,7 +419,8 @@ export default function ContentCard({ item, isTrend }) {
       })
       .catch(e => { if (e.name !== 'AbortError') setDirectorWorks([]) })
     return () => ctrl.abort()
-  }, [open, directorWorksFetched, director, effectiveTmdbId, effectiveMediaType, item.type])
+    // NOT: directorWorksFetched bağımlılıkta DEĞİL — kendi fetch'ini iptal etmesini önler.
+  }, [open, director, effectiveTmdbId, effectiveMediaType, item.type])
 
   // ── Oyuncu filmografi çek ─────────────────────────────────────────────────────
   const fetchActorFilmo = (personId) => {
