@@ -7,6 +7,17 @@ const API_KEY   = import.meta.env.VITE_TMDB_KEY
 
 const MAX_RESULTS = 20
 
+// Skor tahmini — diğer hook'larla (useStreamData/useSearch) birebir aynı formül,
+// böylece öneriler de IMDB + Rotten Tomatoes + Letterboxd üçlüsünü gösterir.
+function estimateRT(avg) {
+  if (!avg) return null
+  return Math.min(99, Math.max(20, Math.round(avg * 9.8 + 1)))
+}
+function estimateLB(avg) {
+  if (!avg) return null
+  return Number((avg * 0.47 + 0.08).toFixed(2))
+}
+
 // TMDB tür id → Türkçe (diğer hook'larla aynı eşleme)
 const TMDB_GENRES = {
   28: 'Aksiyon', 12: 'Macera', 16: 'Animasyon', 35: 'Komedi', 80: 'Suç',
@@ -29,6 +40,8 @@ function tmdbToRecCard(r) {
     type:       isMovie ? 'film' : 'dizi',
     genres:     (r.genre_ids || []).map(id => TMDB_GENRES[id]).filter(Boolean),
     imdbScore:  voteAvg ? Number(voteAvg.toFixed(1)) : null,
+    rottenTomatoesScore: estimateRT(voteAvg),
+    letterboxdScore:     estimateLB(voteAvg),
     posterPath: r.poster_path,
     description: r.overview || '',
     _tmdbId:    r.id,

@@ -39,9 +39,9 @@ kendi favorilerini görür).
 
 ## 5) URL ayarları (yönlendirme)
 **Authentication → URL Configuration**:
-- **Site URL**: üretim adresiniz (yoksa `http://localhost:3000`)
+- **Site URL**: üretim adresiniz (yoksa `http://localhost:3001`)
 - **Redirect URLs** listesine ekleyin:
-  - `http://localhost:3000` (yerel geliştirme — `vite.config.js` portu 3000)
+  - `http://localhost:3001` (yerel geliştirme — `vite.config.js` portu 3001)
   - üretim adresiniz (ör. `https://streamtr.example.com`)
 
 ## 6) Çalıştır

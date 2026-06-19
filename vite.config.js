@@ -10,7 +10,9 @@ export default defineConfig({
     css: false,
   },
   server: {
-    port: 3000,
+    port: 3001,
+    strictPort: true, // her zaman 3001 — port doluysa hata ver (3002'ye kaymasın),
+                      // böylece localStorage favorileri aynı origin'de kalır
     open: true,
     headers: {
       'X-Frame-Options': 'DENY',
