@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Palette, X, Check, ChevronDown } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext.jsx'
 
@@ -120,8 +121,9 @@ export default function ThemePicker() {
         <ChevronDown size={12} style={{ opacity: 0.5 }} />
       </button>
 
-      {/* Modal Overlay */}
-      {open && (
+      {/* Modal Overlay — portal ile body'e taşınır: header'ın backdrop-filter'i
+          position:fixed'i kendine bağlamasın (yoksa popup ekranın üstüne taşardı) */}
+      {open && createPortal((
         <div
           onClick={() => setOpen(false)}
           style={{
@@ -185,7 +187,7 @@ export default function ThemePicker() {
             </div>
           </div>
         </div>
-      )}
+      ), document.body)}
     </>
   )
 }

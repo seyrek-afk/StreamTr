@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Mail, User, ShieldCheck, Loader, ArrowLeft } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext.jsx'
 
@@ -64,7 +65,9 @@ export default function AuthModal({ open, onClose }) {
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
   }
 
-  return (
+  // Portal ile body'e taşınır: header'ın backdrop-filter'i position:fixed'i
+  // kendine bağlamasın (yoksa modal ekranın üstüne taşar).
+  return createPortal((
     <div
       onClick={(e) => e.target === e.currentTarget && onClose?.()}
       style={{
@@ -168,7 +171,7 @@ export default function AuthModal({ open, onClose }) {
         </div>
       </div>
     </div>
-  )
+  ), document.body)
 }
 
 function GoogleIcon() {
