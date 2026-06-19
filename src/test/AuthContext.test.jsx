@@ -1,9 +1,12 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import React from 'react'
-import { AuthProvider, useAuth } from '../contexts/AuthContext.jsx'
 
-// NOT: Test ortamında VITE_SUPABASE_* tanımsızdır → supabase=null, giriş kapalı.
+// supabase katmanını "yapılandırılmamış" olarak sabitle — gerçek .env'den bağımsız,
+// deterministik test (ağ/timer yan etkisi olmadan giriş kapalı davranışı).
+vi.mock('../lib/supabase.js', () => ({ supabase: null, isSupabaseConfigured: false }))
+
+import { AuthProvider, useAuth } from '../contexts/AuthContext.jsx'
 
 describe('useAuth', () => {
   it('returns safe defaults when used outside a provider', () => {

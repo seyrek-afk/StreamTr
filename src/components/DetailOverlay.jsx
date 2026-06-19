@@ -71,22 +71,29 @@ export default function DetailOverlay({ item, onClose }) {
     Promise.all([
       fetch(
         `https://api.themoviedb.org/3/${item.mediaType}/${item.tmdbId}` +
-        `?language=tr-TR&append_to_response=credits,reviews,videos&api_key=${TMDB_KEY}`,
+        `?language=tr-TR&append_to_response=credits&api_key=${TMDB_KEY}`,
         { signal: ctrl.signal }
       ).then(r => { if (!r.ok) throw new Error(`TMDB ${r.status}`); return r.json() }),
+
+      // Fragman + yorumlar en-US ile (tr-TR çoğunlukla boş döner)
+      fetch(
+        `https://api.themoviedb.org/3/${item.mediaType}/${item.tmdbId}` +
+        `?language=en-US&append_to_response=videos,reviews&api_key=${TMDB_KEY}`,
+        { signal: ctrl.signal }
+      ).then(r => (r.ok ? r.json() : {})).catch(() => ({})),
 
       fetch(
         `https://api.themoviedb.org/3/${item.mediaType}/${item.tmdbId}/watch/providers?api_key=${TMDB_KEY}`,
         { signal: ctrl.signal }
       ).then(r => r.json()).catch(() => ({})),
     ])
-      .then(([json, wp]) => {
+      .then(([json, en, wp]) => {
         const isMovie = item.mediaType === 'movie'
 
         // Trailer — validate key format before trusting API response
         const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{11}$/
-        const trailer = (json.videos?.results || []).find(v => v.type === 'Trailer' && v.site === 'YouTube')
-          || (json.videos?.results || []).find(v => v.site === 'YouTube')
+        const trailer = (en.videos?.results || []).find(v => v.type === 'Trailer' && v.site === 'YouTube')
+          || (en.videos?.results || []).find(v => v.site === 'YouTube')
         if (trailer?.key && YOUTUBE_ID_RE.test(trailer.key)) setTrailerKey(trailer.key)
 
         // Watch providers
@@ -111,7 +118,7 @@ export default function DetailOverlay({ item, onClose }) {
           cast:        (json.credits?.cast || []).slice(0, 8).map(c => ({
             name: c.name, character: c.character, profilePath: c.profile_path,
           })),
-          reviews:     (json.reviews?.results || []).slice(0, 3).map(r => ({
+          reviews:     (en.reviews?.results || []).slice(0, 3).map(r => ({
             source: 'TMDB', author: r.author,
             quote: (r.content || '').slice(0, 220) + ((r.content?.length || 0) > 220 ? '…' : ''),
           })),

@@ -166,13 +166,20 @@ export function useSearch() {
 
     try {
       const { id, mediaType } = suggestion
-      const res = await fetch(
-        `${TMDB_BASE}/${mediaType}/${id}?language=tr-TR&append_to_response=credits,reviews,videos,recommendations&api_key=${API_KEY}`,
-        { signal: controller.signal }
-      )
-      if (!res.ok) throw new Error(`TMDB ${res.status}`)
-      const json = await res.json()
-      setSelectedItem(tmdbToCard(json, mediaType))
+      // tr-TR: Türkçe özet + oyuncular + benzer yapımlar.
+      // en-US: fragman ve yorumlar (TMDB'de tr-TR çoğunlukla boş döner).
+      const [main, extra] = await Promise.all([
+        fetch(
+          `${TMDB_BASE}/${mediaType}/${id}?language=tr-TR&append_to_response=credits,recommendations&api_key=${API_KEY}`,
+          { signal: controller.signal }
+        ).then(r => { if (!r.ok) throw new Error(`TMDB ${r.status}`); return r.json() }),
+        fetch(
+          `${TMDB_BASE}/${mediaType}/${id}?language=en-US&append_to_response=videos,reviews&api_key=${API_KEY}`,
+          { signal: controller.signal }
+        ).then(r => (r.ok ? r.json() : {})).catch(() => ({})),
+      ])
+      const merged = { ...main, videos: extra.videos || main.videos, reviews: extra.reviews || main.reviews }
+      setSelectedItem(tmdbToCard(merged, mediaType))
     } catch (e) {
       if (e.name !== 'AbortError') {
         setDetailError(`"${title}" için bilgi yüklenemedi. Lütfen tekrar deneyin.`)

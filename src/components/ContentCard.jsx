@@ -272,6 +272,10 @@ export default function ContentCard({ item, isTrend }) {
   const cast         = isSearchItem ? item.cast         : (richDetail?.cast         || item.cast  || [])
   const director     = isSearchItem ? item.director     : richDetail?.director
   const similarItems = isSearchItem ? item.similarItems : (richDetail?.similarItems || [])
+  // Yorumlar: arama öğesi veya mock kendi yorumunu taşır; TMDB liste/trend için en-US ile çekilir
+  const reviews      = isSearchItem
+    ? (item.reviews || [])
+    : ((item.reviews && item.reviews.length) ? item.reviews : (richDetail?.reviews || []))
 
   // ── Effect A: Mock item için TMDB ID çözümleme ────────────────────────────────
   useEffect(() => {
@@ -304,13 +308,15 @@ export default function ContentCard({ item, isTrend }) {
     setRichFetched(true)
     setRichLoading(true)
     const ctrl = new AbortController()
-    fetch(
-      `https://api.themoviedb.org/3/${effectiveMediaType}/${effectiveTmdbId}` +
-      `?language=tr-TR&append_to_response=credits,recommendations&api_key=${TMDB_KEY}`,
-      { signal: ctrl.signal }
-    )
-      .then(r => r.json())
-      .then(json => {
+    const base = `https://api.themoviedb.org/3/${effectiveMediaType}/${effectiveTmdbId}`
+    Promise.all([
+      fetch(`${base}?language=tr-TR&append_to_response=credits,recommendations&api_key=${TMDB_KEY}`,
+        { signal: ctrl.signal }).then(r => r.json()),
+      // Yorumlar TMDB'de çoğunlukla İngilizce; tr-TR boş döner → en-US ile çek
+      fetch(`${base}/reviews?language=en-US&api_key=${TMDB_KEY}`,
+        { signal: ctrl.signal }).then(r => (r.ok ? r.json() : { results: [] })).catch(() => ({ results: [] })),
+    ])
+      .then(([json, rev]) => {
         const dirEntry = (json.credits?.crew || []).find(p => p.job === 'Director')
           || json.created_by?.[0] || null
         setRichDetail({
@@ -325,9 +331,13 @@ export default function ContentCard({ item, isTrend }) {
             year: (r.release_date || r.first_air_date || '').slice(0, 4),
             posterPath: r.poster_path,
           })),
+          reviews: (rev.results || []).slice(0, 3).map(r => ({
+            source: 'TMDB', author: r.author,
+            quote: (r.content || '').slice(0, 220) + ((r.content?.length || 0) > 220 ? '…' : ''),
+          })),
         })
       })
-      .catch(e => { if (e.name !== 'AbortError') setRichDetail({ cast: [], director: null, similarItems: [] }) })
+      .catch(e => { if (e.name !== 'AbortError') setRichDetail({ cast: [], director: null, similarItems: [], reviews: [] }) })
       .finally(() => setRichLoading(false))
     return () => ctrl.abort()
   }, [open, richFetched, effectiveTmdbId, effectiveMediaType, isSearchItem])
@@ -363,8 +373,9 @@ export default function ContentCard({ item, isTrend }) {
     if (!open || trailerFetched || !effectiveTmdbId || !effectiveMediaType || !TMDB_KEY) return
     setTrailerFetched(true)
     const ctrl = new AbortController()
+    // Fragmanlar çoğunlukla en-US altında listelenir; tr-TR boş döner
     fetch(
-      `https://api.themoviedb.org/3/${effectiveMediaType}/${effectiveTmdbId}/videos?language=tr-TR&api_key=${TMDB_KEY}`,
+      `https://api.themoviedb.org/3/${effectiveMediaType}/${effectiveTmdbId}/videos?language=en-US&api_key=${TMDB_KEY}`,
       { signal: ctrl.signal }
     )
       .then(r => r.json())
@@ -437,7 +448,7 @@ export default function ContentCard({ item, isTrend }) {
   }
 
   const hasCast     = Array.isArray(cast) && cast.length > 0
-  const hasReviews  = Array.isArray(item.reviews) && item.reviews.length > 0
+  const hasReviews  = Array.isArray(reviews) && reviews.length > 0
   const hasCriteria = isTrend && Array.isArray(item.popularityCriteria) && item.popularityCriteria.length > 0
 
   return (
@@ -745,7 +756,7 @@ export default function ContentCard({ item, isTrend }) {
               <div style={{ padding: '12px 12px 12px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                 <p style={{ color: 'var(--text-faint)', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', marginBottom: 8, textTransform: 'uppercase' }}>Öne Çıkan Yorumlar</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {item.reviews.slice(0, 3).map((review, i) => (
+                  {reviews.slice(0, 3).map((review, i) => (
                     <ReviewCard key={i} review={review} />
                   ))}
                 </div>
