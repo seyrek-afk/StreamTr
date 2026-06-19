@@ -59,7 +59,7 @@ describe('useStreamData', () => {
     expect(error.diziler).toBeNull()
     expect(error.filmler).toBeNull()
     expect(error.trend).toBeNull()
-    expect(visible.diziler).toBe(10)
+    expect(visible.diziler).toBe(30)
     expect(hasMore.diziler).toBe(true)
   })
 
@@ -129,13 +129,13 @@ describe('useStreamData', () => {
     expect(result.current.loading.diziler).toBe(false)
   })
 
-  it('visible starts at PAGE_SIZE (10) after fetch', async () => {
+  it('visible starts at PAGE_SIZE (30) after fetch', async () => {
     const { result } = renderHook(() => useStreamData())
 
     act(() => { result.current.fetchTab('diziler') })
     await flushAll()
 
-    expect(result.current.visible.diziler).toBe(10)
+    expect(result.current.visible.diziler).toBe(30)
   })
 
   it('hasMore reflects whether data has more than PAGE_SIZE items', async () => {
@@ -161,9 +161,9 @@ describe('useStreamData', () => {
     const visibleBefore = result.current.visible.filmler
     const dataLen = result.current.data.filmler.length
 
-    if (dataLen > 10) {
+    if (dataLen > 30) {
       act(() => { result.current.showMore('filmler') })
-      expect(result.current.visible.filmler).toBe(Math.min(visibleBefore + 10, dataLen))
+      expect(result.current.visible.filmler).toBe(Math.min(visibleBefore + 30, dataLen))
     }
   })
 

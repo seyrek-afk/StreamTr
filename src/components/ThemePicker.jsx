@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Palette, X, Check } from 'lucide-react'
+import { Palette, X, Check, ChevronDown } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext.jsx'
 
 // Tema kartı — Pinterest tarzı renkli önizleme
@@ -99,25 +99,25 @@ export default function ThemePicker() {
 
   return (
     <>
-      {/* Başlıktaki ikon butonu */}
+      {/* Görünüm/tema kontrolü — yuvarlak, nötr; platform filtre düğmelerinden ayrışır */}
       <button
         onClick={() => setOpen(true)}
-        title="Tema Seç"
+        title="Görünüm temasını değiştir"
         style={{
-          background: 'rgba(var(--accent-rgb),0.1)',
-          border: `1px solid rgba(var(--accent-rgb),0.25)`,
-          borderRadius: 7, padding: '5px 8px',
-          color: 'var(--accent)', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: 4,
-          fontSize: 10.5, fontWeight: 600, fontFamily: 'inherit',
-          transition: 'background 0.15s',
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.12)',
+          borderRadius: 999, padding: '6px 12px',
+          color: 'var(--text-muted)', cursor: 'pointer',
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          fontSize: 11, fontWeight: 600, fontFamily: 'inherit',
+          transition: 'all 0.15s', whiteSpace: 'nowrap',
         }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.09)'; e.currentTarget.style.color = 'var(--text)' }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text-muted)' }}
       >
-        <Palette size={13} />
-        <span style={{ display: 'none', '@media (min-width: 480px)': { display: 'inline' } }}>
-          Tema
-        </span>
-        <span style={{ display: 'inline' }}> Tema</span>
+        <Palette size={13} style={{ color: 'var(--accent)' }} />
+        <span>Tema</span>
+        <ChevronDown size={12} style={{ opacity: 0.5 }} />
       </button>
 
       {/* Modal Overlay */}

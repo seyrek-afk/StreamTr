@@ -390,8 +390,8 @@ describe('useStreamData — exposed state shape', () => {
     act(() => { result.current.fetchTab('trend') })
     await flushAll()
 
-    // 5 items * 5 pages = 25 items, PAGE_SIZE=10 so hasMore=true
-    expect(result.current.hasMore.trend).toBe(true)
+    // 5 items * 5 pages = 25 items; PAGE_SIZE=30 ve trend ağdan daha fazla çekemez → hasMore=false
+    expect(result.current.hasMore.trend).toBe(false)
   })
 })
 

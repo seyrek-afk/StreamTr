@@ -10,6 +10,7 @@ import GenreFilter  from './components/GenreFilter.jsx'
 import SkeletonGrid from './components/SkeletonGrid.jsx'
 import ThemePicker  from './components/ThemePicker.jsx'
 import SearchBar    from './components/SearchBar.jsx'
+import AccountButton from './components/auth/AccountButton.jsx'
 
 export default function App() {
   const [tab,             setTab]            = useState('diziler')
@@ -54,6 +55,8 @@ export default function App() {
   const visibleFiltered = filtered.slice(0, visible[tab])
   const canShowMore = visibleFiltered.length < filtered.length ||
     (hasMore[tab] && filtered.length <= visible[tab])
+  // Diziler/filmler 250'ye kadar; sosyal trend ~100 ile sınırlı (haftalık trend 5 sayfa)
+  const contentCap = tab === 'trend' ? 100 : 250
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'DM Sans', system-ui, -apple-system, sans-serif" }}>
@@ -67,8 +70,8 @@ export default function App() {
         borderBottom: '1px solid rgba(255,255,255,0.055)',
         position: 'sticky', top: 0, zIndex: 60,
       }}>
-        {/* Logo + platform + tema */}
-        <div style={{ padding: '14px 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        {/* Logo + tema (tema sağ üst köşede, platformlardan ayrı bir görünüm kontrolü) */}
+        <div style={{ padding: '14px 20px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
               <span style={{
@@ -84,25 +87,30 @@ export default function App() {
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
-            {/* Tema seçici */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <AccountButton />
             <ThemePicker />
-
-            {/* Platform düğmeleri */}
-            {[{ id: 'Tümü', label: 'Tümü', color: '#444' }, ...PLATFORMS].map(p => {
-              const active = platform === p.id
-              return (
-                <button key={p.id} onClick={() => setPlatform(p.id)} style={{
-                  background: active && p.id !== 'Tümü' ? p.color : active ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${active ? (p.color !== '#444' ? p.color + '99' : 'rgba(255,255,255,0.3)') : 'rgba(255,255,255,0.07)'}`,
-                  borderRadius: 6, padding: '4px 10px',
-                  color: '#fff', fontSize: 10.5, fontWeight: 700,
-                  cursor: 'pointer', letterSpacing: '0.02em',
-                  transition: 'all 0.15s', fontFamily: 'inherit',
-                }}>{p.label}</button>
-              )
-            })}
           </div>
+        </div>
+
+        {/* Platform filtre satırı — tema kontrolünden ayrı, kendi satırında */}
+        <div style={{ padding: '12px 20px 0', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: 9.5, color: 'var(--text-faint)', letterSpacing: '0.12em', fontWeight: 700, textTransform: 'uppercase', marginRight: 2 }}>
+            Platform
+          </span>
+          {[{ id: 'Tümü', label: 'Tümü', color: '#444' }, ...PLATFORMS].map(p => {
+            const active = platform === p.id
+            return (
+              <button key={p.id} onClick={() => setPlatform(p.id)} style={{
+                background: active && p.id !== 'Tümü' ? p.color : active ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${active ? (p.color !== '#444' ? p.color + '99' : 'rgba(255,255,255,0.3)') : 'rgba(255,255,255,0.07)'}`,
+                borderRadius: 6, padding: '4px 10px',
+                color: '#fff', fontSize: 10.5, fontWeight: 700,
+                cursor: 'pointer', letterSpacing: '0.02em',
+                transition: 'all 0.15s', fontFamily: 'inherit',
+              }}>{p.label}</button>
+            )
+          })}
         </div>
 
         {/* Tab satırı */}
@@ -326,15 +334,15 @@ export default function App() {
               }
             </button>
             <p style={{ color: 'var(--text-faint)', fontSize: 9.5, marginTop: 6 }}>
-              {visibleFiltered.length} gösteriliyor · en fazla 100 içerik
+              {visibleFiltered.length} / {filtered.length} gösteriliyor · en fazla {contentCap} içerik
             </p>
           </div>
         )}
 
         {/* Limit bilgisi */}
-        {!loading[tab] && !hasMore[tab] && data[tab].length >= 100 && (
+        {!loading[tab] && !hasMore[tab] && data[tab].length >= contentCap && (
           <p style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 10, marginTop: 20 }}>
-            Maksimum 100 içeriğe ulaşıldı
+            Tüm içerikler yüklendi · {data[tab].length} içerik
           </p>
         )}
         </>
@@ -344,21 +352,35 @@ export default function App() {
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
       <footer style={{
         borderTop: '1px solid rgba(255,255,255,0.04)',
-        padding: '14px 20px',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '16px 20px 24px',
+        display: 'flex', flexDirection: 'column', gap: 14,
         background: 'rgba(0,0,0,0.3)',
       }}>
-        <span style={{
-          fontFamily: '"Bebas Neue", sans-serif',
-          fontSize: 12, letterSpacing: '0.06em',
-          background: 'var(--logo-grad)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{
+            fontFamily: '"Bebas Neue", sans-serif',
+            fontSize: 12, letterSpacing: '0.06em',
+            background: 'var(--logo-grad)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+          }}>
+            STREAMTR
+          </span>
+          <span style={{ color: 'rgba(255,255,255,0.14)', fontSize: 9 }}>
+            Veriler: IMDB · Rotten Tomatoes · Sosyal medya · Web arama
+          </span>
+        </div>
+
+        {/* Yasal uyarı / disclaimer */}
+        <p style={{
+          textAlign: 'center', margin: 0,
+          color: 'var(--text-faint)', fontSize: 10.5, lineHeight: 1.65,
+          maxWidth: 680, marginLeft: 'auto', marginRight: 'auto',
+          borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 14,
         }}>
-          STREAMTR
-        </span>
-        <span style={{ color: 'rgba(255,255,255,0.14)', fontSize: 9 }}>
-          Veriler: IMDB · Rotten Tomatoes · Sosyal medya · Web arama
-        </span>
+          Bu sitede yer alan bilgiler kişisel eğitim amaçlı AI ile tasarlanmış olup ticari bir amacı yoktur.
+          <br />
+          Özgür Seyrek - <a href="mailto:seyrek@gmail.com" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>seyrek@gmail.com</a>
+        </p>
       </footer>
     </div>
   )

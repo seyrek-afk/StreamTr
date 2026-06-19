@@ -4,7 +4,7 @@ import { MOCK_DIZILER, MOCK_FILMLER, MOCK_TREND } from '../data/mockData.js'
 const TMDB_BASE = 'https://api.themoviedb.org/3'
 const TMDB_KEY  = import.meta.env.VITE_TMDB_KEY
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 30
 const MAX_ITEMS = 250
 
 // diziler/filmler tabları için TMDB liste uç noktaları (en yüksek puanlılar)
@@ -218,7 +218,8 @@ const MOCK_SOURCE = {
 }
 
 // İlk yüklemede diziler/filmler için kaç TMDB sayfası çekilsin (20 öğe/sayfa)
-const INITIAL_PAGES = 3
+// 5 sayfa ≈ 100 içerik paralel yüklenir; gerisi "Daha Çok Göster" ile 250'ye kadar.
+const INITIAL_PAGES = 5
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
 export function useStreamData() {
@@ -258,17 +259,26 @@ export function useStreamData() {
           items = MOCK_TREND
         }
       } else if (LIST_ENDPOINT[tab] && TMDB_KEY) {
-        // diziler / filmler: TMDB en yüksek puanlılar — sayfalı (250'ye kadar)
+        // diziler / filmler: TMDB en yüksek puanlılar — ilk sayfaları PARALEL çek (hızlı,
+        // zengin ilk görünüm). Bir sayfa hata verirse diğerleri yine de gösterilir.
         pageRef.current[tab]       = 0
         totalPagesRef.current[tab] = Infinity
+        const settled = await Promise.allSettled(
+          Array.from({ length: INITIAL_PAGES }, (_, i) => loadListPage(tab, i + 1))
+        )
         const acc = []
-        for (let i = 0; i < INITIAL_PAGES && acc.length < MAX_ITEMS; i++) {
-          if (pageRef.current[tab] >= totalPagesRef.current[tab]) break
-          const { items: pageItems, totalPages } = await loadListPage(tab, pageRef.current[tab] + 1)
-          pageRef.current[tab]      += 1
-          totalPagesRef.current[tab] = totalPages
-          acc.push(...pageItems)
+        let tp = Infinity
+        let anyOk = false
+        for (const s of settled) {
+          if (s.status === 'fulfilled') {
+            anyOk = true
+            acc.push(...s.value.items)
+            tp = s.value.totalPages
+          }
         }
+        if (!anyOk) throw new Error('TMDB listesi yüklenemedi')
+        pageRef.current[tab]       = Math.min(INITIAL_PAGES, tp)
+        totalPagesRef.current[tab] = tp
         items = acc.slice(0, MAX_ITEMS)
       } else {
         // TMDB anahtarı yoksa mock veriye dön
