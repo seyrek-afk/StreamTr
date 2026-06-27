@@ -5,27 +5,11 @@ import DetailOverlay from './DetailOverlay.jsx'
 import FavoriteButton from './FavoriteButton.jsx'
 import TrailerEmbed from './TrailerEmbed.jsx'
 import { PLATFORMS } from '../constants/index.js'
+import { isValidTmdbRef, isValidTmdbId, mapTrProviders } from '../lib/tmdb.js'
 
 const PLAT_MAP = Object.fromEntries(PLATFORMS.map(p => [p.id, p]))
 
 const TMDB_KEY = import.meta.env.VITE_TMDB_KEY
-
-const TMDB_PROVIDER_MAP = {
-  8:    'Netflix',
-  119:  'Amazon Prime',
-  337:  'Disney+',
-  350:  'Apple TV+',
-  1899: 'HBO Max',
-  384:  'HBO Max',
-  11:   'Mubi',
-  341:  'BluTV',
-  479:  'PUHUTV',
-  531:  'Paramount+',
-  533:  'Gain',
-  584:  'TOD',
-  1759: 'MUBI',
-  2:    'Apple TV+',
-}
 
 // ── Skor Rozeti ────────────────────────────────────────────────────────────────
 function ScoreBadge({ imdb, rt, lb }) {
@@ -267,6 +251,9 @@ export default function ContentCard({ item, isTrend }) {
   // ── Türetilmiş değerler ───────────────────────────────────────────────────────
   const effectiveTmdbId    = resolvedTmdbId
   const effectiveMediaType = resolvedMediaType
+  // Güven sınırı: tmdbId/mediaType saklanan favoriden (kullanıcı yazabilir) gelebilir.
+  // TMDB URL'sine gömülmeden önce katı doğrulama — path-injection'ı engeller.
+  const validRef = isValidTmdbRef(effectiveTmdbId, effectiveMediaType)
   // Search item'ı: _tmdbId ve similarItems birlikte varsa (useSearch.js'den geliyor)
   const isSearchItem = !!item._tmdbId && Array.isArray(item.similarItems)
   const cast         = isSearchItem ? item.cast         : (richDetail?.cast         || item.cast  || [])
@@ -305,7 +292,7 @@ export default function ContentCard({ item, isTrend }) {
 
   // ── Effect B: Trend + mock için zengin detay (credits + recommendations) ──────
   useEffect(() => {
-    if (!open || richFetched || !effectiveTmdbId || !effectiveMediaType || !TMDB_KEY) return
+    if (!open || richFetched || !validRef || !TMDB_KEY) return
     if (isSearchItem) return
     setRichFetched(true)
     setRichLoading(true)
@@ -348,7 +335,7 @@ export default function ContentCard({ item, isTrend }) {
 
   // ── Effect C: Watch providers ─────────────────────────────────────────────────
   useEffect(() => {
-    if (!open || !effectiveTmdbId || !effectiveMediaType || !TMDB_KEY) return
+    if (!open || !validRef || !TMDB_KEY) return
     if (watchPlatforms !== null) return
     const ctrl = new AbortController()
     fetch(
@@ -357,16 +344,7 @@ export default function ContentCard({ item, isTrend }) {
     )
       .then(r => r.json())
       .then(json => {
-        const tr = json.results?.TR
-        const all = [...(tr?.flatrate || []), ...(tr?.free || [])]
-        const seen = new Set()
-        const list = []
-        for (const p of all) {
-          const mapped = TMDB_PROVIDER_MAP[p.provider_id]
-          const key = mapped || p.provider_name
-          if (key && !seen.has(key)) { seen.add(key); list.push(key) }
-        }
-        setWatchPlatforms(list)
+        setWatchPlatforms(mapTrProviders(json))
       })
       .catch(e => { if (e.name !== 'AbortError') setWatchPlatforms([]) })
     return () => ctrl.abort()
@@ -374,7 +352,7 @@ export default function ContentCard({ item, isTrend }) {
 
   // ── Effect D: Trailer ─────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!open || trailerFetched || !effectiveTmdbId || !effectiveMediaType || !TMDB_KEY) return
+    if (!open || trailerFetched || !validRef || !TMDB_KEY) return
     setTrailerFetched(true)
     const ctrl = new AbortController()
     // Fragmanlar çoğunlukla en-US altında listelenir; tr-TR boş döner
@@ -395,7 +373,7 @@ export default function ContentCard({ item, isTrend }) {
 
   // ── Effect E: Yönetmenin diğer yapımları ─────────────────────────────────────
   useEffect(() => {
-    if (!open || directorWorksFetched || !director?.id || !TMDB_KEY) return
+    if (!open || directorWorksFetched || !isValidTmdbId(director?.id) || !TMDB_KEY) return
     setDirectorWorksFetched(true)
     const ctrl = new AbortController()
     const endpoint = (effectiveMediaType === 'tv' || item.type === 'dizi')
@@ -424,7 +402,7 @@ export default function ContentCard({ item, isTrend }) {
 
   // ── Oyuncu filmografi çek ─────────────────────────────────────────────────────
   const fetchActorFilmo = (personId) => {
-    if (!personId || actorFilmo[personId] !== undefined || actorFilmoLoading[personId] || !TMDB_KEY) return
+    if (!isValidTmdbId(personId) || actorFilmo[personId] !== undefined || actorFilmoLoading[personId] || !TMDB_KEY) return
     setActorFilmoLoading(p => ({ ...p, [personId]: true }))
     fetch(`https://api.themoviedb.org/3/person/${personId}/combined_credits?language=tr-TR&api_key=${TMDB_KEY}`)
       .then(r => r.json())

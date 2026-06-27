@@ -40,6 +40,10 @@ body { background: var(--bg); color: var(--text); overflow-x: hidden; }
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes dropdownIn {
+  from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
 
 /* ── Yardımcı sınıflar ────────────────────────────────────────────────────── */
 .skeleton-animate {
@@ -52,9 +56,9 @@ body { background: var(--bg); color: var(--text); overflow-x: hidden; }
   animation: shimmer 1.8s infinite;
 }
 
-.card-enter    { animation: fadeUp   0.28s ease both; }
-.dropdown-enter { animation: slideDown 0.18s ease both; }
-.spin          { animation: spin     1s linear infinite; }
+.card-enter     { animation: fadeUp      0.28s ease both; }
+.dropdown-enter { animation: dropdownIn 0.14s cubic-bezier(0.23,1,0.32,1) both; }
+.spin           { animation: spin       1s linear infinite; }
 
 /* ── Özel kaydırma çubuğu ─────────────────────────────────────────────────── */
 ::-webkit-scrollbar        { height: 3px; width: 4px; }
@@ -75,4 +79,124 @@ body { background: var(--bg); color: var(--text); overflow-x: hidden; }
   .btn-pressable:active {
     transform: none;
   }
+}
+
+/* ── Filtre satırı kontrolleri ───────────────────────────────────────────── */
+
+/* Sıralama tetik butonu */
+.sort-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s ease-out, border-color 0.12s ease-out, color 0.12s ease-out, transform 0.12s cubic-bezier(0.23,1,0.32,1);
+  /* Dokunmatik hedef büyütme — görsel boyut korunur */
+  min-height: 28px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+.sort-trigger:active {
+  transform: scale(0.97);
+}
+.sort-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sort-trigger:active { transform: none; }
+  .sort-trigger { transition: background 0.12s ease-out, border-color 0.12s ease-out, color 0.12s ease-out; }
+}
+
+/* ChevronDown ikonu */
+.sort-chevron {
+  transition: transform 0.14s cubic-bezier(0.23,1,0.32,1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sort-chevron { transition: none; }
+}
+
+/* Sıralama açılır paneli */
+.sort-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 50;
+  border-radius: 8px;
+  min-width: 164px;
+  overflow: hidden;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.3);
+  transform-origin: top left;
+  animation: dropdownIn 0.14s cubic-bezier(0.23,1,0.32,1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sort-dropdown {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Sıralama opsiyon satırı */
+.sort-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 11px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.08s ease-out;
+}
+@media (hover: hover) and (pointer: fine) {
+  .sort-option:not([aria-selected="true"]):hover {
+    background: rgba(var(--accent-rgb), 0.07) !important;
+  }
+}
+.sort-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* TR-yayın toggle pill */
+.tr-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 10px;
+  padding: 4px 10px;
+  font-size: 10.5px;
+  cursor: pointer;
+  font-family: inherit;
+  /* Dokunmatik hedef */
+  min-height: 28px;
+  transition: background 0.12s ease-out, border-color 0.12s ease-out, color 0.12s ease-out, transform 0.12s cubic-bezier(0.23,1,0.32,1);
+}
+.tr-pill:active {
+  transform: scale(0.97);
+}
+.tr-pill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tr-pill:active { transform: none; }
+  .tr-pill { transition: background 0.12s ease-out, border-color 0.12s ease-out, color 0.12s ease-out; }
+}
+
+/* Enrichment yükleme ipucu */
+.enrichment-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 10px;
+  opacity: 0.7;
+  font-style: italic;
+  letter-spacing: 0.01em;
 }

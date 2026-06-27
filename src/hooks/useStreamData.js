@@ -1,8 +1,12 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { MOCK_DIZILER, MOCK_FILMLER, MOCK_TREND } from '../data/mockData.js'
+import { fetchTrPlatforms } from '../lib/tmdb.js'
 
 const TMDB_BASE = 'https://api.themoviedb.org/3'
 const TMDB_KEY  = import.meta.env.VITE_TMDB_KEY
+
+// Modül düzeyi önbellek: "mediaType:id" → string[] (oturum boyunca korunur)
+const providerCache = new Map()
 
 const PAGE_SIZE = 30
 const MAX_ITEMS = 250
@@ -230,10 +234,14 @@ export function useStreamData() {
   const [visible,     setVisible]     = useState(emptyTab(PAGE_SIZE))
   const [hasMore,     setHasMore]     = useState(emptyTab(true))
   const [loaded,      setLoaded]      = useState(emptyTab(false))
+  const [enriching,   setEnriching]   = useState(emptyTab(false))
 
   // TMDB liste tabları için sayfa imleci
   const pageRef       = useRef({ diziler: 0, filmler: 0 })
   const totalPagesRef = useRef({ diziler: Infinity, filmler: Infinity })
+
+  // Her enrichment turu için AbortController — sekme değişince iptal edilir
+  const enrichAbortRef = useRef({ diziler: null, filmler: null, trend: null })
 
   // Bu tabdan ağ üzerinden DAHA fazla içerik çekilebilir mi?
   const networkMore = (tab, total) => {
@@ -241,8 +249,101 @@ export function useStreamData() {
     return total < MAX_ITEMS && pageRef.current[tab] < totalPagesRef.current[tab]
   }
 
+  // Arka planda kartların platforms alanını doldurur.
+  // items: tmdbToTrendCard/tmdbToListCard ile üretilmiş kart dizisi
+  // tab: hangi sekme (iptal takibi için)
+  // signal: AbortController.signal
+  const enrichPlatforms = useCallback(async (items, tab, signal) => {
+    if (!TMDB_KEY) return
+
+    const needsEnrich = items.filter(
+      item => item._tmdbId && item._mediaType &&
+        !providerCache.has(`${item._mediaType}:${item._tmdbId}`)
+    )
+    if (needsEnrich.length === 0) {
+      // Önbellekten in-place güncelle
+      setData(prev => {
+        const current = prev[tab]
+        if (!current || current.length === 0) return prev
+        let changed = false
+        const next = current.map(item => {
+          const key = `${item._mediaType}:${item._tmdbId}`
+          if (item._tmdbId && providerCache.has(key) && item.platforms.length === 0) {
+            changed = true
+            return { ...item, platforms: providerCache.get(key) }
+          }
+          return item
+        })
+        return changed ? { ...prev, [tab]: next } : prev
+      })
+      return
+    }
+
+    setEnriching(prev => ({ ...prev, [tab]: true }))
+
+    const CONCURRENCY = 7
+    let idx = 0
+
+    const worker = async () => {
+      while (idx < needsEnrich.length) {
+        if (signal.aborted) return
+        const item = needsEnrich[idx++]
+        const cacheKey = `${item._mediaType}:${item._tmdbId}`
+        if (providerCache.has(cacheKey)) {
+          // Zaten başka worker çekti
+          continue
+        }
+        const platforms = await fetchTrPlatforms(item._mediaType, item._tmdbId, signal)
+        if (signal.aborted) return
+        providerCache.set(cacheKey, platforms)
+
+        // In-place güncelle — yalnızca bu kartın platforms alanını değiştir
+        setData(prev => {
+          const current = prev[tab]
+          if (!current) return prev
+          const next = current.map(c =>
+            c._tmdbId === item._tmdbId && c._mediaType === item._mediaType
+              ? { ...c, platforms }
+              : c
+          )
+          return { ...prev, [tab]: next }
+        })
+      }
+    }
+
+    const workers = Array.from({ length: Math.min(CONCURRENCY, needsEnrich.length) }, worker)
+    await Promise.allSettled(workers)
+
+    if (!signal.aborted) {
+      // Önbellekte olan ama henüz state'e yazılmamış olanları da temizle
+      setData(prev => {
+        const current = prev[tab]
+        if (!current) return prev
+        let changed = false
+        const next = current.map(item => {
+          const key = `${item._mediaType}:${item._tmdbId}`
+          if (item._tmdbId && providerCache.has(key) && item.platforms.length === 0) {
+            const cached = providerCache.get(key)
+            if (cached.length > 0) {
+              changed = true
+              return { ...item, platforms: cached }
+            }
+          }
+          return item
+        })
+        return changed ? { ...prev, [tab]: next } : prev
+      })
+      setEnriching(prev => ({ ...prev, [tab]: false }))
+    }
+  }, [])
+
   const fetchTab = async (tab, force = false) => {
     if (!force && loaded[tab]) return
+
+    // Önceki enrichment turunu iptal et
+    if (enrichAbortRef.current[tab]) {
+      enrichAbortRef.current[tab].abort()
+    }
 
     setLoading(p => ({ ...p, [tab]: true }))
     setError(p   => ({ ...p, [tab]: null }))
@@ -290,6 +391,13 @@ export function useStreamData() {
       setVisible(p => ({ ...p, [tab]: PAGE_SIZE }))
       setHasMore(p => ({ ...p, [tab]: networkMore(tab, items.length) || items.length > PAGE_SIZE }))
       setLoaded(p  => ({ ...p, [tab]: true }))
+
+      // Arka planda platform zenginleştirme — ilk render'ı bloklama
+      if (TMDB_KEY && items.some(i => i._tmdbId && i._mediaType)) {
+        const ctrl = new AbortController()
+        enrichAbortRef.current[tab] = ctrl
+        enrichPlatforms(items, tab, ctrl.signal)
+      }
     } catch (e) {
       setError(p => ({ ...p, [tab]: e.message || 'Bilinmeyen hata' }))
     } finally {
@@ -334,9 +442,13 @@ export function useStreamData() {
   }
 
   const retry = (tab) => {
+    if (enrichAbortRef.current[tab]) {
+      enrichAbortRef.current[tab].abort()
+      enrichAbortRef.current[tab] = null
+    }
     setLoaded(p => ({ ...p, [tab]: false }))
     fetchTab(tab, true)
   }
 
-  return { data, loading, loadingMore, error, visible, hasMore, fetchTab, showMore, retry }
+  return { data, loading, loadingMore, error, visible, hasMore, enriching, fetchTab, showMore, retry }
 }

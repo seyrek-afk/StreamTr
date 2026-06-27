@@ -7,8 +7,9 @@ import { renderHook, act } from '@testing-library/react'
 import { useStreamData } from '../hooks/useStreamData.js'
 
 // ── App.jsx filtering logic (extracted for testability) ────────────────────
+// Bu yardımcılar App.jsx gerçek mantığıyla birebir senkron tutulmalıdır.
 
-function applyFilters(items, selectedGenres, platform) {
+function applyFilters(items, selectedGenres, platform, trOnly = false, year = 'Tümü') {
   return items.filter(item => {
     const gOk = selectedGenres.length === 0 ||
       selectedGenres.some(g => (item.genres || []).includes(g))
@@ -18,16 +19,28 @@ function applyFilters(items, selectedGenres, platform) {
           ? p.toLowerCase().includes('amazon') || p.toLowerCase().includes('prime')
           : p === platform
       )
-    return gOk && pOk
+    const tOk = !trOnly || (item.platforms?.length > 0)
+    const yOk = year === 'Tümü' || String(item.year) === String(year)
+    return gOk && pOk && tOk && yOk
   })
 }
 
-function sortItems(items, tab) {
-  return [...items].sort((a, b) =>
-    tab === 'trend'
+// App.jsx availableYears türetmesiyle birebir: geçerli verinin yılları, en yeni önce.
+function deriveYears(items) {
+  return [...new Set((items || []).map(i => i.year).filter(Boolean))]
+    .sort((a, b) => Number(b) - Number(a))
+}
+
+function sortItems(items, tab, sortBy = 'default') {
+  const effectiveSortBy = (sortBy === 'social' && tab !== 'trend') ? 'default' : sortBy
+  return [...items].sort((a, b) => {
+    if (effectiveSortBy === 'imdb') return (b.imdbScore || 0) - (a.imdbScore || 0)
+    if (effectiveSortBy === 'year') return (Number(b.year) || 0) - (Number(a.year) || 0)
+    if (effectiveSortBy === 'social') return (b.socialScore || 0) - (a.socialScore || 0)
+    return tab === 'trend'
       ? (b.socialScore || 0) - (a.socialScore || 0)
       : (b.imdbScore   || 0) - (a.imdbScore   || 0)
-  )
+  })
 }
 
 const SAMPLE_ITEMS = [
@@ -112,6 +125,61 @@ describe('App filtering — combined genre + platform', () => {
   })
 })
 
+// ── Yıl filtresi (her sekmede) ─────────────────────────────────────────────
+// mock yıl=number, TMDB yıl=string olabilir; her ikisi de String() ile kıyaslanır.
+const YEAR_ITEMS = [
+  { title: 'Eski',   genres: ['Dram'],    platforms: ['Netflix'], imdbScore: 8, year: 1999 },
+  { title: 'OrtaNum', genres: ['Aksiyon'], platforms: ['Netflix'], imdbScore: 7, year: 2014 },
+  { title: 'OrtaStr', genres: ['Komedi'],  platforms: ['Disney+'], imdbScore: 7, year: '2014' },
+  { title: 'Yeni',   genres: ['Dram'],    platforms: ['Mubi'],    imdbScore: 9, year: '2024' },
+  { title: 'Yılsız', genres: ['Belgesel'], platforms: ['Netflix'], imdbScore: 6, year: null },
+]
+
+describe('App filtering — yıl filtresi', () => {
+  it('Tümü tüm öğeleri döndürür (yıl filtresi yok)', () => {
+    expect(applyFilters(YEAR_ITEMS, [], 'Tümü', false, 'Tümü')).toHaveLength(5)
+  })
+
+  it('seçili yıla göre filtreler (string seçim, number/string veriyle eşleşir)', () => {
+    const result = applyFilters(YEAR_ITEMS, [], 'Tümü', false, '2014')
+    expect(result.map(i => i.title).sort()).toEqual(['OrtaNum', 'OrtaStr'])
+  })
+
+  it('number year ile string seçim eşleşir (1999)', () => {
+    const result = applyFilters(YEAR_ITEMS, [], 'Tümü', false, '1999')
+    expect(result).toHaveLength(1)
+    expect(result[0].title).toBe('Eski')
+  })
+
+  it('yıl + tür + platform AND ile birleşir', () => {
+    const result = applyFilters(YEAR_ITEMS, ['Dram'], 'Netflix', false, '1999')
+    expect(result.map(i => i.title)).toEqual(['Eski'])
+  })
+
+  it('eşleşme yoksa boş döner', () => {
+    expect(applyFilters(YEAR_ITEMS, [], 'Tümü', false, '2050')).toHaveLength(0)
+  })
+})
+
+describe('App — availableYears türetmesi', () => {
+  it('benzersiz yılları en yeni önce sıralar, boşları atar (TMDB string yıllar)', () => {
+    const items = [
+      { year: '2014' }, { year: '2024' }, { year: '2014' }, { year: '1999' }, { year: null },
+    ]
+    expect(deriveYears(items)).toEqual(['2024', '2014', '1999'])
+  })
+
+  it('mock number yıllarda da en yeni önce sıralar', () => {
+    const items = [{ year: 2008 }, { year: 2021 }, { year: 2008 }]
+    expect(deriveYears(items)).toEqual([2021, 2008])
+  })
+
+  it('boş/eksik veride boş dizi', () => {
+    expect(deriveYears([])).toEqual([])
+    expect(deriveYears(null)).toEqual([])
+  })
+})
+
 describe('App sorting', () => {
   it('sorts by imdbScore descending for non-trend tabs', () => {
     const sorted = sortItems(SAMPLE_ITEMS, 'diziler')
@@ -138,6 +206,161 @@ describe('App sorting', () => {
     ]
     const sorted = sortItems(items, 'filmler')
     expect(sorted[0].title).toBe('Y')
+  })
+})
+
+// ── T-APP-1: sortBy=imdb ──────────────────────────────────────────────────────
+describe('App sorting — sortBy=imdb (T-APP-1)', () => {
+  it('sorts by imdbScore descending on diziler', () => {
+    const sorted = sortItems(SAMPLE_ITEMS, 'diziler', 'imdb')
+    expect(sorted[0].imdbScore).toBe(9.0)
+    expect(sorted[sorted.length - 1].imdbScore).toBe(6.8)
+  })
+
+  it('sorts by imdbScore descending on trend tab', () => {
+    const sorted = sortItems(SAMPLE_ITEMS, 'trend', 'imdb')
+    expect(sorted[0].imdbScore).toBe(9.0)
+    expect(sorted[sorted.length - 1].imdbScore).toBe(6.8)
+  })
+
+  it('null imdbScore treated as 0, goes last', () => {
+    const items = [
+      { title: 'X', imdbScore: null, year: '2020', socialScore: 0 },
+      { title: 'Y', imdbScore: 7.5,  year: '2022', socialScore: 0 },
+    ]
+    const sorted = sortItems(items, 'filmler', 'imdb')
+    expect(sorted[0].title).toBe('Y')
+  })
+})
+
+// ── T-APP-2: sortBy=year ─────────────────────────────────────────────────────
+describe('App sorting — sortBy=year (T-APP-2)', () => {
+  const YEAR_ITEMS = [
+    { title: 'Old',    year: '2010', imdbScore: 9.0, socialScore: 70 },
+    { title: 'New',    year: '2024', imdbScore: 6.0, socialScore: 50 },
+    { title: 'Mid',    year: '2018', imdbScore: 7.5, socialScore: 60 },
+    { title: 'NoYear', year: null,   imdbScore: 8.0, socialScore: 80 },
+  ]
+
+  it('sorts by year descending (newest first)', () => {
+    const sorted = sortItems(YEAR_ITEMS, 'diziler', 'year')
+    expect(sorted[0].title).toBe('New')
+    expect(sorted[1].title).toBe('Mid')
+    expect(sorted[2].title).toBe('Old')
+  })
+
+  it('null/missing year goes last (treated as 0)', () => {
+    const sorted = sortItems(YEAR_ITEMS, 'diziler', 'year')
+    expect(sorted[sorted.length - 1].title).toBe('NoYear')
+  })
+
+  it('year as string sorts numerically', () => {
+    const items = [
+      { title: 'A', year: '2009', imdbScore: 7, socialScore: 0 },
+      { title: 'B', year: '2023', imdbScore: 7, socialScore: 0 },
+      { title: 'C', year: '1999', imdbScore: 7, socialScore: 0 },
+    ]
+    const sorted = sortItems(items, 'filmler', 'year')
+    expect(sorted[0].title).toBe('B')
+    expect(sorted[sorted.length - 1].title).toBe('C')
+  })
+})
+
+// ── T-APP-3: sortBy=social (trend sekmesinde) ─────────────────────────────────
+describe('App sorting — sortBy=social (T-APP-3)', () => {
+  it('sorts by socialScore descending on trend tab', () => {
+    const sorted = sortItems(SAMPLE_ITEMS, 'trend', 'social')
+    expect(sorted[0].socialScore).toBe(85)
+    expect(sorted[sorted.length - 1].socialScore).toBe(55)
+  })
+
+  it('sortBy=social on non-trend tab falls back to default (imdbScore)', () => {
+    const sorted = sortItems(SAMPLE_ITEMS, 'diziler', 'social')
+    expect(sorted[0].imdbScore).toBe(9.0)
+    expect(sorted[sorted.length - 1].imdbScore).toBe(6.8)
+  })
+})
+
+// ── T-APP-4: sortBy=default korunur ──────────────────────────────────────────
+describe('App sorting — sortBy=default (T-APP-4)', () => {
+  it('default on trend sorts by socialScore', () => {
+    const sorted = sortItems(SAMPLE_ITEMS, 'trend', 'default')
+    expect(sorted[0].socialScore).toBe(85)
+  })
+
+  it('default on non-trend sorts by imdbScore', () => {
+    const sorted = sortItems(SAMPLE_ITEMS, 'diziler', 'default')
+    expect(sorted[0].imdbScore).toBe(9.0)
+  })
+
+  it('does not mutate original array with sortBy=default', () => {
+    const original = [...SAMPLE_ITEMS]
+    sortItems(SAMPLE_ITEMS, 'diziler', 'default')
+    expect(SAMPLE_ITEMS).toEqual(original)
+  })
+})
+
+// ── T-APP-5: TR-yayın filtresi ────────────────────────────────────────────────
+describe('App filtering — trOnly (T-APP-5)', () => {
+  const TR_ITEMS = [
+    { title: 'HasPlatform',  genres: ['Dram'], platforms: ['Netflix'],        imdbScore: 8.0, socialScore: 70 },
+    { title: 'NoPlatform',   genres: ['Dram'], platforms: [],                 imdbScore: 7.0, socialScore: 60 },
+    { title: 'AlsoPlatform', genres: ['Dram'], platforms: ['Disney+'],        imdbScore: 9.0, socialScore: 80 },
+    { title: 'Undefined',    genres: ['Dram'], platforms: undefined,           imdbScore: 6.0, socialScore: 50 },
+  ]
+
+  it('trOnly=false shows all items', () => {
+    const result = applyFilters(TR_ITEMS, [], 'Tümü', false)
+    expect(result).toHaveLength(4)
+  })
+
+  it('trOnly=true shows only items with non-empty platforms', () => {
+    const result = applyFilters(TR_ITEMS, [], 'Tümü', true)
+    expect(result).toHaveLength(2)
+    expect(result.map(i => i.title)).toContain('HasPlatform')
+    expect(result.map(i => i.title)).toContain('AlsoPlatform')
+    expect(result.map(i => i.title)).not.toContain('NoPlatform')
+    expect(result.map(i => i.title)).not.toContain('Undefined')
+  })
+
+  it('trOnly=true + genre filter — ANDed together', () => {
+    const result = applyFilters(TR_ITEMS, ['Dram'], 'Tümü', true)
+    expect(result).toHaveLength(2)
+  })
+
+  it('trOnly=true + platform filter — ANDed together', () => {
+    const result = applyFilters(TR_ITEMS, [], 'Netflix', true)
+    expect(result).toHaveLength(1)
+    expect(result[0].title).toBe('HasPlatform')
+  })
+})
+
+// ── T-APP-6: BUG regresyonu — platform filtresi ve boş platforms ──────────────
+describe('App filtering — platform bug regression (T-APP-6)', () => {
+  it('items with platforms:[] do not match a specific platform selection', () => {
+    const items = [
+      { title: 'Empty', genres: ['Dram'], platforms: [], imdbScore: 9.0, socialScore: 90 },
+    ]
+    const result = applyFilters(items, [], 'Netflix')
+    expect(result).toHaveLength(0)
+  })
+
+  it('enriched item with matching platform shows up after enrichment', () => {
+    const items = [
+      { title: 'Enriched', genres: ['Dram'], platforms: ['Netflix'], imdbScore: 9.0, socialScore: 90 },
+    ]
+    const result = applyFilters(items, [], 'Netflix')
+    expect(result).toHaveLength(1)
+    expect(result[0].title).toBe('Enriched')
+  })
+
+  it('Tümü shows all items regardless of platforms being empty', () => {
+    const items = [
+      { title: 'A', genres: ['Dram'], platforms: [],          imdbScore: 8.0, socialScore: 70 },
+      { title: 'B', genres: ['Dram'], platforms: ['Netflix'], imdbScore: 7.0, socialScore: 60 },
+    ]
+    const result = applyFilters(items, [], 'Tümü')
+    expect(result).toHaveLength(2)
   })
 })
 
