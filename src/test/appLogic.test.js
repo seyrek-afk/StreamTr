@@ -9,7 +9,7 @@ import { useStreamData } from '../hooks/useStreamData.js'
 // ── App.jsx filtering logic (extracted for testability) ────────────────────
 // Bu yardımcılar App.jsx gerçek mantığıyla birebir senkron tutulmalıdır.
 
-function applyFilters(items, selectedGenres, platform, trOnly = false) {
+function applyFilters(items, selectedGenres, platform, trOnly = false, year = 'Tümü') {
   return items.filter(item => {
     const gOk = selectedGenres.length === 0 ||
       selectedGenres.some(g => (item.genres || []).includes(g))
@@ -20,8 +20,15 @@ function applyFilters(items, selectedGenres, platform, trOnly = false) {
           : p === platform
       )
     const tOk = !trOnly || (item.platforms?.length > 0)
-    return gOk && pOk && tOk
+    const yOk = year === 'Tümü' || String(item.year) === String(year)
+    return gOk && pOk && tOk && yOk
   })
+}
+
+// App.jsx availableYears türetmesiyle birebir: geçerli verinin yılları, en yeni önce.
+function deriveYears(items) {
+  return [...new Set((items || []).map(i => i.year).filter(Boolean))]
+    .sort((a, b) => Number(b) - Number(a))
 }
 
 function sortItems(items, tab, sortBy = 'default') {
@@ -115,6 +122,61 @@ describe('App filtering — combined genre + platform', () => {
   it('returns empty when combined filter matches nothing', () => {
     const result = applyFilters(SAMPLE_ITEMS, ['Aksiyon'], 'Disney+')
     expect(result).toHaveLength(0)
+  })
+})
+
+// ── Yıl filtresi (her sekmede) ─────────────────────────────────────────────
+// mock yıl=number, TMDB yıl=string olabilir; her ikisi de String() ile kıyaslanır.
+const YEAR_ITEMS = [
+  { title: 'Eski',   genres: ['Dram'],    platforms: ['Netflix'], imdbScore: 8, year: 1999 },
+  { title: 'OrtaNum', genres: ['Aksiyon'], platforms: ['Netflix'], imdbScore: 7, year: 2014 },
+  { title: 'OrtaStr', genres: ['Komedi'],  platforms: ['Disney+'], imdbScore: 7, year: '2014' },
+  { title: 'Yeni',   genres: ['Dram'],    platforms: ['Mubi'],    imdbScore: 9, year: '2024' },
+  { title: 'Yılsız', genres: ['Belgesel'], platforms: ['Netflix'], imdbScore: 6, year: null },
+]
+
+describe('App filtering — yıl filtresi', () => {
+  it('Tümü tüm öğeleri döndürür (yıl filtresi yok)', () => {
+    expect(applyFilters(YEAR_ITEMS, [], 'Tümü', false, 'Tümü')).toHaveLength(5)
+  })
+
+  it('seçili yıla göre filtreler (string seçim, number/string veriyle eşleşir)', () => {
+    const result = applyFilters(YEAR_ITEMS, [], 'Tümü', false, '2014')
+    expect(result.map(i => i.title).sort()).toEqual(['OrtaNum', 'OrtaStr'])
+  })
+
+  it('number year ile string seçim eşleşir (1999)', () => {
+    const result = applyFilters(YEAR_ITEMS, [], 'Tümü', false, '1999')
+    expect(result).toHaveLength(1)
+    expect(result[0].title).toBe('Eski')
+  })
+
+  it('yıl + tür + platform AND ile birleşir', () => {
+    const result = applyFilters(YEAR_ITEMS, ['Dram'], 'Netflix', false, '1999')
+    expect(result.map(i => i.title)).toEqual(['Eski'])
+  })
+
+  it('eşleşme yoksa boş döner', () => {
+    expect(applyFilters(YEAR_ITEMS, [], 'Tümü', false, '2050')).toHaveLength(0)
+  })
+})
+
+describe('App — availableYears türetmesi', () => {
+  it('benzersiz yılları en yeni önce sıralar, boşları atar (TMDB string yıllar)', () => {
+    const items = [
+      { year: '2014' }, { year: '2024' }, { year: '2014' }, { year: '1999' }, { year: null },
+    ]
+    expect(deriveYears(items)).toEqual(['2024', '2014', '1999'])
+  })
+
+  it('mock number yıllarda da en yeni önce sıralar', () => {
+    const items = [{ year: 2008 }, { year: 2021 }, { year: 2008 }]
+    expect(deriveYears(items)).toEqual([2021, 2008])
+  })
+
+  it('boş/eksik veride boş dizi', () => {
+    expect(deriveYears([])).toEqual([])
+    expect(deriveYears(null)).toEqual([])
   })
 })
 

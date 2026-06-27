@@ -19,6 +19,7 @@ export default function App() {
   const [sortBy,          setSortBy]         = useState('default')
   const [trOnly,          setTrOnly]         = useState(false)
   const [sortOpen,        setSortOpen]       = useState(false)
+  const [year,            setYear]           = useState('Tümü')
 
   const {
     data, loading, loadingMore, error,
@@ -54,10 +55,16 @@ export default function App() {
     setPlatform('Tümü')
     setTrOnly(false)
     setSortBy('default')
+    setYear('Tümü')
   }
-  const hasActiveFilter = selectedGenres.length > 0 || platform !== 'Tümü' || trOnly || sortBy !== 'default'
+  const hasActiveFilter = selectedGenres.length > 0 || platform !== 'Tümü' || trOnly || sortBy !== 'default' || year !== 'Tümü'
 
   const effectiveSortBy = (sortBy === 'social' && tab !== 'trend') ? 'default' : sortBy
+
+  // Yıl filtresi seçenekleri — geçerli sekmenin verisinden, en yeni önce.
+  // (mock yıl=number, TMDB yıl=string olabilir; String() ile kıyaslanır)
+  const availableYears = [...new Set((data[tab] || []).map(i => i.year).filter(Boolean))]
+    .sort((a, b) => Number(b) - Number(a))
 
   const filtered = [...(data[tab] || [])].filter(item => {
     const gOk = selectedGenres.length === 0 ||
@@ -69,7 +76,8 @@ export default function App() {
           : p === platform
       )
     const tOk = !trOnly || (item.platforms?.length > 0)
-    return gOk && pOk && tOk
+    const yOk = year === 'Tümü' || String(item.year) === String(year)
+    return gOk && pOk && tOk && yOk
   }).sort((a, b) => {
     if (effectiveSortBy === 'imdb') return (b.imdbScore || 0) - (a.imdbScore || 0)
     if (effectiveSortBy === 'year') return (Number(b.year) || 0) - (Number(a.year) || 0)
@@ -178,6 +186,9 @@ export default function App() {
           onToggle={toggleGenre}
           onClear={clearFilters}
           showClear={hasActiveFilter}
+          years={availableYears}
+          selectedYear={year}
+          onYearChange={setYear}
         />
       )}
 
