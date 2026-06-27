@@ -16,10 +16,13 @@ export default function App() {
   const [tab,             setTab]            = useState('diziler')
   const [selectedGenres,  setSelectedGenres] = useState([])
   const [platform,        setPlatform]       = useState('Tümü')
+  const [sortBy,          setSortBy]         = useState('default')
+  const [trOnly,          setTrOnly]         = useState(false)
+  const [sortOpen,        setSortOpen]       = useState(false)
 
   const {
     data, loading, loadingMore, error,
-    visible, hasMore,
+    visible, hasMore, enriching,
     fetchTab, showMore, retry,
   } = useStreamData()
 
@@ -31,10 +34,30 @@ export default function App() {
 
   useEffect(() => { if (tab !== 'sanaozel') fetchTab(tab) }, [tab])
 
+  // Sekme değişiminde sosyal sıralama sadece trend'de geçerlidir
+  useEffect(() => {
+    if (tab !== 'trend' && sortBy === 'social') setSortBy('default')
+  }, [tab, sortBy])
+
+  // Dışarı tıklanınca sıralama menüsünü kapat
+  useEffect(() => {
+    if (!sortOpen) return
+    const handler = () => setSortOpen(false)
+    document.addEventListener('click', handler, { capture: true, once: true })
+    return () => document.removeEventListener('click', handler, { capture: true })
+  }, [sortOpen])
+
   const toggleGenre  = (g) =>
     setSelectedGenres(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g])
-  const clearFilters = () => { setSelectedGenres([]); setPlatform('Tümü') }
-  const hasActiveFilter = selectedGenres.length > 0 || platform !== 'Tümü'
+  const clearFilters = () => {
+    setSelectedGenres([])
+    setPlatform('Tümü')
+    setTrOnly(false)
+    setSortBy('default')
+  }
+  const hasActiveFilter = selectedGenres.length > 0 || platform !== 'Tümü' || trOnly || sortBy !== 'default'
+
+  const effectiveSortBy = (sortBy === 'social' && tab !== 'trend') ? 'default' : sortBy
 
   const filtered = [...(data[tab] || [])].filter(item => {
     const gOk = selectedGenres.length === 0 ||
@@ -45,12 +68,24 @@ export default function App() {
           ? p.toLowerCase().includes('amazon') || p.toLowerCase().includes('prime')
           : p === platform
       )
-    return gOk && pOk
-  }).sort((a, b) =>
-    tab === 'trend'
+    const tOk = !trOnly || (item.platforms?.length > 0)
+    return gOk && pOk && tOk
+  }).sort((a, b) => {
+    if (effectiveSortBy === 'imdb') return (b.imdbScore || 0) - (a.imdbScore || 0)
+    if (effectiveSortBy === 'year') return (Number(b.year) || 0) - (Number(a.year) || 0)
+    if (effectiveSortBy === 'social') return (b.socialScore || 0) - (a.socialScore || 0)
+    // default: trend → socialScore, diğer → imdbScore
+    return tab === 'trend'
       ? (b.socialScore || 0) - (a.socialScore || 0)
       : (b.imdbScore   || 0) - (a.imdbScore   || 0)
-  )
+  })
+
+  const SORT_OPTIONS = [
+    { value: 'default', label: tab === 'trend' ? 'Varsayılan (Sosyal)' : 'Varsayılan (IMDB)' },
+    { value: 'imdb',    label: 'IMDB Puanı' },
+    { value: 'year',    label: 'Yıl (en yeni)' },
+    ...(tab === 'trend' ? [{ value: 'social', label: 'Sosyal etki' }] : []),
+  ]
 
   const visibleFiltered = filtered.slice(0, visible[tab])
   const canShowMore = visibleFiltered.length < filtered.length ||
@@ -239,10 +274,78 @@ export default function App() {
                 </div>
               </>
             )}
+
+            {/* Sıralama açılır menüsü */}
             <span style={{ color: 'rgba(255,255,255,0.1)', fontSize: 10 }}>·</span>
-            <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: 10.5 }}>
-              {tab === 'trend' ? '🔥 Sosyal etki puanına' : '⭐ IMDB puanına'} göre sıralı
-            </span>
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setSortOpen(o => !o)}
+                aria-expanded={sortOpen}
+                aria-haspopup="listbox"
+                className="sort-trigger"
+                style={{
+                  background: sortBy !== 'default' ? 'rgba(var(--accent-rgb),0.12)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${sortBy !== 'default' ? 'rgba(var(--accent-rgb),0.35)' : 'rgba(255,255,255,0.1)'}`,
+                  color: sortBy !== 'default' ? 'var(--accent)' : 'rgba(255,255,255,0.5)',
+                }}
+              >
+                {SORT_OPTIONS.find(o => o.value === sortBy)?.label || 'Sıralama'}
+                <ChevronDown
+                  size={10}
+                  className="sort-chevron"
+                  style={{ transform: sortOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                />
+              </button>
+              {sortOpen && (
+                <div
+                  role="listbox"
+                  className="sort-dropdown"
+                  style={{
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                  }}
+                >
+                  {SORT_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      role="option"
+                      aria-selected={sortBy === opt.value}
+                      onClick={() => { setSortBy(opt.value); setSortOpen(false) }}
+                      className="sort-option"
+                      style={{
+                        fontWeight: sortBy === opt.value ? 700 : 400,
+                        color: sortBy === opt.value ? 'var(--accent)' : 'var(--text-muted)',
+                        background: sortBy === opt.value ? 'rgba(var(--accent-rgb),0.09)' : 'transparent',
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* TR-yayın filtresi pill */}
+            <button
+              onClick={() => setTrOnly(v => !v)}
+              aria-pressed={trOnly}
+              className="tr-pill"
+              style={{
+                background: trOnly ? 'rgba(var(--accent-rgb),0.15)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${trOnly ? 'rgba(var(--accent-rgb),0.4)' : 'rgba(255,255,255,0.1)'}`,
+                color: trOnly ? 'var(--accent)' : 'rgba(255,255,255,0.45)',
+                fontWeight: trOnly ? 700 : 500,
+              }}
+            >
+              🇹🇷 Türkiye'de yayın bilgisi bulunanlar
+            </button>
+
+            {/* Enrichment yükleme ipucu */}
+            {trOnly && enriching[tab] && (
+              <span className="enrichment-hint">
+                <Loader size={9} className="spin" /> yayın bilgileri yükleniyor…
+              </span>
+            )}
           </div>
         )}
 

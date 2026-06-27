@@ -2,17 +2,12 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Star, User, X } from 'lucide-react'
 import { PLATFORMS } from '../constants/index.js'
+import { isValidTmdbRef, mapTrProviders } from '../lib/tmdb.js'
 import FavoriteButton from './FavoriteButton.jsx'
 import TrailerEmbed from './TrailerEmbed.jsx'
 
 const TMDB_KEY = import.meta.env.VITE_TMDB_KEY
 const PLAT_MAP = Object.fromEntries(PLATFORMS.map(p => [p.id, p]))
-
-const PROVIDER_MAP = {
-  8: 'Netflix', 119: 'Amazon Prime', 337: 'Disney+', 350: 'Apple TV+',
-  1899: 'HBO Max', 384: 'HBO Max', 11: 'Mubi', 341: 'BluTV',
-  479: 'PUHUTV', 531: 'Paramount+', 533: 'Gain', 584: 'TOD',
-}
 
 function OverlayActorCard({ actor }) {
   const [err, setErr] = useState(false)
@@ -61,7 +56,7 @@ export default function DetailOverlay({ item, onClose }) {
 
   // Detay + platformları çek
   useEffect(() => {
-    if (!item?.tmdbId || !item?.mediaType || !TMDB_KEY) {
+    if (!isValidTmdbRef(item?.tmdbId, item?.mediaType) || !TMDB_KEY) {
       setError('Detay yüklenemedi.')
       setLoading(false)
       return
@@ -97,16 +92,7 @@ export default function DetailOverlay({ item, onClose }) {
         if (trailer?.key && YOUTUBE_ID_RE.test(trailer.key)) setTrailerKey(trailer.key)
 
         // Watch providers
-        const tr = wp.results?.TR
-        const all = [...(tr?.flatrate || []), ...(tr?.free || [])]
-        const seen = new Set()
-        const list = []
-        for (const p of all) {
-          const mapped = PROVIDER_MAP[p.provider_id]
-          const k = mapped || p.provider_name
-          if (k && !seen.has(k)) { seen.add(k); list.push(k) }
-        }
-        setWatchPlatforms(list)
+        setWatchPlatforms(mapTrProviders(wp))
 
         setDetail({
           title:       isMovie ? json.title : json.name,
