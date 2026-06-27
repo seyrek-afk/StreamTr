@@ -1,0 +1,53 @@
+# StreamTR — Render Static Site blueprint
+#
+# StreamTR saf bir Vite SPA'sıdır → Render'da "Static Site" olarak yayınlanır
+# (CDN/global; sunucu/çalışma zamanı yok).
+#
+# İLK KURULUM (yalnızca bir kez, Render hesabı gerektirir — koddan yapılamaz):
+#   Render Dashboard → New + → Blueprint → bu repoyu (seyrek-afk/StreamTr) seç →
+#   render.yaml otomatik okunur → aşağıdaki sync:false env değerlerini girersin → Apply.
+#   Bağlandıktan sonra main'e her push OTOMATİK deploy eder (autoDeploy varsayılan açık).
+#
+# Tuzak (bkz. memory project_render_deploy): envVars yalnızca *blueprint sync*'te işlenir;
+# normal git-push deploy'unda OKUNMAZ. Yeni env eklersen dashboard'dan da gir.
+#
+# NOT: VITE_* değişkenleri build'de istemci paketine GÖMÜLÜR (tarayıcıda görünür). Buradaki
+# anahtarlar bunun için uygundur: TMDB anahtarı düşük-riskli salt-okunur; Supabase anon
+# anahtarı RLS ile korunur (zaten public olması tasarlanmıştır). Gizli/sunucu anahtarı KOYMA.
+
+services:
+  - type: web
+    name: streamtr
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    pullRequestPreviewsEnabled: false
+    envVars:
+      # TMDB API anahtarı — fiyat/poster/sağlayıcı verisi. Dashboard'dan gir.
+      - key: VITE_TMDB_KEY
+        sync: false
+      # Supabase (giriş + cihazlar arası favoriler). Boş bırakılırsa giriş kapalı,
+      # favoriler yalnızca localStorage'da tutulur (supabase/SETUP.md).
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+    # SPA fallback — derin linkler (ör. ?stock=) index.html'e yönlensin
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    # Güvenlik başlıkları — vite.config.js dev başlıklarıyla aynı
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: "camera=(), microphone=(), geolocation=()"
