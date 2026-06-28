@@ -1,38 +1,55 @@
 import { X } from 'lucide-react'
 import { GENRES } from '../constants/index.js'
 
-export default function GenreFilter({ selectedGenres, onToggle, onClear, showClear, years = [], selectedYear = 'Tümü', onYearChange }) {
-  const yearActive = selectedYear !== 'Tümü'
+// Tek tip filtre çipi — tür ve yıl gruplarında ortak görünüm (tema değişkenleriyle).
+function chipStyle(active) {
+  return {
+    background: active ? 'rgba(var(--accent-rgb),0.12)' : 'rgba(255,255,255,0.035)',
+    border: `1px solid ${active ? 'rgba(var(--accent-rgb),0.45)' : 'var(--border)'}`,
+    borderRadius: 16, padding: '3.5px 11px',
+    color: active ? 'var(--accent)' : 'var(--text-muted)',
+    fontSize: 11, fontWeight: active ? 700 : 400,
+    cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.13s',
+    fontFamily: 'inherit', flexShrink: 0,
+  }
+}
+
+export default function GenreFilter({ selectedGenres, onToggle, onClear, showClear, yearBuckets = [], selectedYears = [], onYearToggle, onYearClear }) {
   return (
     <div style={{
       padding: '9px 20px',
       display: 'flex', gap: 5, overflowX: 'auto', alignItems: 'center',
       borderBottom: '1px solid rgba(255,255,255,0.038)',
     }}>
-      {/* Yıl filtresi — satır kaysa da sabit kalır (flexShrink:0) */}
-      {onYearChange && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, marginRight: 6 }}>
+      {/* Yıl filtresi — çoklu seçimli grup çipleri (native select yerine, tema uyumlu) */}
+      {onYearToggle && yearBuckets.length > 0 && (
+        <>
           <span style={{
             color: 'var(--text-faint)', fontSize: 9.5, fontWeight: 600,
-            letterSpacing: '0.08em',
+            letterSpacing: '0.08em', flexShrink: 0,
           }}>YIL</span>
-          <select
-            value={selectedYear}
-            onChange={(e) => onYearChange(e.target.value)}
-            aria-label="Yıla göre filtrele"
-            style={{
-              background: yearActive ? 'rgba(var(--accent-rgb),0.12)' : 'rgba(255,255,255,0.035)',
-              border: `1px solid ${yearActive ? 'rgba(var(--accent-rgb),0.45)' : 'var(--border)'}`,
-              borderRadius: 16, padding: '3.5px 9px',
-              color: yearActive ? 'var(--accent)' : 'var(--text-muted)',
-              fontSize: 11, fontWeight: yearActive ? 700 : 400,
-              cursor: 'pointer', fontFamily: 'inherit', outline: 'none',
-            }}
-          >
-            <option value="Tümü">Tümü</option>
-            {years.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
-        </div>
+          <button
+            onClick={onYearClear}
+            aria-pressed={selectedYears.length === 0}
+            style={chipStyle(selectedYears.length === 0)}
+          >Tümü</button>
+          {yearBuckets.map(b => {
+            const active = selectedYears.includes(b.key)
+            return (
+              <button
+                key={b.key}
+                onClick={() => onYearToggle(b.key)}
+                aria-pressed={active}
+                style={chipStyle(active)}
+              >{b.label}</button>
+            )
+          })}
+          {/* Tür/Yıl ayıracı */}
+          <span style={{
+            width: 1, alignSelf: 'stretch', margin: '1px 4px',
+            background: 'rgba(255,255,255,0.08)', flexShrink: 0,
+          }} aria-hidden="true" />
+        </>
       )}
 
       <span style={{
@@ -46,19 +63,7 @@ export default function GenreFilter({ selectedGenres, onToggle, onClear, showCle
           <button
             key={g}
             onClick={() => onToggle(g)}
-            style={{
-              background: active
-                ? 'rgba(var(--accent-rgb),0.12)'
-                : 'rgba(255,255,255,0.035)',
-              border: `1px solid ${active
-                ? 'rgba(var(--accent-rgb),0.45)'
-                : 'var(--border)'}`,
-              borderRadius: 16, padding: '3.5px 11px',
-              color: active ? 'var(--accent)' : 'var(--text-muted)',
-              fontSize: 11, fontWeight: active ? 700 : 400,
-              cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.13s',
-              fontFamily: 'inherit',
-            }}
+            style={chipStyle(active)}
           >{g}</button>
         )
       })}

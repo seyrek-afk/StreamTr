@@ -12,6 +12,31 @@ import ThemePicker  from './components/ThemePicker.jsx'
 import SearchBar    from './components/SearchBar.jsx'
 import AccountButton from './components/auth/AccountButton.jsx'
 
+// Yıl gruplaması — en yeni yıla (anchor) göre dinamik aralıklar, en eskiler sabit on yıllıklar.
+// anchor=2026 → 2026 · 2024–2025 · 2020–2023 · 2010–2019 · 2000–2009 · 2000 öncesi.
+// Yalnızca veride karşılığı olan gruplar üretilir (boş grup gösterilmez).
+function buildYearBuckets(years) {
+  const nums = (years || []).map(Number).filter((n) => Number.isFinite(n))
+  if (nums.length === 0) return []
+  const a = Math.max(...nums)
+  const raw = [
+    [a, a],
+    [Math.max(2020, a - 2), a - 1],
+    [2020, a - 3],
+    [2010, 2019],
+    [2000, 2009],
+    [-Infinity, 1999],
+  ]
+  return raw
+    .filter(([min, max]) => min <= max && nums.some((n) => n >= min && n <= max))
+    .map(([min, max]) => ({
+      key: min === -Infinity ? `lt-${max}` : `${min}-${max}`,
+      label: min === -Infinity ? '2000 öncesi' : min === max ? `${min}` : `${min}–${max}`,
+      min,
+      max,
+    }))
+}
+
 export default function App() {
   const [tab,             setTab]            = useState('diziler')
   const [selectedGenres,  setSelectedGenres] = useState([])
@@ -19,7 +44,7 @@ export default function App() {
   const [sortBy,          setSortBy]         = useState('default')
   const [trOnly,          setTrOnly]         = useState(false)
   const [sortOpen,        setSortOpen]       = useState(false)
-  const [year,            setYear]           = useState('Tümü')
+  const [selectedYears,   setSelectedYears]  = useState([])  // seçili yıl-grubu key'leri (çoklu)
 
   const {
     data, loading, loadingMore, error,
@@ -50,21 +75,25 @@ export default function App() {
 
   const toggleGenre  = (g) =>
     setSelectedGenres(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g])
+  const toggleYear   = (key) =>
+    setSelectedYears(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])
   const clearFilters = () => {
     setSelectedGenres([])
     setPlatform('Tümü')
     setTrOnly(false)
     setSortBy('default')
-    setYear('Tümü')
+    setSelectedYears([])
   }
-  const hasActiveFilter = selectedGenres.length > 0 || platform !== 'Tümü' || trOnly || sortBy !== 'default' || year !== 'Tümü'
+  const hasActiveFilter = selectedGenres.length > 0 || platform !== 'Tümü' || trOnly || sortBy !== 'default' || selectedYears.length > 0
 
   const effectiveSortBy = (sortBy === 'social' && tab !== 'trend') ? 'default' : sortBy
 
-  // Yıl filtresi seçenekleri — geçerli sekmenin verisinden, en yeni önce.
-  // (mock yıl=number, TMDB yıl=string olabilir; String() ile kıyaslanır)
+  // Yıl filtresi grupları — geçerli sekmenin verisinden dinamik üretilir (çoklu seçim).
+  // (mock yıl=number, TMDB yıl=string olabilir; Number() ile kıyaslanır)
   const availableYears = [...new Set((data[tab] || []).map(i => i.year).filter(Boolean))]
-    .sort((a, b) => Number(b) - Number(a))
+  const yearBuckets = buildYearBuckets(availableYears)
+  // Sekme/veri değişince geçersiz kalan grup seçimlerini ayıkla
+  const activeYearKeys = selectedYears.filter(k => yearBuckets.some(b => b.key === k))
 
   const filtered = [...(data[tab] || [])].filter(item => {
     const gOk = selectedGenres.length === 0 ||
@@ -76,7 +105,10 @@ export default function App() {
           : p === platform
       )
     const tOk = !trOnly || (item.platforms?.length > 0)
-    const yOk = year === 'Tümü' || String(item.year) === String(year)
+    const iy = item.year ? Number(item.year) : NaN
+    const yOk = activeYearKeys.length === 0 ||
+      (Number.isFinite(iy) && yearBuckets.some(b =>
+        activeYearKeys.includes(b.key) && iy >= b.min && iy <= b.max))
     return gOk && pOk && tOk && yOk
   }).sort((a, b) => {
     if (effectiveSortBy === 'imdb') return (b.imdbScore || 0) - (a.imdbScore || 0)
@@ -186,9 +218,10 @@ export default function App() {
           onToggle={toggleGenre}
           onClear={clearFilters}
           showClear={hasActiveFilter}
-          years={availableYears}
-          selectedYear={year}
-          onYearChange={setYear}
+          yearBuckets={yearBuckets}
+          selectedYears={activeYearKeys}
+          onYearToggle={toggleYear}
+          onYearClear={() => setSelectedYears([])}
         />
       )}
 
