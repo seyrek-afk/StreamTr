@@ -87,6 +87,14 @@ describe('parseQuery — kalite ve süre', () => {
     expect(r.params['vote_average.gte']).toBeUndefined()
   })
 
+  it('kalite ifadesini kelime sırasından bağımsız yakalar', () => {
+    // "yüksek puanlı" kadar sık "puanı yüksek" de yazılıyor; tek yönü tanımak
+    // kalite filtresini sessizce uygulanmamış bırakıyordu (üretimde yakalandı).
+    for (const p of ['yüksek puanlı film', 'puanı yüksek film', 'ratingi yüksek film', 'imdbsi yüksek film']) {
+      expect(parseQuery(p).params['vote_average.gte'], p).toBeGreaterThan(7)
+    }
+  })
+
   it('"çok uzun olmasın" süre üst sınırı koyar', () => {
     expect(parseQuery('animasyon, çok uzun olmasın').params['with_runtime.lte']).toBe(100)
   })
@@ -122,6 +130,14 @@ describe('EXAMPLE_PROMPTS', () => {
       const r = parseQuery(p)
       expect(r.empty, `çözülemedi: ${p}`).toBe(false)
     })
+  })
+
+  it('kalite ima eden örnek gerçekten kalite filtresi üretir', () => {
+    // Panelde gösterilen örnek "puanı yüksek" diyorsa sonuç da ona göre
+    // filtrelenmeli; aksi halde örnek kendi vaadini tutmuyor demektir.
+    EXAMPLE_PROMPTS
+      .filter(p => /puan/i.test(p))
+      .forEach(p => expect(parseQuery(p).params['vote_average.gte'], p).toBeGreaterThan(7))
   })
 
   it('örnekler farklı yetenekleri gösterir (tür/ülke/dönem/tema)', () => {

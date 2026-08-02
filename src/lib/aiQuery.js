@@ -169,7 +169,15 @@ function matchEra(text) {
 }
 
 function matchQuality(text) {
-  if (/yuksek puan|iyi puan|rating.?i yuksek|en iyi|kaliteli|basyapit|efsane/.test(text)) {
+  // Kelime sırası İKİ yönde de aranır: kullanıcılar "yüksek puanlı" kadar sık
+  // "puanı yüksek" de yazıyor. Tek yönü tanımak, kalite filtresini sessizce
+  // uygulanmamış bırakıyordu (üretimde yakalandı).
+  const yuksek = [
+    /yuksek puan/, /iyi puan/, /puan[a-z]* yuksek/, /puan[a-z]* iyi/,
+    /rating[a-z]* yuksek/, /yuksek rating/, /imdb[a-z]* yuksek/,
+    /en iyi/, /kaliteli/, /basyapit/, /efsane/, /cok begenilen/,
+  ]
+  if (yuksek.some(re => re.test(text))) {
     return { min: 7.5, votes: 200, label: 'yüksek puanlı' }
   }
   if (/idare eder|fena olmayan|ortalama/.test(text)) {
