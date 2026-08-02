@@ -4,13 +4,40 @@ export const GENRES = [
   "Romantik", "Tarih",
 ]
 
+const NETFLIX = { id: "Netflix", label: "Netflix", color: "#E50914", badge: "N" }
+
+// Dünya merceğinde gösterilen platform çipleri.
 export const PLATFORMS = [
-  { id: "Netflix",       label: "Netflix",      color: "#E50914", badge: "N"   },
+  NETFLIX,
   { id: "Amazon Prime",  label: "Prime Video",  color: "#00A8E0", badge: "P"   },
   { id: "Disney+",       label: "Disney+",      color: "#1A4BD4", badge: "D+"  },
   { id: "Apple TV+",     label: "Apple TV+",    color: "#555555", badge: "▶"   },
   { id: "HBO Max",       label: "Max",          color: "#5822B4", badge: "MAX" },
   { id: "Mubi",          label: "Mubi",         color: "#2E2D2C", badge: "M"   },
+]
+
+// Yerli merceğinde gösterilen platform çipleri.
+// Netflix bilinçli olarak burada da yer alır: Türk yapımı orijinallerin büyük
+// bölümü Netflix'tedir, yerli mercekten dışlamak yanıltıcı olurdu.
+// Sayı bilinçli olarak 6'da tutulur — başlıktaki çip satırı iki mercekte de
+// aynı yüksekliği ve hizayı korusun.
+export const TR_PLATFORMS = [
+  NETFLIX,
+  { id: "puhutv",        label: "puhutv",       color: "#00B3A4", badge: "PUHU" },
+  { id: "TOD",           label: "TOD",          color: "#7B2FF7", badge: "TOD"  },
+  { id: "TV+",           label: "TV+",          color: "#1B3B8C", badge: "TV+"  },
+  { id: "Exxen",         label: "Exxen",        color: "#00A65A", badge: "EXX"  },
+  { id: "tabii",         label: "tabii",        color: "#1E6FD9", badge: "TABİİ" },
+]
+
+// Rozet/etiket çözümlemesi için birleşik liste (ContentCard, DetailOverlay).
+// Yalnız çip satırında gösterilmeyen ama rozette çıkabilecek sağlayıcılar da dahil.
+export const ALL_PLATFORMS = [
+  ...PLATFORMS,
+  ...TR_PLATFORMS.filter(p => p.id !== NETFLIX.id),
+  { id: "Paramount+",    label: "Paramount+",   color: "#0064FF", badge: "P+"  },
+  { id: "Tivibu",        label: "Tivibu",       color: "#E8590C", badge: "TVB" },
+  { id: "BluTV",         label: "BluTV",        color: "#0090FF", badge: "BLU" },
 ]
 
 export const POSTER_GRADIENTS = [
