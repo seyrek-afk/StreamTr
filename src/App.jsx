@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { RefreshCw, X, ChevronDown, Loader } from 'lucide-react'
-import { PLATFORMS, TABS } from './constants/index.js'
-import { useStreamData } from './hooks/useStreamData.js'
+import { PLATFORMS, TR_PLATFORMS, TABS } from './constants/index.js'
+import { useStreamData, dataKey } from './hooks/useStreamData.js'
 import { useSearch }     from './hooks/useSearch.js'
 import { useRecommendations } from './hooks/useRecommendations.js'
+import { useYerliRails } from './hooks/useYerliRails.js'
 import { useFavorites } from './contexts/FavoritesContext.jsx'
 import ContentCard  from './components/ContentCard.jsx'
 import GenreFilter  from './components/GenreFilter.jsx'
 import MediaTypeFilter from './components/MediaTypeFilter.jsx'
+import RailRow      from './components/RailRow.jsx'
 import SkeletonGrid from './components/SkeletonGrid.jsx'
 import ThemePicker  from './components/ThemePicker.jsx'
 import SearchBar    from './components/SearchBar.jsx'
@@ -40,6 +42,7 @@ function buildYearBuckets(years) {
 
 export default function App() {
   const [tab,             setTab]            = useState('diziler')
+  const [lens,            setLens]           = useState('world') // 'world' | 'yerli'
   const [selectedGenres,  setSelectedGenres] = useState([])
   const [platform,        setPlatform]       = useState('Tümü')
   const [sortBy,          setSortBy]         = useState('default')
@@ -59,8 +62,12 @@ export default function App() {
   const { favorites } = useFavorites()
   const { recommendations, loading: recLoading, error: recError } = useRecommendations(favorites)
   const isSanaOzel = tab === 'sanaozel'
+  const isYerli    = lens === 'yerli'
 
-  useEffect(() => { if (tab !== 'sanaozel') fetchTab(tab) }, [tab])
+  // Veri (mercek, sekme) ikilisiyle anahtarlanır; iki mercek kendi önbelleğini korur.
+  const dk = dataKey(lens, tab)
+
+  useEffect(() => { if (tab !== 'sanaozel') fetchTab(dk) }, [dk])
 
   // Sekme değişiminde sosyal sıralama sadece trend'de geçerlidir
   useEffect(() => {
@@ -91,9 +98,13 @@ export default function App() {
 
   const effectiveSortBy = (sortBy === 'social' && tab !== 'trend') ? 'default' : sortBy
 
+  // Mercek çipleri farklı olduğundan (Disney+ yerli mercekte yok), mercek değişince
+  // seçili platform sıfırlanır — aksi halde ızgara sessizce boş kalırdı.
+  useEffect(() => { setPlatform('Tümü') }, [lens])
+
   // Yıl filtresi grupları — geçerli sekmenin verisinden dinamik üretilir (çoklu seçim).
   // (mock yıl=number, TMDB yıl=string olabilir; Number() ile kıyaslanır)
-  const availableYears = [...new Set((data[tab] || []).map(i => i.year).filter(Boolean))]
+  const availableYears = [...new Set((data[dk] || []).map(i => i.year).filter(Boolean))]
   const yearBuckets = buildYearBuckets(availableYears)
   // Sekme/veri değişince geçersiz kalan grup seçimlerini ayıkla
   const activeYearKeys = selectedYears.filter(k => yearBuckets.some(b => b.key === k))
@@ -105,7 +116,7 @@ export default function App() {
   const favoritesFiltered       = favorites.filter(mediaOk)
   const recommendationsFiltered = recommendations.filter(mediaOk)
 
-  const filtered = [...(data[tab] || [])].filter(item => {
+  const filtered = [...(data[dk] || [])].filter(item => {
     // İçerik tipi yalnız trend'de karışıktır; diziler/filmler sekmeleri tek tiptir
     const mOk = tab !== 'trend' || mediaOk(item)
     const gOk = selectedGenres.length === 0 ||
@@ -126,24 +137,57 @@ export default function App() {
     if (effectiveSortBy === 'imdb') return (b.imdbScore || 0) - (a.imdbScore || 0)
     if (effectiveSortBy === 'year') return (Number(b.year) || 0) - (Number(a.year) || 0)
     if (effectiveSortBy === 'social') return (b.socialScore || 0) - (a.socialScore || 0)
-    // default: trend → socialScore, diğer → imdbScore
-    return tab === 'trend'
-      ? (b.socialScore || 0) - (a.socialScore || 0)
-      : (b.imdbScore   || 0) - (a.imdbScore   || 0)
+    // default: trend → socialScore
+    if (tab === 'trend') return (b.socialScore || 0) - (a.socialScore || 0)
+    // Yerli mercekte ham IMDB sıralaması güvenilmez: düşük oy sayısı yüzünden
+    // 3 oyla 10/10 alan yapım tepeye çıkar. Bayesian ağırlıklı Yerli Skor kullanılır.
+    if (isYerli) {
+      return (b._yerliScore || 0) - (a._yerliScore || 0) ||
+             (b._voteCount  || 0) - (a._voteCount  || 0)
+    }
+    return (b.imdbScore || 0) - (a.imdbScore || 0)
   })
 
   const SORT_OPTIONS = [
-    { value: 'default', label: tab === 'trend' ? 'Varsayılan (Sosyal)' : 'Varsayılan (IMDB)' },
+    {
+      value: 'default',
+      label: tab === 'trend'
+        ? 'Varsayılan (Sosyal)'
+        : isYerli ? 'Varsayılan (Yerli Skor)' : 'Varsayılan (IMDB)',
+    },
     { value: 'imdb',    label: 'IMDB Puanı' },
     { value: 'year',    label: 'Yıl (en yeni)' },
     ...(tab === 'trend' ? [{ value: 'social', label: 'Sosyal etki' }] : []),
   ]
 
-  const visibleFiltered = filtered.slice(0, visible[tab])
+  const visibleFiltered = filtered.slice(0, visible[dk])
   const canShowMore = visibleFiltered.length < filtered.length ||
-    (hasMore[tab] && filtered.length <= visible[tab])
+    (hasMore[dk] && filtered.length <= visible[dk])
   // Diziler/filmler 250'ye kadar; sosyal trend ~100 ile sınırlı (haftalık trend 5 sayfa)
   const contentCap = tab === 'trend' ? 100 : 250
+
+  // ── Editoryal raflar (yalnız yerli mercek) ─────────────────────────────────
+  // Raflar küratörlü görünümlerdir; kullanıcı filtresi ile doğaları gereği çelişir
+  // ("Kült Klasikler" rafı 2024 yıl filtresiyle ne demek?). Bu yüzden HERHANGİ bir
+  // filtre veya arama aktifse raflar gizlenir ve yalnız ızgara kalır. Bu tek kural,
+  // mercek × sekme iki-eksenli gezinmenin kafa karışıklığını çözer.
+  const searchActive = Boolean(search.query)
+  const railsEligible = isYerli && !isSanaOzel && tab !== 'trend'
+  const { rails, loading: railsLoading } = useYerliRails(tab, railsEligible)
+  const showRails = railsEligible && !hasActiveFilter && !searchActive && !loading[dk]
+
+  // "Tümü →" — rafı ızgarada birebir yeniden üretmeye çalışmaz; en yakın GERÇEK
+  // filtreyi uygular. Filtre aktifleşir → raflar gizlenir → tam liste görünür.
+  const applyGridAction = (action) => {
+    if (!action) return
+    if (action.type === 'sort')  setSortBy(action.value)
+    if (action.type === 'genre') setSelectedGenres([action.value])
+    if (action.type === 'trOnly') setTrOnly(true)
+    if (action.type === 'yearsBefore') {
+      setSelectedYears(yearBuckets.filter(b => b.max < action.value).map(b => b.key))
+    }
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'DM Sans', system-ui, -apple-system, sans-serif" }}>
@@ -185,7 +229,7 @@ export default function App() {
           <span style={{ fontSize: 9.5, color: 'var(--text-faint)', letterSpacing: '0.12em', fontWeight: 700, textTransform: 'uppercase', marginRight: 2 }}>
             Platform
           </span>
-          {[{ id: 'Tümü', label: 'Tümü', color: '#444' }, ...PLATFORMS].map(p => {
+          {[{ id: 'Tümü', label: 'Tümü', color: '#444' }, ...(isYerli ? TR_PLATFORMS : PLATFORMS)].map(p => {
             const active = platform === p.id
             return (
               <button key={p.id} onClick={() => setPlatform(p.id)} style={{
@@ -200,26 +244,50 @@ export default function App() {
           })}
         </div>
 
-        {/* Tab satırı */}
-        <div style={{ display: 'flex', padding: '0 20px', marginTop: 10, gap: 2 }}>
-          {TABS.map(t => {
-            const active = tab === t.id
-            return (
-              <button key={t.id} onClick={() => setTab(t.id)} style={{
-                background: 'transparent', border: 'none',
-                borderBottom: `2px solid ${active ? 'var(--tab-active)' : 'transparent'}`,
-                color: active ? 'var(--tab-active)' : 'rgba(255,255,255,0.42)',
-                padding: '8px 16px 10px', fontSize: 12.5,
-                fontWeight: active ? 700 : 500, cursor: 'pointer',
-                transition: 'all 0.15s', fontFamily: 'inherit',
-                display: 'flex', alignItems: 'center', gap: 5,
-                marginBottom: -1, whiteSpace: 'nowrap',
-              }}>
-                <span>{t.emoji}</span> {t.label}
-                {loading[t.id] && <RefreshCw size={11} className="spin" />}
-              </button>
-            )
-          })}
+        {/* Tab satırı + mercek anahtarı (sağ uçta, sekme sayısını artırmadan) */}
+        <div style={{
+          display: 'flex', padding: '0 20px', marginTop: 10, gap: 2,
+          alignItems: 'flex-end', justifyContent: 'space-between',
+          overflowX: 'auto',
+        }}>
+          <div style={{ display: 'flex', gap: 2 }}>
+            {TABS.map(t => {
+              const active = tab === t.id
+              return (
+                <button key={t.id} onClick={() => setTab(t.id)} style={{
+                  background: 'transparent', border: 'none',
+                  borderBottom: `2px solid ${active ? 'var(--tab-active)' : 'transparent'}`,
+                  color: active ? 'var(--tab-active)' : 'rgba(255,255,255,0.42)',
+                  padding: '8px 16px 10px', fontSize: 12.5,
+                  fontWeight: active ? 700 : 500, cursor: 'pointer',
+                  transition: 'all 0.15s', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  marginBottom: -1, whiteSpace: 'nowrap',
+                }}>
+                  <span>{t.emoji}</span> {t.label}
+                  {loading[dataKey(lens, t.id)] && <RefreshCw size={11} className="spin" />}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Mercek — Sana Özel favori/öneri sekmesidir, köken filtresi orada anlamsız */}
+          {!isSanaOzel && (
+            <div className="lens-switch" style={{ marginBottom: 6 }} role="group" aria-label="İçerik kapsamı">
+              <button
+                className="lens-option"
+                aria-pressed={!isYerli}
+                onClick={() => setLens('world')}
+                title="Tüm dünyadan yapımlar"
+              >Dünya</button>
+              <button
+                className="lens-option"
+                aria-pressed={isYerli}
+                onClick={() => setLens('yerli')}
+                title="Türk yapımı dizi ve filmler"
+              >🇹🇷 Yerli</button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -325,8 +393,38 @@ export default function App() {
         </>
        ) : (
         <>
+        {/* ── EDİTORYAL RAFLAR (yalnız yerli mercek, filtre yokken) ────────── */}
+        {showRails && rails.length > 0 && (
+          <div style={{ marginBottom: 30 }}>
+            {rails.map(r => (
+              <RailRow
+                key={r.key}
+                title={r.title}
+                items={r.items}
+                onShowAll={() => applyGridAction(r.gridAction)}
+              />
+            ))}
+            <div style={{
+              borderTop: '1px solid rgba(255,255,255,0.06)',
+              paddingTop: 16, marginTop: 4,
+            }}>
+              <h2 style={{
+                fontSize: 10, fontWeight: 700, letterSpacing: '0.14em',
+                textTransform: 'uppercase', color: 'var(--text-faint)', margin: 0,
+              }}>
+                Tüm Yerli {tab === 'filmler' ? 'Filmler' : 'Diziler'}
+              </h2>
+            </div>
+          </div>
+        )}
+        {showRails && railsLoading && rails.length === 0 && (
+          <p style={{ color: 'var(--text-faint)', fontSize: 11, marginBottom: 18 }}>
+            Raflar hazırlanıyor…
+          </p>
+        )}
+
         {/* Aktif filtre özeti */}
-        {!loading[tab] && data[tab].length > 0 && (
+        {!loading[dk] && data[dk].length > 0 && (
           <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ color: 'var(--text-faint)', fontSize: 10.5 }}>
               {visibleFiltered.length} / {filtered.length} içerik
@@ -420,7 +518,7 @@ export default function App() {
             </button>
 
             {/* Enrichment yükleme ipucu */}
-            {trOnly && enriching[tab] && (
+            {trOnly && enriching[dk] && (
               <span className="enrichment-hint">
                 <Loader size={9} className="spin" /> yayın bilgileri yükleniyor…
               </span>
@@ -429,7 +527,7 @@ export default function App() {
         )}
 
         {/* Hata bandı */}
-        {error[tab] && !loading[tab] && (
+        {error[dk] && !loading[dk] && (
           <div style={{
             background: 'rgba(229,9,20,0.08)', border: '1px solid rgba(229,9,20,0.2)',
             borderRadius: 10, padding: '16px 20px', marginBottom: 16,
@@ -443,7 +541,7 @@ export default function App() {
                 İçerik sunucusundan yüklenemedi. Lütfen tekrar deneyin.
               </p>
             </div>
-            <button onClick={() => retry(tab)} style={{
+            <button onClick={() => retry(dk)} style={{
               background: 'rgba(229,9,20,0.15)', border: '1px solid rgba(229,9,20,0.35)',
               borderRadius: 7, padding: '7px 16px', color: '#ff7070',
               fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
@@ -455,15 +553,15 @@ export default function App() {
         )}
 
         {/* Yükleme iskeletleri */}
-        {loading[tab] && <SkeletonGrid count={8} />}
+        {loading[dk] && <SkeletonGrid count={8} />}
 
         {/* Boş durum */}
-        {!loading[tab] && filtered.length === 0 && !error[tab] && (
+        {!loading[dk] && filtered.length === 0 && !error[dk] && (
           <div style={{ textAlign: 'center', padding: '70px 20px', color: 'var(--text-faint)' }}>
             <div style={{ fontSize: 48, marginBottom: 14, opacity: 0.6 }}>
               {tab === 'trend' ? '🔥' : tab === 'filmler' ? '🎬' : '📺'}
             </div>
-            {data[tab].length === 0 ? (
+            {data[dk].length === 0 ? (
               <p style={{ fontSize: 13 }}>Yükleniyor…</p>
             ) : (
               <>
@@ -482,7 +580,7 @@ export default function App() {
         )}
 
         {/* İçerik ızgarası */}
-        {!loading[tab] && visibleFiltered.length > 0 && (
+        {!loading[dk] && visibleFiltered.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 13 }}>
             {visibleFiltered.map((item, i) => (
               <div key={`${tab}-${item.title}-${i}`} className="card-enter"
@@ -494,23 +592,23 @@ export default function App() {
         )}
 
         {/* ── DAHA ÇOK GÖSTER ────────────────────────────────────────────── */}
-        {!loading[tab] && visibleFiltered.length > 0 && canShowMore && (
+        {!loading[dk] && visibleFiltered.length > 0 && canShowMore && (
           <div style={{ textAlign: 'center', marginTop: 24 }}>
             <button
-              onClick={() => showMore(tab)}
-              disabled={loadingMore[tab]}
+              onClick={() => showMore(dk)}
+              disabled={loadingMore[dk]}
               style={{
                 background: 'rgba(var(--accent-rgb),0.08)',
                 border: `1px solid rgba(var(--accent-rgb),0.3)`,
                 borderRadius: 10, padding: '10px 28px',
                 color: 'var(--accent)', fontSize: 12.5, fontWeight: 600,
-                cursor: loadingMore[tab] ? 'not-allowed' : 'pointer',
+                cursor: loadingMore[dk] ? 'not-allowed' : 'pointer',
                 fontFamily: 'inherit',
                 display: 'inline-flex', alignItems: 'center', gap: 7,
-                transition: 'all 0.15s', opacity: loadingMore[tab] ? 0.6 : 1,
+                transition: 'all 0.15s', opacity: loadingMore[dk] ? 0.6 : 1,
               }}
             >
-              {loadingMore[tab]
+              {loadingMore[dk]
                 ? <><Loader size={13} className="spin" /> Yükleniyor…</>
                 : <><ChevronDown size={13} /> Daha Çok Göster</>
               }
@@ -522,9 +620,9 @@ export default function App() {
         )}
 
         {/* Limit bilgisi */}
-        {!loading[tab] && !hasMore[tab] && data[tab].length >= contentCap && (
+        {!loading[dk] && !hasMore[dk] && data[dk].length >= contentCap && (
           <p style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 10, marginTop: 20 }}>
-            Tüm içerikler yüklendi · {data[tab].length} içerik
+            Tüm içerikler yüklendi · {data[dk].length} içerik
           </p>
         )}
         </>

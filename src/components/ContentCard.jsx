@@ -4,10 +4,12 @@ import PosterImg from './PosterImg.jsx'
 import DetailOverlay from './DetailOverlay.jsx'
 import FavoriteButton from './FavoriteButton.jsx'
 import TrailerEmbed from './TrailerEmbed.jsx'
-import { PLATFORMS } from '../constants/index.js'
+import { ALL_PLATFORMS } from '../constants/index.js'
 import { isValidTmdbRef, isValidTmdbId, mapTrProviders } from '../lib/tmdb.js'
 
-const PLAT_MAP = Object.fromEntries(PLATFORMS.map(p => [p.id, p]))
+// Rozet çözümlemesi küresel + yerli tüm sağlayıcıları kapsar; aksi halde
+// puhutv/TOD gibi yerli platformlar gri "PUH" fallback'ine düşerdi.
+const PLAT_MAP = Object.fromEntries(ALL_PLATFORMS.map(p => [p.id, p]))
 
 const TMDB_KEY = import.meta.env.VITE_TMDB_KEY
 
@@ -554,6 +556,9 @@ export default function ContentCard({ item, isTrend }) {
             )}
 
             <div style={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* Yerli yapım etiketi — platform rozetlerinden ÖNCE gelir:
+                  köken yapımın kalıcı özelliğidir, platform ise değişebilir. */}
+              {item.isYerli && <span className="tr-tag">TR YAPIMI</span>}
               {(item.platforms || []).map(p => {
                 const plat = PLAT_MAP[p]
                 return (
