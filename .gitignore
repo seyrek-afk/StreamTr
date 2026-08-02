@@ -5,3 +5,9 @@ coverage/
 .env.local
 .DS_Store
 *.log
+
+# SDLC ajan çıktıları ve yerel ekran görüntüleri — repoya girmez
+agent-workspace/
+*.jpg
+*.jpeg
+*.png

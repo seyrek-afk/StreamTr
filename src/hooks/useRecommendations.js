@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ALL_CONTENT } from '../data/mockData.js'
 import { favKey } from '../contexts/FavoritesContext.jsx'
+import { isValidTmdbRef } from '../lib/tmdb.js'
 
 const TMDB_BASE = 'https://api.themoviedb.org/3'
 const API_KEY   = import.meta.env.VITE_TMDB_KEY
@@ -36,6 +37,7 @@ function tmdbToRecCard(r) {
   const voteAvg = r.vote_average || 0
   return {
     title:      r.title || r.name,
+    originalTitle: isMovie ? r.original_title : r.original_name,
     year:       (r.release_date || r.first_air_date || '').slice(0, 4),
     type:       isMovie ? 'film' : 'dizi',
     genres:     (r.genre_ids || []).map(id => TMDB_GENRES[id]).filter(Boolean),
@@ -44,6 +46,11 @@ function tmdbToRecCard(r) {
     letterboxdScore:     estimateLB(voteAvg),
     posterPath: r.poster_path,
     description: r.overview || '',
+    // Diğer sekmelerle aynı kart şeması — ContentCard tüm zengin bölümleri açabilsin
+    platforms:  [],
+    cast:       [],
+    reviews:    [],
+    duration:   null,
     _tmdbId:    r.id,
     _mediaType: mediaType,
     _voteAvg:   voteAvg,
@@ -82,7 +89,9 @@ async function tmdbRecommendations(favorites, signal) {
   // 1) Her favori için tmdbId/mediaType belirle (yoksa search/multi ile çöz)
   const resolved = await Promise.all(
     favorites.map(async (f) => {
-      if (f.tmdbId && f.mediaType) return { id: f.tmdbId, mediaType: f.mediaType }
+      // Saklanan favoriden gelen tmdbId/mediaType doğrudan TMDB URL'sine girer →
+      // path-injection'ı önlemek için katı doğrula. Geçersizse search/multi ile çöz.
+      if (isValidTmdbRef(f.tmdbId, f.mediaType)) return { id: f.tmdbId, mediaType: f.mediaType }
       try {
         const res = await fetch(
           `${TMDB_BASE}/search/multi?query=${encodeURIComponent((f.title || '').slice(0, 200))}` +

@@ -1,8 +1,9 @@
 import { X } from 'lucide-react'
 import { GENRES } from '../constants/index.js'
+import MediaTypeFilter from './MediaTypeFilter.jsx'
 
-// Tek tip filtre çipi — tür ve yıl gruplarında ortak görünüm (tema değişkenleriyle).
-function chipStyle(active) {
+// Tek tip filtre çipi — tür, yıl ve dizi/film gruplarında ortak görünüm (tema değişkenleriyle).
+export function chipStyle(active) {
   return {
     background: active ? 'rgba(var(--accent-rgb),0.12)' : 'rgba(255,255,255,0.035)',
     border: `1px solid ${active ? 'rgba(var(--accent-rgb),0.45)' : 'var(--border)'}`,
@@ -14,13 +15,24 @@ function chipStyle(active) {
   }
 }
 
-export default function GenreFilter({ selectedGenres, onToggle, onClear, showClear, yearBuckets = [], selectedYears = [], onYearToggle, onYearClear }) {
+export default function GenreFilter({ selectedGenres, onToggle, onClear, showClear, yearBuckets = [], selectedYears = [], onYearToggle, onYearClear, mediaType, onMediaTypeChange }) {
   return (
     <div style={{
       padding: '9px 20px',
       display: 'flex', gap: 5, overflowX: 'auto', alignItems: 'center',
       borderBottom: '1px solid rgba(255,255,255,0.038)',
     }}>
+      {/* Dizi/Film filtresi — yalnızca karışık içerikli sekmelerde (Sosyal Trend) */}
+      {onMediaTypeChange && (
+        <>
+          <MediaTypeFilter value={mediaType} onChange={onMediaTypeChange} />
+          <span style={{
+            width: 1, alignSelf: 'stretch', margin: '1px 4px',
+            background: 'rgba(255,255,255,0.08)', flexShrink: 0,
+          }} aria-hidden="true" />
+        </>
+      )}
+
       {/* Yıl filtresi — çoklu seçimli grup çipleri (native select yerine, tema uyumlu) */}
       {onYearToggle && yearBuckets.length > 0 && (
         <>

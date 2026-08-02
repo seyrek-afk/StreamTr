@@ -7,6 +7,7 @@ import { useRecommendations } from './hooks/useRecommendations.js'
 import { useFavorites } from './contexts/FavoritesContext.jsx'
 import ContentCard  from './components/ContentCard.jsx'
 import GenreFilter  from './components/GenreFilter.jsx'
+import MediaTypeFilter from './components/MediaTypeFilter.jsx'
 import SkeletonGrid from './components/SkeletonGrid.jsx'
 import ThemePicker  from './components/ThemePicker.jsx'
 import SearchBar    from './components/SearchBar.jsx'
@@ -45,6 +46,7 @@ export default function App() {
   const [trOnly,          setTrOnly]         = useState(false)
   const [sortOpen,        setSortOpen]       = useState(false)
   const [selectedYears,   setSelectedYears]  = useState([])  // seçili yıl-grubu key'leri (çoklu)
+  const [mediaType,       setMediaType]      = useState('all') // 'all' | 'dizi' | 'film' (trend + sana özel)
 
   const {
     data, loading, loadingMore, error,
@@ -83,8 +85,9 @@ export default function App() {
     setTrOnly(false)
     setSortBy('default')
     setSelectedYears([])
+    setMediaType('all')
   }
-  const hasActiveFilter = selectedGenres.length > 0 || platform !== 'Tümü' || trOnly || sortBy !== 'default' || selectedYears.length > 0
+  const hasActiveFilter = selectedGenres.length > 0 || platform !== 'Tümü' || trOnly || sortBy !== 'default' || selectedYears.length > 0 || mediaType !== 'all'
 
   const effectiveSortBy = (sortBy === 'social' && tab !== 'trend') ? 'default' : sortBy
 
@@ -95,7 +98,16 @@ export default function App() {
   // Sekme/veri değişince geçersiz kalan grup seçimlerini ayıkla
   const activeYearKeys = selectedYears.filter(k => yearBuckets.some(b => b.key === k))
 
+  // Dizi/Film filtresi — tip bilgisi olmayan öğe (eski favori vb.) her seçimde geçer
+  const mediaOk = (item) => mediaType === 'all' || !item.type || item.type === mediaType
+
+  // Sana Özel sekmesi: favoriler + öneriler aynı dizi/film filtresinden geçer
+  const favoritesFiltered       = favorites.filter(mediaOk)
+  const recommendationsFiltered = recommendations.filter(mediaOk)
+
   const filtered = [...(data[tab] || [])].filter(item => {
+    // İçerik tipi yalnız trend'de karışıktır; diziler/filmler sekmeleri tek tiptir
+    const mOk = tab !== 'trend' || mediaOk(item)
     const gOk = selectedGenres.length === 0 ||
       selectedGenres.some(g => (item.genres || []).includes(g))
     const pOk = platform === 'Tümü' ||
@@ -109,7 +121,7 @@ export default function App() {
     const yOk = activeYearKeys.length === 0 ||
       (Number.isFinite(iy) && yearBuckets.some(b =>
         activeYearKeys.includes(b.key) && iy >= b.min && iy <= b.max))
-    return gOk && pOk && tOk && yOk
+    return mOk && gOk && pOk && tOk && yOk
   }).sort((a, b) => {
     if (effectiveSortBy === 'imdb') return (b.imdbScore || 0) - (a.imdbScore || 0)
     if (effectiveSortBy === 'year') return (Number(b.year) || 0) - (Number(a.year) || 0)
@@ -222,7 +234,20 @@ export default function App() {
           selectedYears={activeYearKeys}
           onYearToggle={toggleYear}
           onYearClear={() => setSelectedYears([])}
+          mediaType={mediaType}
+          onMediaTypeChange={tab === 'trend' ? setMediaType : undefined}
         />
+      )}
+
+      {/* ── SANA ÖZEL: DİZİ/FİLM FİLTRESİ ─────────────────────────────────── */}
+      {isSanaOzel && (
+        <div style={{
+          padding: '9px 20px',
+          display: 'flex', gap: 5, overflowX: 'auto', alignItems: 'center',
+          borderBottom: '1px solid rgba(255,255,255,0.038)',
+        }}>
+          <MediaTypeFilter value={mediaType} onChange={setMediaType} />
+        </div>
       )}
 
       {/* ── ARAMA ÇUBUĞU ──────────────────────────────────────────────────── */}
@@ -237,7 +262,7 @@ export default function App() {
         <>
           {/* ── FAVORİLERİM ──────────────────────────────────────────────── */}
           <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: '4px 0 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
-            ⭐ Favorilerim <span style={{ color: 'var(--text-faint)', fontSize: 11, fontWeight: 500 }}>({favorites.length})</span>
+            ⭐ Favorilerim <span style={{ color: 'var(--text-faint)', fontSize: 11, fontWeight: 500 }}>({favoritesFiltered.length}{mediaType !== 'all' ? ` / ${favorites.length}` : ''})</span>
           </h2>
 
           {favorites.length === 0 ? (
@@ -248,9 +273,13 @@ export default function App() {
                 Kartlardaki ⭐ simgesine dokunarak beğendiklerinizi işaretleyin — size özel öneriler burada çıkar.
               </p>
             </div>
+          ) : favoritesFiltered.length === 0 ? (
+            <p style={{ color: 'var(--text-faint)', fontSize: 12, padding: '14px 0' }}>
+              Bu filtreye uygun favori yok.
+            </p>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 13 }}>
-              {favorites.map((item, i) => (
+              {favoritesFiltered.map((item, i) => (
                 <div key={`fav-${item.key}`} className="card-enter"
                   style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}>
                   <ContentCard item={item} isTrend={false} />
@@ -275,9 +304,15 @@ export default function App() {
                 </p>
               )}
 
-              {recommendations.length > 0 && (
+              {recommendations.length > 0 && recommendationsFiltered.length === 0 && (
+                <p style={{ color: 'var(--text-faint)', fontSize: 12, padding: '14px 0' }}>
+                  Bu filtreye uygun öneri yok.
+                </p>
+              )}
+
+              {recommendationsFiltered.length > 0 && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 13 }}>
-                  {recommendations.map((item, i) => (
+                  {recommendationsFiltered.map((item, i) => (
                     <div key={`rec-${item._tmdbId || item.title}-${i}`} className="card-enter"
                       style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}>
                       <ContentCard item={item} isTrend={false} />
