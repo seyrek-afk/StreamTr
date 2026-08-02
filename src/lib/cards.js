@@ -4,7 +4,7 @@
 // tüm zengin bölümler (oyuncular, yorumlar, platformlar) aynı alanlara dayanır,
 // iki ayrı kopya zamanla birbirinden kayar.
 
-import { yerliScore } from './yerli.js'
+import { weightedScore } from './discover.js'
 
 // ── Tür ID → Türkçe ──────────────────────────────────────────────────────────
 export const GENRE_MAP = {
@@ -102,8 +102,8 @@ export function tmdbToTrendCard(item, rank) {
     releaseDate:   dateStr,
     _tmdbId:       item.id,
     _mediaType:    item.media_type,
-    _voteCount:    item.vote_count || 0,
-    _yerliScore:   yerliScore(item.vote_average, item.vote_count, item.media_type),
+    _voteCount:     item.vote_count || 0,
+    _weightedScore: weightedScore(item.vote_average, item.vote_count, item.media_type),
 
     popularityCriteria: [
       {
@@ -139,8 +139,11 @@ export function tmdbToTrendCard(item, rank) {
 }
 
 // ── TMDB liste/discover öğesi → kart ─────────────────────────────────────────
-// isYerli: true ise kartta 🇹🇷 etiketi gösterilir ve Yerli Skor sıralamayı besler.
-export function tmdbToListCard(item, mediaType, isYerli = false) {
+// country: ülke kodu (ör. 'TR', 'KR') — verilirse kartta köken etiketi gösterilir.
+// poolC:   havuz ortalaması; ağırlıklı puanı besler. Ülke havuzları birbirinden
+//          farklı olduğu için (TR dizi 7.61 / film 6.25) çağıran taraf yüklenen
+//          kümenin gerçek ortalamasını geçer, yoksa yedek sabit kullanılır.
+export function tmdbToListCard(item, mediaType, country = null, poolC = null) {
   const isMovie = mediaType === 'movie'
   const voteAvg = item.vote_average || 0
   const dateStr = isMovie ? item.release_date : item.first_air_date
@@ -159,10 +162,10 @@ export function tmdbToListCard(item, mediaType, isYerli = false) {
     cast:          [],
     reviews:       [],
     duration:      null,
-    _tmdbId:       item.id,
-    _mediaType:    mediaType,
-    _voteCount:    item.vote_count || 0,
-    _yerliScore:   yerliScore(voteAvg, item.vote_count, mediaType),
-    isYerli:       Boolean(isYerli),
+    _tmdbId:        item.id,
+    _mediaType:     mediaType,
+    _voteCount:     item.vote_count || 0,
+    _weightedScore: weightedScore(voteAvg, item.vote_count, mediaType, poolC),
+    originCountry:  country || null,
   }
 }

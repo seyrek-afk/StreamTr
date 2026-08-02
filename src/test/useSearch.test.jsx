@@ -97,7 +97,12 @@ describe('useSearch', () => {
 
     await flushAll()
 
-    expect(global.fetch).toHaveBeenCalledTimes(1)
+    // Arama artık İKİ dilde paralel yapılır (tr-TR + en-US): TMDB dile göre
+    // farklı sonuç kümesi döndürüyor ("Umut" tr'de Yeni Umut, en'de Hope) ve
+    // tek dille aramak gerçekten kayıp veriyordu.
+    expect(global.fetch).toHaveBeenCalledTimes(2)
+    const langs = global.fetch.mock.calls.map(c => new URL(c[0]).searchParams.get('language')).sort()
+    expect(langs).toEqual(['en-US', 'tr-TR'])
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('inception'),
       expect.any(Object)
@@ -118,9 +123,10 @@ describe('useSearch', () => {
 
     await flushAll()
 
-    // Only the last query fires (previous are cancelled by debounce)
+    // Only the last query fires (previous are cancelled by debounce).
+    // Tek sorgu = iki istek (tr-TR + en-US) — debounce hâlâ tek TURA indiriyor.
     expect(result.current.query).toBe('abcd')
-    expect(global.fetch).toHaveBeenCalledTimes(1)
+    expect(global.fetch).toHaveBeenCalledTimes(2)
   })
 
   it('handleQueryChange populates suggestions from TMDB response', async () => {

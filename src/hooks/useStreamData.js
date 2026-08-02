@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react'
 import { MOCK_DIZILER, MOCK_FILMLER, MOCK_TREND } from '../data/mockData.js'
 import { fetchTrPlatforms } from '../lib/tmdb.js'
 import { tmdbToListCard, tmdbToTrendCard } from '../lib/cards.js'
-import { discoverUrl, yerliListParams } from '../lib/yerli.js'
+import { discoverUrl, listParams, poolMean, weightedScore } from '../lib/discover.js'
 
 const TMDB_BASE = 'https://api.themoviedb.org/3'
 const TMDB_KEY  = import.meta.env.VITE_TMDB_KEY
@@ -14,27 +14,32 @@ const PAGE_SIZE = 30
 const MAX_ITEMS = 250
 
 // ── Veri anahtarları ─────────────────────────────────────────────────────────
-// Durum, sekme değil (mercek, sekme) İKİLİSİ ile anahtarlanır. Aksi halde mercek
-// değiştirince aynı gözde farklı veri kümesi tutulur ve geri dönüşte yeniden
-// çekmek gerekirdi; bu anahtarlama sayesinde iki mercek de kendi önbelleğini korur.
-export const DATA_KEYS = [
-  'diziler', 'filmler', 'trend',
-  'yerli:diziler', 'yerli:filmler', 'yerli:trend',
-]
-
-// Mercek + sekme → veri anahtarı. App bu fonksiyonu kullanır.
-export function dataKey(lens, tab) {
-  return lens === 'yerli' ? `yerli:${tab}` : tab
+// Durum, sekme değil (ülke, sekme) İKİLİSİ ile anahtarlanır: "diziler" (dünya),
+// "TR:diziler", "KR:filmler"… Aksi halde mercek değiştirince aynı gözde farklı
+// veri kümesi tutulur ve geri dönüşte yeniden çekmek gerekirdi; bu anahtarlama
+// sayesinde her mercek kendi önbelleğini korur.
+//
+// Ülke kümesi çalışma anında seçildiği için anahtarlar önceden üretilemez;
+// durum haritaları seyrek tutulur ve okuma tarafında varsayılana düşülür.
+export function dataKey(country, tab) {
+  return country ? `${country}:${tab}` : tab
 }
 
-// diziler/filmler için liste uç noktaları.
-// Dünya: TMDB top_rated (Bayesian eşikli, küresel).
-// Yerli: /discover + with_origin_country=TR (bkz. lib/yerli.js gerekçesi).
-const LIST_ENDPOINT = {
-  'diziler':       { path: 'tv/top_rated',    mediaType: 'tv'    },
-  'filmler':       { path: 'movie/top_rated', mediaType: 'movie' },
-  'yerli:diziler': { mediaType: 'tv',    yerli: true },
-  'yerli:filmler': { mediaType: 'movie', yerli: true },
+// Anahtarı (ülke, sekme) ikilisine ayırır.
+export function parseKey(key) {
+  const i = key.indexOf(':')
+  return i === -1
+    ? { country: null, tab: key }
+    : { country: key.slice(0, i), tab: key.slice(i + 1) }
+}
+
+// Sekme → medya türü. Dünya modunda top_rated yolu da buradan türetilir.
+const TAB_MEDIA = { diziler: 'tv', filmler: 'movie' }
+const WORLD_PATH = { diziler: 'tv/top_rated', filmler: 'movie/top_rated' }
+
+// Bu anahtar sayfalanabilir bir liste mi (trend değil)?
+function isListKey(key) {
+  return Boolean(TAB_MEDIA[parseKey(key).tab])
 }
 
 // ── TMDB haftalık trend → 5 sayfa ≈ 100 içerik ──────────────────────────────
@@ -63,19 +68,19 @@ async function loadTrendFromTMDB() {
   return items.slice(0, MAX_ITEMS).map((item, i) => tmdbToTrendCard(item, i + 1))
 }
 
-// ── Yerli trend → TR kökenli dizi + film, popülerliğe göre ──────────────────
-// trending/all/week küreseldir; Türk yapımları oraya ancak istisnai olarak girer.
-// Bu yüzden yerli trend, discover'ın popülerlik sıralamasından türetilir.
+// ── Ülke trendi → o ülke kökenli dizi + film, popülerliğe göre ──────────────
+// trending/all/week küreseldir; yerel yapımlar oraya ancak istisnai olarak girer.
+// Bu yüzden ülke trendi, discover'ın popülerlik sıralamasından türetilir.
 // Dizi ve film ayrı uçlardan gelir (discover karışık tür döndürmez), birleştirilip
 // popülerliğe göre yeniden sıralanır — sıra numarası ancak birleşimden sonra anlamlı.
-async function loadYerliTrend() {
+async function loadCountryTrend(country) {
   const PAGES = 3
   const jobs = []
   for (const mediaType of ['tv', 'movie']) {
     for (let p = 1; p <= PAGES; p++) {
       jobs.push(
         fetch(
-          discoverUrl(mediaType, { page: p, apiKey: TMDB_KEY, sort_by: 'popularity.desc' }),
+          discoverUrl(mediaType, { country, page: p, apiKey: TMDB_KEY, sort_by: 'popularity.desc' }),
           { signal: AbortSignal.timeout(10_000) }
         )
           .then(r => {
@@ -92,31 +97,46 @@ async function loadYerliTrend() {
   for (const s of settled) {
     if (s.status === 'fulfilled') items.push(...s.value)
   }
-  if (items.length === 0) throw new Error('Yerli trend verisi alınamadı')
+  if (items.length === 0) throw new Error('Ülke trend verisi alınamadı')
 
   items.sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
   return items.slice(0, MAX_ITEMS).map((item, i) => tmdbToTrendCard(item, i + 1))
 }
 
-// ── Tek sayfa liste getir (dünya top_rated veya yerli discover) ─────────────
-async function loadListPage(key, page) {
-  const ep = LIST_ENDPOINT[key]
-  const url = ep.yerli
-    ? discoverUrl(ep.mediaType, { page, apiKey: TMDB_KEY, ...yerliListParams() })
-    : `${TMDB_BASE}/${ep.path}?language=tr-TR&page=${page}&api_key=${TMDB_KEY}`
+// ── Tek sayfa liste getir (dünya top_rated veya ülke discover) ─────────────
+// poolC: havuz ortalaması; ağırlıklı puanı besler (ülkeye göre değişir).
+async function loadListPage(key, page, poolC = null) {
+  const { country, tab } = parseKey(key)
+  const mediaType = TAB_MEDIA[tab]
+  const url = country
+    ? discoverUrl(mediaType, { country, page, apiKey: TMDB_KEY, ...listParams() })
+    : `${TMDB_BASE}/${WORLD_PATH[tab]}?language=tr-TR&page=${page}&api_key=${TMDB_KEY}`
 
   const res = await fetch(url, { signal: AbortSignal.timeout(10_000) })
   if (!res.ok) throw new Error(`TMDB ${res.status}`)
   const json = await res.json()
-  const items = (json.results || []).map(r => tmdbToListCard(r, ep.mediaType, Boolean(ep.yerli)))
+  const raw = json.results || []
+  // Havuz ortalaması dışarıdan gelmediyse bu sayfadan tahmin et; yeterli örnek
+  // yoksa poolMean null döner ve ağırlıklı puan yedek sabite düşer.
+  const c = poolC ?? poolMean(raw)
+  const items = raw.map(r => tmdbToListCard(r, mediaType, country, c))
   return { items, totalPages: json.total_pages || page }
 }
 
-// ── Tüm veri anahtarları için başlangıç durumu ──────────────────────────────
-function emptyTab(val) {
-  const out = {}
-  for (const k of DATA_KEYS) out[k] = val
-  return out
+// ── Seyrek durum haritaları ─────────────────────────────────────────────────
+// Ülke kümesi çalışma anında büyüdüğü için anahtarlar önceden üretilemez.
+// Okuma tarafı varsayılana düşer (bkz. withDefault).
+function emptyTab() {
+  return {}
+}
+
+// Seyrek haritayı "her bilinmeyen anahtar için varsayılan" davranışına sarar.
+// Böylece App `data['KR:diziler']` gibi henüz hiç yüklenmemiş bir anahtarı
+// okuduğunda undefined yerine boş dizi görür ve `.length` patlamaz.
+function withDefault(obj, dflt) {
+  return new Proxy(obj, {
+    get: (t, k) => (k in t ? t[k] : dflt),
+  })
 }
 
 const MOCK_SOURCE = {
@@ -147,9 +167,13 @@ export function useStreamData() {
   const enrichAbortRef = useRef(emptyTab(null))
 
   // Bu tabdan ağ üzerinden DAHA fazla içerik çekilebilir mi?
+  // Seyrek haritalarda imleçler henüz yoksa varsayılana düşülür (0 / Infinity),
+  // aksi halde `undefined < undefined` false verip sayfalamayı sessizce kapatır.
   const networkMore = (tab, total) => {
-    if (!TMDB_KEY || !LIST_ENDPOINT[tab]) return false
-    return total < MAX_ITEMS && pageRef.current[tab] < totalPagesRef.current[tab]
+    if (!TMDB_KEY || !isListKey(tab)) return false
+    const page  = pageRef.current[tab] ?? 0
+    const total_ = totalPagesRef.current[tab] ?? Infinity
+    return total < MAX_ITEMS && page < total_
   }
 
   // Arka planda kartların platforms alanını doldurur.
@@ -254,15 +278,17 @@ export function useStreamData() {
     try {
       let items
 
-      if (tab === 'trend' || tab === 'yerli:trend') {
+      const { country, tab: baseTab } = parseKey(tab)
+
+      if (baseTab === 'trend') {
         if (TMDB_KEY) {
-          items = tab === 'trend' ? await loadTrendFromTMDB() : await loadYerliTrend()
+          items = country ? await loadCountryTrend(country) : await loadTrendFromTMDB()
         } else {
           // TMDB anahtarı yoksa mock veriye dön
           await new Promise(r => setTimeout(r, 400))
           items = MOCK_TREND
         }
-      } else if (LIST_ENDPOINT[tab] && TMDB_KEY) {
+      } else if (isListKey(tab) && TMDB_KEY) {
         // diziler / filmler: ilk sayfaları PARALEL çek (hızlı, zengin ilk görünüm).
         // Bir sayfa hata verirse diğerleri yine de gösterilir.
         pageRef.current[tab]       = 0
@@ -284,10 +310,23 @@ export function useStreamData() {
         pageRef.current[tab]       = Math.min(INITIAL_PAGES, tp)
         totalPagesRef.current[tab] = tp
         items = acc.slice(0, MAX_ITEMS)
+
+        // Havuz ortalaması ancak tüm sayfalar geldikten sonra güvenilir olur;
+        // sayfa başına hesaplanan ortalama 20 örnekle gürültülüdür. Ülke havuzları
+        // birbirinden farklı (TR dizi 7.61 / film 6.25) olduğu için ağırlıklı
+        // puanlar burada TAM küme ortalamasıyla yeniden hesaplanır.
+        const c = poolMean(items, 40)
+        if (c && country) {
+          const mediaType = TAB_MEDIA[baseTab]
+          items = items.map(it => ({
+            ...it,
+            _weightedScore: weightedScore(it.imdbScore, it._voteCount, mediaType, c),
+          }))
+        }
       } else {
         // TMDB anahtarı yoksa mock veriye dön
         await new Promise(r => setTimeout(r, 400))
-        items = MOCK_SOURCE[tab] || MOCK_SOURCE[tab.replace('yerli:', '')] || []
+        items = MOCK_SOURCE[baseTab] || []
       }
 
       setData(p    => ({ ...p, [tab]: items }))
@@ -309,8 +348,10 @@ export function useStreamData() {
   }
 
   const showMore = async (tab) => {
-    const total   = data[tab].length
-    const desired = Math.min(visible[tab] + PAGE_SIZE, MAX_ITEMS)
+    // Seyrek harita: henüz yüklenmemiş anahtarda varsayılana düş.
+    const current = data[tab] || []
+    const total   = current.length
+    const desired = Math.min((visible[tab] ?? PAGE_SIZE) + PAGE_SIZE, MAX_ITEMS)
 
     // Yeterli yüklü veri var veya ağdan çekilemiyor → sadece görünürü artır
     if (desired <= total || !networkMore(tab, total)) {
@@ -325,10 +366,10 @@ export function useStreamData() {
     // Ağdan daha fazla içerik getir (250 sınırına kadar)
     setLoadingMore(p => ({ ...p, [tab]: true }))
     try {
-      let acc = data[tab].slice()
+      let acc = current.slice()
       while (acc.length < desired && acc.length < MAX_ITEMS &&
-             pageRef.current[tab] < totalPagesRef.current[tab]) {
-        const { items: pageItems, totalPages } = await loadListPage(tab, pageRef.current[tab] + 1)
+             (pageRef.current[tab] ?? 0) < (totalPagesRef.current[tab] ?? Infinity)) {
+        const { items: pageItems, totalPages } = await loadListPage(tab, (pageRef.current[tab] ?? 0) + 1)
         pageRef.current[tab]      += 1
         totalPagesRef.current[tab] = totalPages
         acc.push(...pageItems)
@@ -353,5 +394,14 @@ export function useStreamData() {
     fetchTab(tab, true)
   }
 
-  return { data, loading, loadingMore, error, visible, hasMore, enriching, fetchTab, showMore, retry }
+  return {
+    data:        withDefault(data,        []),
+    loading:     withDefault(loading,     false),
+    loadingMore: withDefault(loadingMore, false),
+    error:       withDefault(error,       null),
+    visible:     withDefault(visible,     PAGE_SIZE),
+    hasMore:     withDefault(hasMore,     true),
+    enriching:   withDefault(enriching,   false),
+    fetchTab, showMore, retry,
+  }
 }

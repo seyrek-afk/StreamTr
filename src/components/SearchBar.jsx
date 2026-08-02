@@ -1,10 +1,11 @@
 import { useRef, useEffect } from 'react'
 import { Search, X, Loader, ChevronRight, RefreshCw } from 'lucide-react'
 import ContentCard from './ContentCard.jsx'
+import { shouldShowOriginal } from '../lib/searchMatch.js'
 
 export default function SearchBar({ search }) {
   const {
-    query, suggestions, suggesting,
+    query, suggestions, suggesting, correctedFrom,
     selectedItem, detailLoading, detailError,
     handleQueryChange, selectSuggestion, retryDetail, clearSearch,
     clearSuggestions, noApiKey,
@@ -30,16 +31,9 @@ export default function SearchBar({ search }) {
   const showSpinner     = suggesting || detailLoading
 
   return (
-    <section style={{ padding: '10px 20px 14px' }}>
-      <p style={{
-        color: 'var(--text-faint)', fontSize: 9.5, fontWeight: 700,
-        letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 7,
-      }}>
-        Film / Dizi Ara
-        <span style={{ marginLeft: 8, color: 'rgba(var(--accent-rgb),0.6)', fontWeight: 500, letterSpacing: 0 }}>
-          — Tüm dünya filmleri
-        </span>
-      </p>
+    <section className="searchbar">
+      {/* Başlık etiketi ("FİLM / DİZİ ARA") kaldırıldı: yer tutucu metin zaten ne
+          yapılacağını söylüyor, etiket yalnız dikey yer kaplıyordu. */}
 
       {/* API anahtarı yoksa uyarı */}
       {noApiKey && (
@@ -100,6 +94,15 @@ export default function SearchBar({ search }) {
           )}
         </div>
 
+        {/* Yazım hatası kurtarma bildirimi — sessizce başka bir şey aramak yerine
+            ne yaptığımızı söyler. */}
+        {correctedFrom && showSuggestions && (
+          <p className="searchbar-note">
+            "{query}" için sonuç yok — <strong style={{ color: 'var(--text-muted)' }}>
+            "{correctedFrom}"</strong> sonuçları gösteriliyor.
+          </p>
+        )}
+
         {/* Öneri Açılır Listesi */}
         {showSuggestions && (
           <div
@@ -131,8 +134,19 @@ export default function SearchBar({ search }) {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                   <Search size={10} color="var(--text-faint)" style={{ flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {s.title}
+                  <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 1 }}>
+                    <span style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {s.title}
+                    </span>
+                    {/* Orijinal ad — TMDB tr-TR'de "Inception"ı "Başlangıç" olarak
+                        döndürür; yalnız yerelleştirilmiş adı göstermek kullanıcının
+                        aradığı yapımı tanımasını engelliyordu. */}
+                    {shouldShowOriginal(s.title, s.originalTitle) && (
+                      <span style={{
+                        fontSize: 9.5, color: 'var(--text-faint)',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>{s.originalTitle}</span>
+                    )}
                   </span>
                   {s.year && (
                     <span style={{ fontSize: 9.5, color: 'var(--text-faint)', flexShrink: 0 }}>{s.year}</span>
