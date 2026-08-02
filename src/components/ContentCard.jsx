@@ -4,10 +4,12 @@ import PosterImg from './PosterImg.jsx'
 import DetailOverlay from './DetailOverlay.jsx'
 import FavoriteButton from './FavoriteButton.jsx'
 import TrailerEmbed from './TrailerEmbed.jsx'
-import { PLATFORMS } from '../constants/index.js'
+import { ALL_PLATFORMS } from '../constants/index.js'
 import { isValidTmdbRef, isValidTmdbId, mapTrProviders } from '../lib/tmdb.js'
 
-const PLAT_MAP = Object.fromEntries(PLATFORMS.map(p => [p.id, p]))
+// Rozet çözümlemesi küresel + yerli tüm sağlayıcıları kapsar; aksi halde
+// puhutv/TOD gibi yerli platformlar gri "PUH" fallback'ine düşerdi.
+const PLAT_MAP = Object.fromEntries(ALL_PLATFORMS.map(p => [p.id, p]))
 
 const TMDB_KEY = import.meta.env.VITE_TMDB_KEY
 
@@ -433,7 +435,9 @@ export default function ContentCard({ item, isTrend }) {
 
   const hasCast     = Array.isArray(cast) && cast.length > 0
   const hasReviews  = Array.isArray(reviews) && reviews.length > 0
-  const hasCriteria = isTrend && Array.isArray(item.popularityCriteria) && item.popularityCriteria.length > 0
+  // Zengin kart bölümleri isTrend bayrağına değil verinin varlığına bakar —
+  // böylece aynı kart yapısı tüm sekmelerde (trend, listeler, öneriler) ortaktır.
+  const hasCriteria = Array.isArray(item.popularityCriteria) && item.popularityCriteria.length > 0
 
   return (
     <>
@@ -468,7 +472,7 @@ export default function ContentCard({ item, isTrend }) {
               <FavoriteButton item={item} size={15} />
             </div>
 
-            {isTrend && item.trendRank && (
+            {item.trendRank && (
               <div style={{
                 position: 'absolute', top: 5, left: 5,
                 background: item.trendRank <= 3
@@ -485,7 +489,7 @@ export default function ContentCard({ item, isTrend }) {
               }}>#{item.trendRank}</div>
             )}
 
-            {isTrend && item.isNewRelease && (
+            {item.isNewRelease && (
               <div style={{
                 position: 'absolute', bottom: 5, left: 5,
                 background: 'rgba(76,175,80,0.85)',
@@ -514,7 +518,7 @@ export default function ContentCard({ item, isTrend }) {
                   padding: '1.5px 5px', fontSize: 9, color: 'var(--text-muted)',
                 }}>{g}</span>
               ))}
-              {isTrend && item.type && (
+              {item.type && (
                 <span style={{
                   background: item.type === 'film' ? 'rgba(229,9,20,0.18)' : 'rgba(0,168,224,0.18)',
                   border: `1px solid ${item.type === 'film' ? 'rgba(229,9,20,0.35)' : 'rgba(0,168,224,0.35)'}`,
@@ -524,7 +528,7 @@ export default function ContentCard({ item, isTrend }) {
               )}
             </div>
 
-            {isTrend && item.socialScore != null && (
+            {item.socialScore != null && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <TrendingUp size={9} color="var(--accent)" />
                 <div style={{ flex: 1, height: 3, background: 'rgba(255,255,255,0.07)', borderRadius: 2, overflow: 'hidden' }}>
@@ -534,7 +538,7 @@ export default function ContentCard({ item, isTrend }) {
               </div>
             )}
 
-            {isTrend && !open && item.popularityCriteria && (
+            {!open && hasCriteria && (
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 1 }}>
                 {item.popularityCriteria.map(c => (
                   <span key={c.label} style={{
@@ -552,6 +556,9 @@ export default function ContentCard({ item, isTrend }) {
             )}
 
             <div style={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* Yerli yapım etiketi — platform rozetlerinden ÖNCE gelir:
+                  köken yapımın kalıcı özelliğidir, platform ise değişebilir. */}
+              {item.isYerli && <span className="tr-tag">TR YAPIMI</span>}
               {(item.platforms || []).map(p => {
                 const plat = PLAT_MAP[p]
                 return (
@@ -604,7 +611,7 @@ export default function ContentCard({ item, isTrend }) {
                     Orijinal adı: {item.originalTitle}
                   </p>
                 )}
-                {isTrend && item.releaseDate && (
+                {item.releaseDate && (
                   <p style={{ color: 'var(--text-faint)', fontSize: 9.5, margin: 0 }}>
                     📅 Yayın tarihi: {new Date(item.releaseDate).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })}
                   </p>

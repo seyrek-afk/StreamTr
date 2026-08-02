@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Star, User, X } from 'lucide-react'
-import { PLATFORMS } from '../constants/index.js'
+import { ALL_PLATFORMS } from '../constants/index.js'
 import { isValidTmdbRef, mapTrProviders } from '../lib/tmdb.js'
 import FavoriteButton from './FavoriteButton.jsx'
 import TrailerEmbed from './TrailerEmbed.jsx'
 
 const TMDB_KEY = import.meta.env.VITE_TMDB_KEY
-const PLAT_MAP = Object.fromEntries(PLATFORMS.map(p => [p.id, p]))
+// Küresel + yerli tüm sağlayıcılar (bkz. ContentCard'daki aynı gerekçe).
+const PLAT_MAP = Object.fromEntries(ALL_PLATFORMS.map(p => [p.id, p]))
 
 function OverlayActorCard({ actor }) {
   const [err, setErr] = useState(false)

@@ -27,24 +27,39 @@ export function isValidTmdbRef(id, mediaType) {
 }
 
 // ── TR Yayın Platformu Eşlemesi ───────────────────────────────────────────────
-// TMDB provider_id → StreamTR platform id (PLATFORMS sabitindeki id ile birebir).
+// TMDB provider_id → StreamTR platform id (ALL_PLATFORMS sabitindeki id ile birebir).
 // "Mubi" yazımı tutarlı tutulur: PLAT_MAP anahtarı "Mubi" olduğundan "MUBI"
 // kullanılmaz — tekilleştirme ve rozet eşleşmesi bozulmasın.
+//
+// UYARI — yerli ID'ler TMDB /watch/providers?watch_region=TR yanıtından
+// doğrulanmalıdır. Önceki sürümde dört yerli ID yanlıştı ve ölü değil YANLIŞ
+// ETİKETLEYİCİydiler (kullanıcıya başka bir servisi yerli platform gibi gösterirlerdi):
+//   341 → hiçbir listede yok       (kodda "BluTV" yazıyordu)
+//   479 → "Home of Horror"         (kodda "PUHUTV" yazıyordu)
+//   533 → "Amazon Arthaus Channel" (kodda "Gain" yazıyordu)
+//   584 → "Discovery+ Amazon Channel" (kodda "TOD" yazıyordu)
+// Gain'in TMDB'de sağlayıcı kaydı YOKTUR; bu yüzden burada karşılığı da yoktur.
+// Gain yapımları katalogda görünür (köken TR), yalnız "nerede izlenir" rozeti çıkmaz.
 export const PROVIDER_MAP = {
+  // Küresel
   8:    'Netflix',
   119:  'Amazon Prime',
   337:  'Disney+',
   350:  'Apple TV+',
+  2:    'Apple TV+',
   1899: 'HBO Max',
   384:  'HBO Max',
   11:   'Mubi',
   1759: 'Mubi',
-  2:    'Apple TV+',
-  341:  'BluTV',
-  479:  'PUHUTV',
   531:  'Paramount+',
-  533:  'Gain',
-  584:  'TOD',
+  // Yerli (TMDB TR listesinden doğrulanmış)
+  342:  'puhutv',
+  1791: 'Exxen',
+  1826: 'TOD',
+  2235: 'tabii',
+  1904: 'TV+',
+  1833: 'Tivibu',
+  1707: 'BluTV',  // yalnız global listede: "BluTV Amazon Channel"
 }
 
 // TMDB watch/providers yanıtından TR platformlarını string[] olarak döndürür.

@@ -189,6 +189,246 @@ body { background: var(--bg); color: var(--text); overflow-x: hidden; }
   .tr-pill { transition: background 0.12s ease-out, border-color 0.12s ease-out, color 0.12s ease-out; }
 }
 
+/* ── Dünya | Yerli merceği ───────────────────────────────────────────────── */
+/* Segmented control. Başlıktaki marka satırı zaten "StreamTR TÜRKİYE" diyor
+   (= Türkiye'de yayında olan); bu yüzden mercek "Yerli" der (= Türk yapımı).
+   İki kavramın karışmaması etiket seçiminin tek gerekçesidir. */
+.lens-switch {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.03);
+  flex-shrink: 0;
+}
+.lens-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 6px 12px;
+  min-height: 30px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.14s ease-out, color 0.14s ease-out;
+}
+.lens-option[aria-pressed="true"] {
+  background: rgba(var(--accent-rgb), 0.15);
+  color: var(--accent);
+  font-weight: 700;
+}
+@media (hover: hover) and (pointer: fine) {
+  .lens-option:not([aria-pressed="true"]):hover {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-muted);
+  }
+}
+.lens-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* ── Editoryal raflar ────────────────────────────────────────────────────── */
+.rail-section {
+  margin-bottom: 26px;
+}
+.rail-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.rail-heading {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+.rail-showall {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 2px;
+  flex-shrink: 0;
+  transition: color 0.14s ease-out;
+}
+@media (hover: hover) and (pointer: fine) {
+  .rail-showall:hover { color: var(--accent); }
+}
+.rail-showall:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.rail-viewport { position: relative; }
+
+.rail-scroller {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  scroll-padding-left: 2px;
+  padding-bottom: 6px;
+  /* Kaydırma çubuğu gizlenir: rafın kendi okları ve kenar kırpması zaten "devamı var"
+     sinyalini veriyor. NOT: `scrollbar-width: thin` KULLANILMAZ — Chrome 121+ bu
+     standart özelliği destekler ve ::-webkit-scrollbar stilimizi ezerek oklu, kalın
+     native çubuk çizer; raf altında tam genişlikte bir çubuk belirir. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.rail-scroller::-webkit-scrollbar { display: none; }
+.rail-scroller > * { scroll-snap-align: start; }
+
+/* Kaydırma okları — yalnız işaretçili cihazlarda */
+.rail-arrow {
+  display: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .rail-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: calc(50% - 18px);
+    transform: translateY(-50%);
+    z-index: 5;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-muted);
+    cursor: pointer;
+    opacity: 0;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+    transition: opacity 0.16s ease-out, color 0.16s ease-out, border-color 0.16s ease-out;
+  }
+  .rail-viewport:hover .rail-arrow { opacity: 1; }
+  .rail-arrow:hover {
+    color: var(--accent);
+    border-color: var(--hover-border);
+  }
+  .rail-arrow:focus-visible {
+    opacity: 1;
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .rail-arrow-left  { left: -8px; }
+  .rail-arrow-right { right: -8px; }
+}
+
+/* Raf kartı */
+.rail-card {
+  flex: 0 0 auto;
+  width: 132px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: transform 0.16s cubic-bezier(0.23,1,0.32,1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .rail-card:hover { transform: translateY(-3px); }
+  .rail-card:hover .rail-poster { border-color: var(--hover-border); }
+}
+.rail-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.rail-poster {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  transition: border-color 0.16s ease-out;
+}
+.rail-fav {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+}
+.rail-score {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(0,0,0,0.78);
+  border-radius: 5px;
+  padding: 1.5px 5px;
+  font-size: 10px;
+  font-weight: 800;
+  font-family: monospace;
+  color: var(--accent);
+}
+.rail-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 7px 2px 0;
+}
+.rail-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.rail-year {
+  font-size: 9.5px;
+  color: var(--text-faint);
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail-card, .rail-arrow, .rail-showall, .lens-option { transition: none; }
+  .rail-card:hover { transform: none; }
+  .rail-scroller { scroll-behavior: auto; }
+}
+
+/* Yerli yapım etiketi — kartta bayrak emoji yerine tipografik rozet.
+   Mevcut rozet dili küçük, renk kodlu ve tipografiktir; emoji orada yalnız
+   kalır ve amatör durur. */
+.tr-tag {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(var(--accent-rgb), 0.42);
+  background: rgba(var(--accent-rgb), 0.10);
+  color: var(--accent);
+  border-radius: 3px;
+  padding: 0.5px 5px;
+  font-size: 7.5px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
 /* Enrichment yükleme ipucu */
 .enrichment-hint {
   display: inline-flex;
