@@ -1,7 +1,49 @@
 import { useState, useRef, useCallback } from 'react'
+import {
+  mergeSearchResults, rankSearchResults, typoVariants,
+} from '../lib/searchMatch.js'
 
 const TMDB_BASE = 'https://api.themoviedb.org/3'
 const API_KEY   = import.meta.env.VITE_TMDB_KEY
+
+// Tek dilde ham arama sonucu döndürür. Hata/iptal durumunda boş dizi —
+// bir dilin düşmesi diğerini engellemesin.
+async function rawSearch(query, language, signal) {
+  try {
+    const res = await fetch(
+      `${TMDB_BASE}/search/multi?query=${encodeURIComponent(query)}` +
+      `&language=${language}&page=1&include_adult=false&api_key=${API_KEY}`,
+      { signal }
+    )
+    if (!res.ok) return []
+    const json = await res.json()
+    return json.results || []
+  } catch (e) {
+    if (e.name === 'AbortError') throw e
+    return []
+  }
+}
+
+// İki dili paralel arar, birleştirir, alakaya göre sıralar.
+// Sonuç boşsa ön-ek kırpma ile yazım hatası kurtarmayı dener (bkz. searchMatch.js).
+async function smartSearch(query, signal) {
+  const attempt = async (q) => {
+    const [tr, en] = await Promise.all([
+      rawSearch(q, 'tr-TR', signal),
+      rawSearch(q, 'en-US', signal),
+    ])
+    return rankSearchResults(mergeSearchResults(tr, en), query)
+  }
+
+  let items = await attempt(query)
+  if (items.length > 0) return { items, correctedFrom: null }
+
+  for (const variant of typoVariants(query)) {
+    const alt = await attempt(variant)
+    if (alt.length > 0) return { items: alt, correctedFrom: variant }
+  }
+  return { items: [], correctedFrom: null }
+}
 
 function estimateRT(avg) {
   if (!avg) return null
@@ -83,6 +125,9 @@ export function useSearch() {
   const [selectedItem,  setSelectedItem]  = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError,   setDetailError]   = useState(null)
+  // Yazım hatası kurtarma devreye girdiyse hangi kısaltılmış sorgunun sonuç
+  // verdiğini tutar — kullanıcıya "şunu aradım" diye dürüstçe söylemek için.
+  const [correctedFrom, setCorrectedFrom] = useState(null)
 
   const debounceRef    = useRef(null)
   const abortSearchRef = useRef(null)
@@ -97,6 +142,8 @@ export function useSearch() {
 
     clearTimeout(debounceRef.current)
     abortSearchRef.current?.abort()
+
+    setCorrectedFrom(null)
 
     if (!val.trim() || val.length < 2) {
       setSuggestions([])
@@ -115,27 +162,11 @@ export function useSearch() {
 
       try {
         const safeQuery = val.trim().slice(0, 200)
-        const res = await fetch(
-          `${TMDB_BASE}/search/multi?query=${encodeURIComponent(safeQuery)}&language=tr-TR&page=1&include_adult=false&api_key=${API_KEY}`,
-          { signal: controller.signal }
-        )
-        if (!res.ok) throw new Error(`TMDB ${res.status}`)
-        const json = await res.json()
-
-        const items = (json.results || [])
-          .filter(r => r.media_type === 'movie' || r.media_type === 'tv')
-          .slice(0, 8)
-          .map(r => ({
-            id: r.id,
-            mediaType: r.media_type,
-            title: r.media_type === 'movie' ? r.title : r.name,
-            year: ((r.media_type === 'movie' ? r.release_date : r.first_air_date) || '').slice(0, 4),
-            posterPath: r.poster_path,
-          }))
-
-        setSuggestions(items)
+        const { items, correctedFrom } = await smartSearch(safeQuery, controller.signal)
+        setSuggestions(items.slice(0, 8))
+        setCorrectedFrom(correctedFrom)
       } catch (e) {
-        if (e.name !== 'AbortError') setSuggestions([])
+        if (e.name !== 'AbortError') { setSuggestions([]); setCorrectedFrom(null) }
       } finally {
         setSuggesting(false)
       }
@@ -198,6 +229,7 @@ export function useSearch() {
     setSuggestions([])
     setSelectedItem(null)
     setDetailError(null)
+    setCorrectedFrom(null)
     lastPickRef.current = null
   }, [])
 
@@ -211,6 +243,7 @@ export function useSearch() {
     query,
     suggestions,
     suggesting,
+    correctedFrom,
     selectedItem,
     detailLoading,
     detailError,

@@ -1,8 +1,9 @@
-// ── Yerli merceğinin editoryal rafları ───────────────────────────────────────
+// ── Ülke merceğinin editoryal rafları ────────────────────────────────────────
 //
-// Raflar YALNIZCA yerli mercekte açılır. Dünya merceğinde top_rated zaten tek
-// eksende sıralı bir listedir; oraya raf koymak yapay durur. Yerli havuz ise
-// küçük ve heterojendir (~176 dizi / ~622 film) — küratörlüğe muhtaç olan odur.
+// Raflar YALNIZCA bir ülke merceği açıkken görünür. Dünya merceğinde top_rated
+// zaten tek eksende sıralı bir listedir; oraya raf koymak yapay durur. Ülke
+// havuzu ise küçük ve heterojendir (TR: ~176 dizi / ~622 film) — küratörlüğe
+// muhtaç olan odur.
 //
 // Bu modül SAF'tır: ağ çağrısı yapmaz, yalnız sorgu tarifi üretir. Böylece raf
 // kriterleri ağ olmadan test edilebilir.
@@ -11,7 +12,8 @@
 // birebir yeniden üretmeye çalışmaz; en yakın GERÇEK filtreyi uygular. Filtre
 // aktifleşince raflar zaten gizlenir (bkz. App: rafların görünürlük kuralı).
 
-import { TR_VOTE_MIN } from './yerli.js'
+import { VOTE_MIN } from './discover.js'
+import { countryAdjective } from '../constants/countries.js'
 
 // TMDB tarih parametreleri YYYY-MM-DD ister.
 function iso(d) {
@@ -33,15 +35,18 @@ export const RAIL_PROVIDERS = '342|1826|1904' // puhutv · TOD TV · TV+
 // Yarım raf amatör durur; altında kalan raf hiç render edilmez.
 export const RAIL_MIN_ITEMS = 4
 
-export function railsFor(tab, now = new Date()) {
+export function railsFor(tab, country = 'TR', now = new Date()) {
+  if (!country) return []
+  const adj = countryAdjective(country)
+
   if (tab === 'diziler') {
-    return [
+    const rails = [
       {
         key: 'yuksek-puanli',
-        title: 'Yüksek Puanlı Yerli Diziler',
+        title: `Yüksek Puanlı ${adj} Dizileri`,
         mediaType: 'tv',
-        params: { 'vote_count.gte': TR_VOTE_MIN, sort_by: 'vote_average.desc' },
-        sortByYerli: true,
+        params: { 'vote_count.gte': VOTE_MIN, sort_by: 'vote_average.desc' },
+        sortByWeighted: true,
         gridAction: { type: 'sort', value: 'imdb' },
       },
       {
@@ -57,13 +62,18 @@ export function railsFor(tab, now = new Date()) {
         mediaType: 'tv',
         params: {
           'first_air_date.lte': '2014-12-31',
-          'vote_count.gte': TR_VOTE_MIN,
+          'vote_count.gte': VOTE_MIN,
           sort_by: 'vote_average.desc',
         },
-        sortByYerli: true,
+        sortByWeighted: true,
         gridAction: { type: 'yearsBefore', value: 2015 },
       },
-      {
+    ]
+
+    // Platform rafı yalnız Türkiye'de anlamlı: RAIL_PROVIDERS yerli sağlayıcılardır.
+    // Başka ülkede bu raf yanlış veri gösterirdi.
+    if (country === 'TR') {
+      rails.push({
         key: 'platformda',
         title: 'Yerli Platformlarda',
         mediaType: 'tv',
@@ -73,18 +83,19 @@ export function railsFor(tab, now = new Date()) {
           sort_by: 'popularity.desc',
         },
         gridAction: { type: 'trOnly' },
-      },
-    ]
+      })
+    }
+    return rails
   }
 
   if (tab === 'filmler') {
     return [
       {
         key: 'yuksek-puanli',
-        title: 'Yüksek Puanlı Yerli Filmler',
+        title: `Yüksek Puanlı ${adj} Filmleri`,
         mediaType: 'movie',
-        params: { 'vote_count.gte': TR_VOTE_MIN, sort_by: 'vote_average.desc' },
-        sortByYerli: true,
+        params: { 'vote_count.gte': VOTE_MIN, sort_by: 'vote_average.desc' },
+        sortByWeighted: true,
         gridAction: { type: 'sort', value: 'imdb' },
       },
       {
@@ -100,18 +111,18 @@ export function railsFor(tab, now = new Date()) {
         mediaType: 'movie',
         params: {
           'primary_release_date.lte': '2009-12-31',
-          'vote_count.gte': TR_VOTE_MIN,
+          'vote_count.gte': VOTE_MIN,
           sort_by: 'vote_average.desc',
         },
-        sortByYerli: true,
+        sortByWeighted: true,
         gridAction: { type: 'yearsBefore', value: 2010 },
       },
       {
         key: 'komedi',
         title: 'Efsane Komediler',
         mediaType: 'movie',
-        params: { with_genres: 35, 'vote_count.gte': TR_VOTE_MIN, sort_by: 'vote_average.desc' },
-        sortByYerli: true,
+        params: { with_genres: 35, 'vote_count.gte': VOTE_MIN, sort_by: 'vote_average.desc' },
+        sortByWeighted: true,
         gridAction: { type: 'genre', value: 'Komedi' },
       },
     ]
