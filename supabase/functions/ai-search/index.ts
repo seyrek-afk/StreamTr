@@ -101,7 +101,10 @@ const SYSTEM = `Kullanıcının kendi cümleleriyle yazdığı film/dizi isteği
 
 Cümlenin ima ettiğini çıkar, olmayanı uydurma. Ruh hâli ifadelerini uygun türe çevir (ör. "kafa dağıtsın" → komedi; "geceyi uykusuz geçireyim" → korku/gerilim). Tür sözlüğüyle ifade edilemeyen konuları keywordTerms'e İngilizce koy. "Eski/kült/klasik" gibi ifadeleri yıl aralığına, "yüksek puanlı/başyapıt" gibi ifadeleri minRating'e çevir. İzleme bağlamı da bir sinyaldir: "ailecek"/"çocuklarla" aile türünü ve düşük süreyi ima eder.
 
-explain alanında ne anladığını kısa Türkçe rozetlerle söyle — kullanıcı yanlış anladığında cümlesini düzeltebilsin. Cümleden hiçbir arama ipucu çıkmıyorsa understood=false döndür ve alanları boş bırak.`
+explain alanında ne anladığını kısa Türkçe rozetlerle söyle — kullanıcı yanlış anladığında cümlesini düzeltebilsin. Cümleden hiçbir arama ipucu çıkmıyorsa understood=false döndür ve alanları boş bırak.
+
+explain etiketleri SABİT sözlükten seçilir; aynı etiketi iki kez kullanma. Yerel ayrıştırıcı da bu sözlüğü kullanıyor, ikisi aynı dili konuşmalı:
+"İçerik" (film / dizi / film + dizi) · "Tür" (aksiyon, komedi …) · "Ülke" · "Dönem" · "Kalite" · "Süre" · "Tema" · "Ruh hâli".`
 
 // ── Yardımcılar ──────────────────────────────────────────────────────────────
 

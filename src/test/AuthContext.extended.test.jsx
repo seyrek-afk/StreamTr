@@ -262,7 +262,11 @@ describe('AuthContext — mapUser kenar durumları', () => {
 
     expect(result.current.user.firstName).toBe('Mehmet')
     expect(result.current.user.lastName).toBe('Yilmaz')
-    expect(result.current.user.avatarUrl).toBe('/av.jpg')
+    // Profil fotoğrafı BİLİNÇLİ olarak taşınmıyor: arayüzde avatar
+    // gösterilmiyor (bkz. AccountButton). Sağlayıcı avatar_url gönderse bile
+    // mapUser onu dışarı vermemeli — aksi halde kullanılmayan alan ileride
+    // "hazır veri" sanılıp gösterilir.
+    expect(result.current.user.avatarUrl).toBeUndefined()
   })
 
   it('verifyEmailCode isim yoksa updateUser çağrılmaz', async () => {

@@ -18,7 +18,9 @@ function mapUser(u) {
     firstName: first || null,
     lastName:  last  || null,
     name:      full || (email ? email.split('@')[0] : 'Kullanıcı'),
-    avatarUrl: m.avatar_url || m.picture || null,
+    // avatarUrl BİLİNÇLİ OLARAK taşınmıyor: arayüzde profil fotoğrafı
+    // gösterilmiyor (bkz. AccountButton). Kullanılmayan bir alanı taşımak,
+    // ileride birinin onu "hazır veri" sanıp göstermesini davet ederdi.
     provider:  u.app_metadata?.provider || 'email',
   }
 }
