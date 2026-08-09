@@ -11,3 +11,6 @@ agent-workspace/
 *.jpg
 *.jpeg
 *.png
+
+# Supabase CLI yerel durum dosyaları — repoya girmez
+supabase/.temp/
