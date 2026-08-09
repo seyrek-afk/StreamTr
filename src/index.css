@@ -358,6 +358,38 @@ button, input, textarea { font: inherit; color: inherit; }
   .acct-item:hover { background: var(--surface-hover); color: var(--text); }
 }
 .acct-item:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -2px; }
+/* Oturumsuz menüde asıl eylem: listenin geri kalanından ayrışsın. */
+.acct-item-primary { color: var(--accent-ink); font-weight: 600; }
+
+/* Menü bölümleri — hesap ve görünüm aynı menüde ama ayrı bölümlerde.
+   Çizgi yalnız bölümler ARASINDA çıkar; ilk bölümün üstünde çizgi olması
+   menüyü başlıksız bir kutuya çevirirdi. */
+.acct-sec { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 4px; }
+.acct-sec:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+.acct-sec-title {
+  color: var(--text-faint); font-size: var(--fs-micro); font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 6px 10px 5px; margin: 0;
+}
+.acct-theme {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  background: none; border: none; border-radius: var(--r-sm);
+  padding: 7px 10px; color: var(--text-muted);
+  font-size: var(--fs-body); text-align: left; cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .acct-theme:hover { background: var(--surface-hover); color: var(--text); }
+}
+.acct-theme:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -2px; }
+.acct-theme-on { color: var(--text); font-weight: 600; }
+.acct-theme-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Üç nokta temanın kendi paletini taşır — adı okumadan da ayırt edilir. */
+.acct-theme-dots { display: inline-flex; gap: 2px; flex-shrink: 0; }
+.acct-theme-dots > i {
+  width: 9px; height: 9px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.18);
+}
 
 /* ── Araç rayı: kapsam → arama → filtre ────────────────────────────────────
    Soldan sağa okunuşu "hangi katalog → ne arıyorsun → nasıl daralt". */
@@ -928,43 +960,6 @@ button.actor { cursor: pointer; }
   letter-spacing: -0.01em; margin: 0;
 }
 .modal-sub { color: var(--text-faint); font-size: var(--fs-meta); margin: 5px 0 0; }
-
-.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-.theme-card {
-  display: flex; flex-direction: column; gap: 3px;
-  padding: 0 0 4px; background: none; border: none; text-align: left; cursor: pointer;
-  border-radius: var(--r-md);
-  transition: transform var(--dur-1) var(--ease-out);
-}
-@media (hover: hover) and (pointer: fine) {
-  .theme-card:hover { transform: translateY(-2px); }
-  .theme-card:hover .theme-preview { border-color: var(--border-strong); }
-}
-.theme-card:active { transform: scale(0.97); }
-.theme-card:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 3px; }
-.theme-preview {
-  position: relative; display: block; height: 84px; margin-bottom: 8px;
-  border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden;
-  transition: border-color var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out);
-}
-.theme-card-on .theme-preview { box-shadow: 0 0 0 2px var(--tc-accent); border-color: transparent; }
-.theme-mock {
-  position: absolute; top: 12px; left: 10px; right: 10px; height: 28px;
-  display: flex; align-items: center; gap: 6px; padding: 0 8px;
-  border: 1px solid; border-radius: var(--r-sm);
-}
-.theme-mock-2 {
-  top: 48px; height: 22px;
-  background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.07);
-}
-.theme-mock i { display: block; border-radius: 2px; }
-.theme-check {
-  position: absolute; top: 7px; right: 7px;
-  width: 22px; height: 22px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-}
-.theme-name { color: var(--text); font-size: var(--fs-body); font-weight: 700; }
-.theme-desc { color: var(--text-faint); font-size: var(--fs-micro); line-height: 1.4; }
 
 /* ── Form alanları ─────────────────────────────────────────────────────────
    Kontrolle aynı yükseklik ve yarıçap; girdi kutusu ayrı bir dil konuşmaz. */
