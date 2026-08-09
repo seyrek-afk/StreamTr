@@ -16,7 +16,6 @@ import FilterBar    from './components/FilterBar.jsx'
 import Dropdown     from './components/Dropdown.jsx'
 import RailRow      from './components/RailRow.jsx'
 import SkeletonGrid from './components/SkeletonGrid.jsx'
-import ThemePicker  from './components/ThemePicker.jsx'
 import { SearchField, SearchResult } from './components/SearchBar.jsx'
 import AiSearchPanel from './components/AiSearchPanel.jsx'
 import AccountButton from './components/auth/AccountButton.jsx'
@@ -228,7 +227,6 @@ export default function App() {
 
           <div className="hdr-actions">
             <AccountButton />
-            <ThemePicker />
           </div>
         </div>
 
