@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react'
 import { resolveQuery } from '../lib/aiQuery.js'
 import { tmdbToListCard } from '../lib/cards.js'
 import { poolMean } from '../lib/discover.js'
+import { genreIdsFor, genresUnsupportedFor } from '../lib/genres.js'
 
 const TMDB_BASE = 'https://api.themoviedb.org/3'
 const TMDB_KEY  = import.meta.env.VITE_TMDB_KEY
@@ -40,17 +41,25 @@ async function resolveKeywordIds(terms, signal) {
   return ids
 }
 
-// Ayrıştırıcının ürettiği yer tutucu tarih alanını medya türüne göre gerçek
-// TMDB alanına çevirir: film → primary_release_date, dizi → first_air_date.
-function applyDateFields(params, mediaType) {
+// Medya türüne özgü TMDB parametrelerini kurar. Çözümleyici (LLM ya da yerel
+// ayrıştırıcı) türden bağımsız bir niyet üretir; uca özgü farklar burada çözülür:
+//   • tarih alanı adı: film → primary_release_date, dizi → first_air_date
+//   • tür id'leri: film ve dizide FARKLIDIR (bkz. lib/genres.js)
+//   • süre filtresi yalnız filmde anlamlıdır (dizide bölüm süresi, çoğu kayıtta boş)
+function paramsFor(params, genreKeys, mediaType) {
   const out = {}
   const field = mediaType === 'movie' ? 'primary_release_date' : 'first_air_date'
   for (const [k, v] of Object.entries(params)) {
     if (k === '_date.gte')      out[`${field}.gte`] = v
     else if (k === '_date.lte') out[`${field}.lte`] = v
-    // Süre filtresi yalnız filmde anlamlı; dizide bölüm süresidir ve çoğu kayıtta boştur.
     else if (k.startsWith('with_runtime') && mediaType !== 'movie') continue
     else out[k] = v
+  }
+  const ids = genreIdsFor(genreKeys, mediaType)
+  if (ids.length) out.with_genres = ids.join(',')
+  // Sıralama alanı da uca özgü: dizide primary_release_date yoktur.
+  if (mediaType !== 'movie' && out.sort_by === 'primary_release_date.desc') {
+    out.sort_by = 'first_air_date.desc'
   }
   return out
 }
@@ -71,6 +80,9 @@ export function useAiSearch() {
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState(null)
   const [searched, setSearched] = useState(false)
+  // Hangi katman çözdü ('ai' | 'local') ve yedeğe düşüldüyse sebebi.
+  const [source,   setSource]   = useState(null)
+  const [notice,   setNotice]   = useState(null)
 
   const abortRef = useRef(null)
 
@@ -89,8 +101,11 @@ export function useAiSearch() {
     try {
       if (!TMDB_KEY) throw new Error('TMDB API anahtarı eksik.')
 
-      const parsed = await resolveQuery(q)
-      setExplain(parsed.explain)
+      const parsed = await resolveQuery(q, ctrl.signal)
+      if (ctrl.signal.aborted) return
+      setExplain(parsed.explain || [])
+      setSource(parsed.source || 'local')
+      setNotice(parsed.notice || null)
 
       if (parsed.empty) {
         setResults([])
@@ -106,10 +121,22 @@ export function useAiSearch() {
         ? { ...parsed.params, with_keywords: kwIds.join('|') }
         : parsed.params
 
+      // Tür istendi ama bu uçta karşılığı yoksa (ör. TMDB'de "korku dizisi" türü
+      // yok) o uç HİÇ sorgulanmaz. Filtreyi sessizce düşürüp alakasız sonuç
+      // göstermek, kullanıcının istediğini vermemenin gizlenmiş hâli olurdu.
+      const targets = parsed.mediaTypes.filter(
+        mt => !genresUnsupportedFor(parsed.genreKeys, mt)
+      )
+      if (targets.length === 0) {
+        setResults([])
+        setError('Bu tür bu içerik türünde aranamıyor (TMDB\'de karşılığı yok). Tür veya film/dizi tercihini değiştirmeyi dene.')
+        return
+      }
+
       // Film ve dizi ayrı uçlardan gelir; istenen türler paralel çekilip birleşir.
       const settled = await Promise.allSettled(
-        parsed.mediaTypes.map(async (mt) => {
-          const res = await fetch(buildUrl(mt, applyDateFields(baseParams, mt)), { signal: ctrl.signal })
+        targets.map(async (mt) => {
+          const res = await fetch(buildUrl(mt, paramsFor(baseParams, parsed.genreKeys, mt)), { signal: ctrl.signal })
           if (!res.ok) throw new Error(`TMDB ${res.status}`)
           const json = await res.json()
           const raw = json.results || []
@@ -151,7 +178,9 @@ export function useAiSearch() {
     setError(null)
     setSearched(false)
     setLoading(false)
+    setSource(null)
+    setNotice(null)
   }, [])
 
-  return { prompt, setPrompt, results, explain, loading, error, searched, run, clear }
+  return { prompt, setPrompt, results, explain, loading, error, searched, source, notice, run, clear }
 }

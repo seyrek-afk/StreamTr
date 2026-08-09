@@ -1,12 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { parseQuery, EXAMPLE_PROMPTS } from '../lib/aiQuery.js'
 
-const gen = (r) => (r.params.with_genres || '').split(',').filter(Boolean)
+// Tür artık id değil kanonik anahtar olarak döner; id çevrimi medya
+// türüne göre lib/genres.js'te yapılır (film ve dizi id'leri farklıdır).
+const gen = (r) => r.genreKeys || []
 
 describe('parseQuery — kullanıcının verdiği örnekler', () => {
   it('"arkadaşlarla aksiyon, ratingi yüksek, eski kült film" doğru çözülür', () => {
     const r = parseQuery('Evde arkadaşlarla aksiyon içeren bir film izleyeceğiz, ratingi yüksek ama eski kült bir film olsun')
-    expect(gen(r)).toContain('28')                          // Aksiyon
+    expect(gen(r)).toContain('aksiyon')                          // Aksiyon
     expect(r.mediaTypes).toEqual(['movie'])                 // "film" dedi, "dizi" demedi
     expect(r.params['vote_average.gte']).toBeGreaterThan(7) // "ratingi yüksek"
     expect(r.params.sort_by).toBe('vote_average.desc')
@@ -25,19 +27,19 @@ describe('parseQuery — kullanıcının verdiği örnekler', () => {
 describe('parseQuery — tür', () => {
   it('birden çok türü aynı anda yakalar', () => {
     const r = parseQuery('komedi ve romantik bir şeyler')
-    expect(gen(r)).toContain('35')
-    expect(gen(r)).toContain('10749')
+    expect(gen(r)).toContain('komedi')
+    expect(gen(r)).toContain('romantik')
   })
 
   it('Türkçe eklerle yazılmış türleri de yakalar', () => {
-    expect(gen(parseQuery('aksiyonlu bir film'))).toContain('28')
-    expect(gen(parseQuery('korkunç bir şey izleyelim'))).toContain('27')
+    expect(gen(parseQuery('aksiyonlu bir film'))).toContain('aksiyon')
+    expect(gen(parseQuery('korkunç bir şey izleyelim'))).toContain('korku')
   })
 
   it('eşanlamlıları yakalar', () => {
-    expect(gen(parseQuery('uzay ve robot temalı'))).toContain('878')
-    expect(gen(parseQuery('zombi filmi'))).toContain('27')
-    expect(gen(parseQuery('mafya dizisi'))).toContain('80')
+    expect(gen(parseQuery('uzay ve robot temalı'))).toContain('bilimkurgu')
+    expect(gen(parseQuery('zombi filmi'))).toContain('korku')
+    expect(gen(parseQuery('mafya dizisi'))).toContain('suc')
   })
 })
 

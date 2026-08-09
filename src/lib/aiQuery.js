@@ -1,20 +1,28 @@
-﻿// ── "AI ile Ara": serbest metni TMDB keşif sorgusuna çeviren ayrıştırıcı ─────
+﻿// ── "AI ile Ara": serbest metni TMDB keşif sorgusuna çevirir ─────────────────
 //
-// MİMARİ NOT — neden LLM değil?
-// StreamTR statik bir sitedir (sunucu yok). Anthropic anahtarını tarayıcı
-// paketine gömmek onu herkese açık hale getirirdi. Bu yüzden ilk sürüm
-// LLM'siz, deterministik bir ayrıştırıcıdır: ücretsiz, anında ve çevrimdışı
-// çalışır, sonuçları öngörülebilir.
+// İKİ KATMAN:
+//   1. `resolveQuery` — ASIL yol. Supabase edge function'ına (supabase/
+//      functions/ai-search) gider; orada bir LLM cümleyi kısıtlı bir niyet
+//      şemasına çevirir. Anahtar sunucuda kalır, çağrı giriş yapmış kullanıcıya
+//      bağlıdır ve kişi başı günlük kotası vardır.
+//   2. `parseQuery` — YEDEK yol. Deterministik sözlük ayrıştırıcısı. Giriş
+//      yoksa, kota dolduysa, uç yapılandırılmamışsa veya model çağrısı
+//      başarısız olursa devreye girer. Özellik hiçbir durumda kaybolmaz —
+//      yalnız serbest dil anlama gücü düşer.
 //
-// LLM'E GEÇİŞ NOKTASI: dışa açılan tek sözleşme `resolveQuery(text)` →
-// `{ params, mediaTypes, explain[] }`. Sunucu tarafı bir LLM eklendiğinde
-// yalnız bu fonksiyonun gövdesi değişir; çağıran taraf (useAiSearch, panel)
-// hiç değişmez. Sözleşmeyi bozmadan büyütün.
+// Yedek katman KALDIRILMAMALIDIR: ağ ucu tek başına bırakılırsa arama kutusu
+// dış bir servisin çalışmasına bağımlı hale gelir.
 //
-// Ayrıştırıcı SAF'tır — anahtar kelime araması dışında ağ çağrısı yapmaz.
+// SÖZLEŞME (her iki katman da aynısını döndürür):
+//   { params, mediaTypes, genreKeys, keywordTerms, explain, empty, source }
+// `params` TMDB keşif parametreleridir; tür id'leri BURADA ÜRETİLMEZ (film/dizi
+// id'leri farklıdır) — `genreKeys` kanonik anahtardır, çevrimi useAiSearch yapar.
+//
+// `parseQuery` SAF'tır — ağ çağrısı yapmaz.
 
 import { VOTE_MIN } from './discover.js'
 import { COUNTRIES } from '../constants/countries.js'
+import { supabase } from './supabase.js'
 
 // Türkçe-duyarsız normalize (searchMatch ile aynı mantık, bağımsızlık için ayrı).
 function norm(s) {
@@ -28,26 +36,27 @@ function norm(s) {
 
 // ── Sözlükler ────────────────────────────────────────────────────────────────
 
-// Tür anahtar kelimeleri → TMDB genre id. Bir tür birden çok kelimeyle anılır.
+// Tür anahtar kelimeleri → kanonik tür anahtarı (id DEĞİL: film ve dizi id'leri
+// farklıdır, çevrim lib/genres.js'te medya türüne göre yapılır).
 const GENRE_WORDS = [
-  [[28],        ['aksiyon', 'dovus', 'kavga', 'patlama']],
-  [[12],        ['macera', 'serüven', 'seruven']],
-  [[16],        ['animasyon', 'anime', 'cizgi']],
-  [[35],        ['komedi', 'komik', 'guldur', 'eglenceli', 'mizah']],
-  [[80],        ['suc', 'mafya', 'gangster', 'polisiye', 'soygun']],
-  [[99],        ['belgesel']],
-  [[18],        ['dram', 'dramatik', 'duygusal', 'hüzün', 'huzun']],
-  [[10751],     ['aile', 'ailecek', 'cocuklarla', 'çocuklarla']],
-  [[14],        ['fantastik', 'fantezi', 'buyu', 'ejderha']],
-  [[36],        ['tarihi', 'tarih', 'donem', 'dönem']],
-  [[27],        ['korku', 'korkunc', 'urkutucu', 'dehset', 'zombi']],
-  [[10402],     ['muzik', 'muzikal']],
-  [[9648],      ['gizem', 'gizemli', 'sir']],
-  [[10749],     ['romantik', 'romantizm', 'ask', 'sevgili']],
-  [[878],       ['bilim kurgu', 'bilimkurgu', 'uzay', 'robot', 'distopya']],
-  [[53],        ['gerilim', 'gergin', 'psikolojik']],
-  [[10752],     ['savas', 'harp']],
-  [[37],        ['western', 'kovboy']],
+  ['aksiyon',    ['aksiyon', 'dovus', 'kavga', 'patlama']],
+  ['macera',     ['macera', 'serüven', 'seruven']],
+  ['animasyon',  ['animasyon', 'anime', 'cizgi']],
+  ['komedi',     ['komedi', 'komik', 'guldur', 'eglenceli', 'mizah']],
+  ['suc',        ['suc', 'mafya', 'gangster', 'polisiye', 'soygun']],
+  ['belgesel',   ['belgesel']],
+  ['dram',       ['dram', 'dramatik', 'duygusal', 'hüzün', 'huzun']],
+  ['aile',       ['aile', 'ailecek', 'cocuklarla', 'çocuklarla']],
+  ['fantastik',  ['fantastik', 'fantezi', 'buyu', 'ejderha']],
+  ['tarih',      ['tarihi', 'tarih', 'donem', 'dönem']],
+  ['korku',      ['korku', 'korkunc', 'urkutucu', 'dehset', 'zombi']],
+  ['muzik',      ['muzik', 'muzikal']],
+  ['gizem',      ['gizem', 'gizemli', 'sir']],
+  ['romantik',   ['romantik', 'romantizm', 'ask', 'sevgili']],
+  ['bilimkurgu', ['bilim kurgu', 'bilimkurgu', 'uzay', 'robot', 'distopya']],
+  ['gerilim',    ['gerilim', 'gergin', 'psikolojik']],
+  ['savas',      ['savas', 'harp']],
+  ['western',    ['western', 'kovboy']],
 ]
 
 // Ülke anahtar kelimeleri → ISO kodu. Sıfat ve ad biçimleri birlikte.
@@ -109,18 +118,18 @@ function hasWord(text, word) {
 }
 
 function matchGenres(text) {
-  const ids = new Set()
+  const keys = new Set()
   const hits = []
-  for (const [genreIds, words] of GENRE_WORDS) {
+  for (const [key, words] of GENRE_WORDS) {
     for (const w of words) {
       if (hasWord(text, w)) {
-        genreIds.forEach(id => ids.add(id))
+        keys.add(key)
         hits.push(w)
         break
       }
     }
   }
-  return { ids: [...ids], hits }
+  return { keys: [...keys], hits }
 }
 
 function matchCountry(text) {
@@ -217,8 +226,7 @@ export function parseQuery(text) {
   const params = { sort_by: 'popularity.desc' }
 
   const genres = matchGenres(t)
-  if (genres.ids.length) {
-    params.with_genres = genres.ids.join(',')
+  if (genres.keys.length) {
     explain.push({ label: 'Tür', value: genres.hits.join(', ') })
   }
 
@@ -269,21 +277,74 @@ export function parseQuery(text) {
   })
 
   // keywordTerms İNGİLİZCE terimlerdir; TMDB id'lerine çağıran katmanda çevrilir.
+  // genreKeys kanonik anahtardır; id çevrimi medya türüne göre yapılır.
   return {
     params,
     mediaTypes,
+    genreKeys: genres.keys,
     keywordTerms,
     explain,
     // "İçerik" satırı her zaman eklenir; tek başına kalmışsa hiçbir ipucu
     // yakalanmamış demektir → kullanıcıya sorguyu netleştirmesi söylenir.
     empty: explain.length <= 1,
+    source: 'local',
   }
 }
 
-// Asıl dışa açılan sözleşme. Bugün senkron ayrıştırıcıyı sarar; yarın sunucu
-// tarafı bir LLM çağrısı olabilir — imza aynı kaldığı sürece çağıran değişmez.
-export async function resolveQuery(text) {
-  return parseQuery(text)
+// Kullanıcıya gösterilecek düşüş sebepleri. Sessizce yedeğe düşmek kötü olurdu:
+// kullanıcı neden daha zayıf sonuç aldığını bilmeli.
+const FALLBACK_NOTICE = {
+  auth_required:   'AI arama giriş yapmayı gerektiriyor — şimdilik basit ayrıştırıcı kullanıldı.',
+  quota_exceeded:  'Günlük AI arama hakkın doldu — basit ayrıştırıcıya geçildi. Yarın sıfırlanır.',
+  not_configured:  'AI arama sunucusu yapılandırılmamış — basit ayrıştırıcı kullanıldı.',
+  refused:         'Bu istek AI tarafından yanıtlanmadı — basit ayrıştırıcı kullanıldı.',
+  unavailable:     'AI arama şu an yanıt vermiyor — basit ayrıştırıcı kullanıldı.',
+}
+
+async function callAiEndpoint(text, signal) {
+  if (!supabase) return { ok: false, reason: 'not_configured' }
+
+  const { data } = await supabase.auth.getSession()
+  const token = data?.session?.access_token
+  if (!token) return { ok: false, reason: 'auth_required' }
+
+  const res = await supabase.functions.invoke('ai-search', {
+    body: { text },
+    headers: { Authorization: `Bearer ${token}` },
+  })
+
+  if (res.error) {
+    // supabase-js hata gövdesini Response içinde taşır; kota/yetki ayrımı için okunur.
+    let reason = 'unavailable'
+    try {
+      const body = await res.error.context?.json?.()
+      if (body?.error && FALLBACK_NOTICE[body.error]) reason = body.error
+    } catch { /* gövde okunamadı — genel sebeple devam */ }
+    return { ok: false, reason }
+  }
+  if (signal?.aborted) return { ok: false, reason: 'unavailable' }
+  return { ok: true, value: res.data }
+}
+
+// Asıl dışa açılan sözleşme: önce LLM ucu, olmazsa deterministik ayrıştırıcı.
+// Çağıran taraf (useAiSearch, panel) hangi katmanın çalıştığını `source` ile
+// görür ve `notice` varsa kullanıcıya gösterir.
+export async function resolveQuery(text, signal) {
+  const q = (text || '').trim()
+  if (!q) return parseQuery(q)
+
+  let reason = 'unavailable'
+  try {
+    const out = await callAiEndpoint(q, signal)
+    if (out.ok && out.value && Array.isArray(out.value.mediaTypes)) {
+      return { ...out.value, source: 'ai', notice: null }
+    }
+    reason = out.reason || 'unavailable'
+  } catch {
+    reason = 'unavailable'
+  }
+
+  return { ...parseQuery(q), notice: FALLBACK_NOTICE[reason] || FALLBACK_NOTICE.unavailable }
 }
 
 // Panelde gösterilen örnek istemler. Kullanıcıya bu alana ne yazabileceğini

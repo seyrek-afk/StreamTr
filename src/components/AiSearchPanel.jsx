@@ -10,7 +10,7 @@ import { EXAMPLE_PROMPTS } from '../lib/aiQuery.js'
 // farklı yetenekleri gösterir: ruh hâli + kalite + dönem, ülke + tema, izleme
 // bağlamı (ailecek), on yıl + ülke + tür.
 export default function AiSearchPanel({ ai, onClose }) {
-  const { prompt, setPrompt, results, explain, loading, error, searched, run, clear } = ai
+  const { prompt, setPrompt, results, explain, loading, error, searched, source, notice, run, clear } = ai
 
   const submit = () => { if (prompt.trim() && !loading) run(prompt) }
 
@@ -60,16 +60,23 @@ export default function AiSearchPanel({ ai, onClose }) {
         </div>
       )}
 
+      {/* Yedeğe düşüldüyse sebebini söyle. Sessizce daha zayıf bir ayrıştırıcıya
+          düşmek, kullanıcının sonucu yanlış yorumlamasına yol açardı. */}
+      {searched && notice && !loading && (
+        <p className="ai-notice">{notice}</p>
+      )}
+
       {/* Ne anlaşıldı? — sistemin yorumunu göstermek, yanlış anladığında
           kullanıcının cümlesini düzeltmesini mümkün kılar. */}
       {searched && explain.length > 0 && (
         <div className="ai-explain">
           <span className="ai-explain-label">Anladığım:</span>
           {explain.map(e => (
-            <span key={e.label} className="ai-chip">
+            <span key={`${e.label}-${e.value}`} className="ai-chip">
               <span className="ai-chip-k">{e.label}</span>{e.value}
             </span>
           ))}
+          {source === 'ai' && <span className="ai-source">AI</span>}
         </div>
       )}
 
