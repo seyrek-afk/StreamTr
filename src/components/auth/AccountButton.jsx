@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { LogIn, LogOut, Mail } from 'lucide-react'
+import { LogIn, LogOut, Mail, UserRound } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext.jsx'
 import AuthModal from './AuthModal.jsx'
 
@@ -36,8 +36,6 @@ export default function AccountButton() {
     )
   }
 
-  const initial = (user.name || user.email || '?').slice(0, 1).toUpperCase()
-
   return (
     <div className="acct" ref={ref}>
       <button
@@ -45,9 +43,15 @@ export default function AccountButton() {
         onClick={() => setMenuOpen((o) => !o)}
         aria-haspopup="menu" aria-expanded={menuOpen}
       >
-        {user.avatarUrl
-          ? <img className="acct-avatar" src={user.avatarUrl} alt="" width={22} height={22} referrerPolicy="no-referrer" />
-          : <span className="acct-avatar acct-initial">{initial}</span>}
+        {/* AVATAR YOK — bilinçli. Sağlayıcıdan gelen profil fotoğrafı denenmişti;
+            başlık rayındaki diğer her kontrol (Giriş, Tema) ikon + etiket
+            kullanırken oraya konan yuvarlak fotoğraf yabancı bir cisim kalıyor,
+            ayrıca dış kaynaklı görsel yüklenemediğinde kırık resim gösteriyordu.
+            Profil fotoğrafını gerçekten sunmak ayrı bir iş: depolama kovası,
+            RLS, boyut/format doğrulaması ve bir ayar ekranı. Dekoratif bir öge
+            için bu maliyet alınmadı. İleride istenirse hazır avatar seti ya da
+            yükleme buraya eklenebilir; sözleşme bu düğmeyle sınırlı. */}
+        <UserRound size={15} style={{ color: 'var(--accent-ink)' }} aria-hidden="true" />
         <span className="acct-name hide-narrow">{user.name}</span>
       </button>
 

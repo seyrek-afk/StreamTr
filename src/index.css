@@ -325,14 +325,8 @@ button, input, textarea { font: inherit; color: inherit; }
    Kendi kutusu var ama görünümü tema düğmesiyle birebir aynı: başlıkta tek
    bir düğme dili. */
 .acct { position: relative; display: inline-flex; }
-.acct-avatar {
-  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
-  display: grid; place-items: center; object-fit: cover;
-}
-.acct-initial {
-  background: rgba(var(--accent-rgb), 0.22); color: var(--accent-ink);
-  font-size: var(--fs-micro); font-weight: 700;
-}
+/* .acct-avatar / .acct-initial kaldırıldı: hesap düğmesi artık başlık rayının
+   ortak dilini konuşuyor (ikon + etiket), profil fotoğrafı taşımıyor. */
 .acct-name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
 .acct-menu {
   position: absolute; right: 0; top: calc(100% + 8px);
@@ -675,10 +669,14 @@ button, input, textarea { font: inherit; color: inherit; }
 }
 .cc-trendbar { height: 2px; background: var(--trend-bar); flex-shrink: 0; }
 
-/* Açık kart tüm ızgara genişliğini kaplar. 300px'lik bir kolonda posterden
-   sonra metne 190px kalıyordu; açıklama, oyuncular ve benzer yapımlar orada
-   okunmuyordu. Açılan kart kendi satırına geçer ve nefes alır. */
-.cc[aria-expanded="true"] { grid-column: 1 / -1; }
+/* Açık kart KENDİ KOLONUNDA kalır, ızgarayı yarıp tüm satıra yayılmaz.
+   Bir ara tüm genişliği kaplaması denendi (dar kolonda metne yer açmak için)
+   ama ızgaranın derli toplu düzenini bozuyordu: açılan kart sayfayı yeniden
+   diziyor ve kullanıcının baktığı kart yerinden oynuyordu. Kolon içinde
+   büyümek yerini korur; metin dar ama okunur kalır, yatay şeritler zaten
+   kendi içlerinde kayıyor.
+   NOT: .grid-cards'taki `align-items: start` bunun ön koşulu — onsuz açılan
+   kartın komşuları da onun boyuna gerilir (posterler 700px'e uzuyordu). */
 
 .cc-head { display: flex; flex: 1; min-height: 162px; }
 
