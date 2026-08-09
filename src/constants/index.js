@@ -64,6 +64,7 @@ export const THEMES = [
     css: {
       '--bg':              '#0e0e1c',
       '--bg-card':         '#161624',
+      '--bg-elevated':     '#1b1b30',
       '--bg-card-trend':   'rgba(20,10,10,0.97)',
       '--bg-header':       'rgba(14,14,28,0.97)',
       '--accent':          '#F5C518',
@@ -90,6 +91,7 @@ export const THEMES = [
     css: {
       '--bg':              '#181818',
       '--bg-card':         '#222222',
+      '--bg-elevated':     '#2b2b2b',
       '--bg-card-trend':   'rgba(22,6,6,0.97)',
       '--bg-header':       'rgba(24,24,24,0.97)',
       '--accent':          '#E50914',
@@ -116,6 +118,9 @@ export const THEMES = [
     css: {
       '--bg':              '#0e0e22',
       '--bg-card':         'rgba(255,255,255,0.055)',
+      // Kartlar bilinçli olarak yarı saydam (cam etkisi), menüler DEĞİL:
+      // menü arkasındaki ızgarayı örtmezse okunmaz.
+      '--bg-elevated':     '#1d1d3f',
       '--bg-card-trend':   'rgba(130,80,160,0.10)',
       '--bg-header':       'rgba(14,14,34,0.80)',
       '--accent':          '#b068cc',
@@ -142,6 +147,7 @@ export const THEMES = [
     css: {
       '--bg':              '#060c22',
       '--bg-card':         '#0a1830',
+      '--bg-elevated':     '#0f2141',
       '--bg-card-trend':   'rgba(0,14,32,0.97)',
       '--bg-header':       'rgba(6,12,34,0.97)',
       '--accent':          '#009fd4',
@@ -168,6 +174,7 @@ export const THEMES = [
     css: {
       '--bg':              '#0a0a16',
       '--bg-card':         '#0c0f0c',
+      '--bg-elevated':     '#141a16',
       '--bg-card-trend':   'rgba(0,16,6,0.97)',
       '--bg-header':       'rgba(10,10,22,0.97)',
       '--accent':          '#00dc8a',

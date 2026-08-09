@@ -2,6 +2,9 @@
 :root {
   --bg:              #0e0e1c;
   --bg-card:         #161624;
+  /* Yükseltilmiş yüzey (açılır menü, raf okları). Kartın aksine ARKASINI
+     örtmesi gerektiği için her temada opak olmak zorundadır. */
+  --bg-elevated:     #1b1b30;
   --bg-card-trend:   rgba(20,10,10,0.97);
   --bg-header:       rgba(14,14,28,0.97);
   --accent:          #F5C518;
@@ -185,12 +188,20 @@ body { background: var(--bg); color: var(--text); overflow-x: hidden; }
 .dd-summary { overflow: hidden; text-overflow: ellipsis; }
 .dd-chevron { flex-shrink: 0; transition: transform 0.14s cubic-bezier(0.23,1,0.32,1); }
 
+/* Menü body'ye portal edilir ve viewport koordinatlarıyla konumlanır
+   (bkz. Dropdown.jsx'teki "NEDEN PORTAL" notu). top/left/right/max-height
+   satır içi stil olarak gelir; burada yalnız görünüm tanımlanır.
+
+   Zemin --bg-elevated: menü ARKASINDAKİ içeriği örtmek ZORUNDA. Eskiden
+   --bg-card kullanılıyordu; "Cam Efekti" temasında o değer
+   rgba(255,255,255,0.055) olduğu için menü şeffaf kalıyor ve okunmuyordu.
+   --bg-elevated her temada OPAK olmakla yükümlüdür. */
 .dd-menu {
-  position: absolute; top: calc(100% + 5px); z-index: 120;
-  min-width: 100%; max-height: 320px; overflow-y: auto;
-  background: var(--bg-card);
+  position: fixed; z-index: 200;
+  overflow-y: auto; overscroll-behavior: contain;
+  background: var(--bg-elevated);
   border: 1px solid var(--border); border-radius: 9px;
-  box-shadow: 0 10px 34px rgba(0,0,0,0.6);
+  box-shadow: 0 12px 38px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.35);
   padding: 4px;
   animation: dropdownIn 0.13s cubic-bezier(0.23,1,0.32,1) both;
 }
@@ -476,7 +487,7 @@ body { background: var(--bg); color: var(--text); overflow-x: hidden; }
     display: flex; align-items: center; justify-content: center;
     position: absolute; top: calc(50% - 18px); transform: translateY(-50%);
     z-index: 5; width: 30px; height: 30px; border-radius: 50%;
-    border: 1px solid var(--border); background: var(--bg-card);
+    border: 1px solid var(--border); background: var(--bg-elevated);
     color: var(--text-muted); cursor: pointer; opacity: 0;
     box-shadow: 0 4px 14px rgba(0,0,0,0.45);
     transition: opacity 0.16s ease-out, color 0.16s ease-out, border-color 0.16s ease-out;
