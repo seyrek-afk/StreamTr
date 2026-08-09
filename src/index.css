@@ -344,6 +344,17 @@ body { background: var(--bg); color: var(--text); overflow-x: hidden; }
   color: var(--text); font-size: 10.5px;
 }
 .ai-chip-k { color: var(--accent); font-weight: 700; }
+.ai-source {
+  margin-left: 2px; padding: 2px 8px; border-radius: 12px;
+  background: var(--accent); color: #14140f;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.06em;
+}
+.ai-notice {
+  color: var(--text-muted); font-size: 11px; line-height: 1.6;
+  margin-top: 12px; padding: 8px 11px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border); border-radius: 8px;
+}
 .ai-error { color: var(--text-muted); font-size: 12px; margin-top: 14px; line-height: 1.6; }
 .ai-count { color: var(--text-faint); font-size: 10.5px; margin: 14px 0 10px; }
 
