@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Mail, User, ShieldCheck, Loader, ArrowLeft } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext.jsx'
@@ -49,125 +49,89 @@ export default function AuthModal({ open, onClose }) {
 
   const onGoogle = () => run(async () => { await googleSignIn() })
 
-  const field = {
-    width: '100%', boxSizing: 'border-box',
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.12)',
-    borderRadius: 9, padding: '10px 12px',
-    color: 'var(--text)', fontSize: 13, fontFamily: 'inherit', outline: 'none',
-  }
-  const primaryBtn = {
-    width: '100%', marginTop: 4,
-    background: 'var(--accent)', color: '#0b0b14',
-    border: 'none', borderRadius: 10, padding: '11px 16px',
-    fontSize: 13.5, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer',
-    fontFamily: 'inherit', opacity: busy ? 0.6 : 1,
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-  }
-
-  // Portal ile body'e taşınır: header'ın backdrop-filter'i position:fixed'i
-  // kendine bağlamasın (yoksa modal ekranın üstüne taşar).
+  // Portal ile body'e taşınır: yapışkan başlık kendi yığın bağlamını kurduğu
+  // için position:fixed'i kendine bağlar, modal ekranın üstüne taşardı.
   return createPortal((
-    <div
-      onClick={(e) => e.target === e.currentTarget && onClose?.()}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 220,
-        background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-      }}
-    >
-      <div
-        role="dialog" aria-modal="true" aria-label="Hesap"
-        style={{
-          background: '#13131f', border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: 16, width: '100%', maxWidth: 380, overflow: 'hidden',
-        }}
-      >
-        {/* Başlık */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+    <div className="modal-scrim" onClick={(e) => e.target === e.currentTarget && onClose?.()}>
+      <div className="modal modal-auth" role="dialog" aria-modal="true" aria-label="Hesap">
+        <div className="modal-head">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {step === 'code' && (
-              <button onClick={() => { setStep('form'); setError(''); setInfo('') }} aria-label="Geri"
-                style={{ background: 'none', border: 'none', color: 'var(--text-faint)', cursor: 'pointer', display: 'flex', padding: 0 }}>
-                <ArrowLeft size={16} />
+              <button className="icon-btn" aria-label="Geri"
+                onClick={() => { setStep('form'); setError(''); setInfo('') }}>
+                <ArrowLeft size={18} aria-hidden="true" />
               </button>
             )}
-            <h2 style={{ color: 'var(--text)', fontSize: 14.5, fontWeight: 700, margin: 0 }}>
-              {step === 'form' ? 'Giriş yap / Kayıt ol' : 'E-postanı doğrula'}
+            <h2 className="modal-title">
+              {step === 'form' ? 'Giriş yap' : 'E-postanı doğrula'}
             </h2>
           </div>
-          <button onClick={onClose} aria-label="Kapat"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 7, padding: '5px 6px', color: 'var(--text-faint)', cursor: 'pointer', display: 'flex' }}>
-            <X size={14} />
+          <button className="icon-btn" onClick={onClose} aria-label="Kapat">
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 
-        <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 11 }}>
+        <div className="auth-body">
           {!configured ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: 12.5, lineHeight: 1.6, margin: 0 }}>
-              Giriş henüz yapılandırılmamış. Yöneticinin <code style={{ color: 'var(--accent)' }}>VITE_SUPABASE_URL</code> ve{' '}
-              <code style={{ color: 'var(--accent)' }}>VITE_SUPABASE_ANON_KEY</code> değerlerini ayarlaması gerekir.
+            <p className="cc-desc">
+              Giriş henüz yapılandırılmamış. Yöneticinin <code>VITE_SUPABASE_URL</code> ve{' '}
+              <code>VITE_SUPABASE_ANON_KEY</code> değerlerini ayarlaması gerekir.
             </p>
           ) : step === 'form' ? (
             <>
-              <p style={{ color: 'var(--text-faint)', fontSize: 11.5, lineHeight: 1.6, margin: '0 0 2px' }}>
-                Favorilerini tüm cihazlarında görmek için giriş yap. Şifre yok — e-postana tek kullanımlık bir kod gönderiyoruz.
+              <p className="cc-desc-alt" style={{ lineHeight: 1.65 }}>
+                Favorilerini tüm cihazlarında görmek için giriş yap. Şifre yok — e-postana
+                tek kullanımlık bir kod gönderiyoruz.
               </p>
 
-              {/* Google */}
-              <button onClick={onGoogle} disabled={busy}
-                style={{
-                  width: '100%', background: '#fff', color: '#1f1f1f',
-                  border: 'none', borderRadius: 10, padding: '10px 14px',
-                  fontSize: 13, fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer',
-                  fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9,
-                }}>
+              <button className="btn btn-google" onClick={onGoogle} disabled={busy}>
                 <GoogleIcon /> Google ile devam et
               </button>
 
-              <div style={{ position: 'relative', textAlign: 'center', margin: '4px 0' }}>
-                <span style={{ position: 'absolute', left: 0, right: 0, top: '50%', borderTop: '1px solid rgba(255,255,255,0.08)' }} />
-                <span style={{ position: 'relative', background: '#13131f', padding: '0 10px', color: 'var(--text-faint)', fontSize: 11 }}>veya e-posta ile</span>
-              </div>
+              <div className="auth-sep"><span>veya e-posta ile</span></div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <input style={field} placeholder="Ad" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-                <input style={field} placeholder="Soyad (ops.)" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                <input className="field" placeholder="Ad" aria-label="Ad" value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)} />
+                <input className="field" placeholder="Soyad (isteğe bağlı)" aria-label="Soyad" value={lastName}
+                  onChange={(e) => setLastName(e.target.value)} />
               </div>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <Mail size={15} style={{ position: 'absolute', left: 11, color: 'var(--text-faint)', pointerEvents: 'none' }} />
-                <input style={{ ...field, paddingLeft: 34 }} type="email" placeholder="E-posta" value={email}
+              <div className="field-with-icon">
+                <Mail size={16} aria-hidden="true" />
+                <input className="field" type="email" placeholder="E-posta" aria-label="E-posta" value={email}
                   onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && onSend()} />
               </div>
 
-              <button onClick={onSend} disabled={busy} style={primaryBtn}>
-                {busy ? <Loader size={15} className="spin" /> : <User size={15} />} Kod gönder
+              <button className="btn auth-primary" onClick={onSend} disabled={busy}>
+                {busy ? <Loader size={16} className="spin" aria-hidden="true" /> : <User size={16} aria-hidden="true" />}
+                Kod gönder
               </button>
             </>
           ) : (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--accent)', fontSize: 12.5 }}>
-                <ShieldCheck size={15} /> {email} adresine gönderilen kodu gir
-              </div>
+              <p className="cc-desc-alt" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <ShieldCheck size={16} aria-hidden="true" /> {email} adresine gönderilen kodu gir.
+              </p>
               <input
-                style={{ ...field, textAlign: 'center', letterSpacing: '0.5em', fontSize: 20, fontFamily: 'monospace' }}
+                className="field field-code tnum"
                 placeholder="••••••" inputMode="numeric" maxLength={6} autoFocus
+                aria-label="Doğrulama kodu"
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
                 onKeyDown={(e) => e.key === 'Enter' && onVerify()}
               />
-              <button onClick={onVerify} disabled={busy || code.length < 6} style={primaryBtn}>
-                {busy ? <Loader size={15} className="spin" /> : <ShieldCheck size={15} />} Doğrula ve gir
+              <button className="btn auth-primary" onClick={onVerify} disabled={busy || code.length < 6}>
+                {busy ? <Loader size={16} className="spin" aria-hidden="true" /> : <ShieldCheck size={16} aria-hidden="true" />}
+                Doğrula ve gir
               </button>
-              <button onClick={onSend} disabled={busy}
-                style={{ background: 'none', border: 'none', color: 'var(--text-faint)', fontSize: 11.5, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <button className="link-btn" onClick={onSend} disabled={busy} style={{ alignSelf: 'center' }}>
                 Kod gelmedi mi? Tekrar gönder
               </button>
             </>
           )}
 
-          {error && <p style={{ color: '#ff8a8a', background: 'rgba(229,9,20,0.1)', border: '1px solid rgba(229,9,20,0.25)', borderRadius: 8, padding: '8px 11px', fontSize: 11.5, margin: 0 }}>{error}</p>}
-          {info && <p style={{ color: '#86efac', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 8, padding: '8px 11px', fontSize: 11.5, margin: 0 }}>{info}</p>}
+          {error && <p className="auth-msg auth-msg-error">{error}</p>}
+          {info  && <p className="auth-msg auth-msg-ok">{info}</p>}
         </div>
       </div>
     </div>

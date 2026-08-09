@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
-import { RefreshCw, X, ChevronDown, Loader, Sparkles } from 'lucide-react'
+import {
+  RefreshCw, ChevronDown, Loader, Sparkles, AlertTriangle,
+  Tv, Film, Flame, Star, SearchX,
+} from 'lucide-react'
 import { PLATFORMS, TR_PLATFORMS, TABS } from './constants/index.js'
 import { COUNTRIES, countryLabel, countryAdjective } from './constants/countries.js'
 import { useStreamData, dataKey } from './hooks/useStreamData.js'
@@ -14,9 +17,12 @@ import Dropdown     from './components/Dropdown.jsx'
 import RailRow      from './components/RailRow.jsx'
 import SkeletonGrid from './components/SkeletonGrid.jsx'
 import ThemePicker  from './components/ThemePicker.jsx'
-import SearchBar    from './components/SearchBar.jsx'
+import { SearchField, SearchResult } from './components/SearchBar.jsx'
 import AiSearchPanel from './components/AiSearchPanel.jsx'
 import AccountButton from './components/auth/AccountButton.jsx'
+
+// Sekme ikonları lucide'dan gelir; TABS verisi yalnız anahtarı taşır (emoji yok).
+const TAB_ICON = { tv: Tv, film: Film, flame: Flame, star: Star }
 
 // Yıl gruplaması — en yeni yıla (anchor) göre dinamik aralıklar, en eskiler sabit on yıllıklar.
 // anchor=2026 → 2026 · 2024–2025 · 2020–2023 · 2010–2019 · 2000–2009 · 2000 öncesi.
@@ -164,6 +170,16 @@ export default function App() {
   const { rails, loading: railsLoading } = useCountryRails(tab, railsEligible ? country : null)
   const showRails = railsEligible && !hasActiveFilter && !searchActive && !loading[dk]
 
+  // Izgaranın başlığı: raflar varken "geri kalanı" işaret eder, tek başınayken
+  // sekmenin kısa adının taşımadığı iddiayı ("en iyi") üstlenir.
+  const kindWord = tab === 'filmler' ? 'filmler' : 'diziler'
+  const gridHeading = (() => {
+    if (tab === 'trend') return 'Sosyalde konuşulanlar'
+    const adj = country ? `${countryAdjective(country)} ` : ''
+    if (showRails) return `Tüm ${adj}${kindWord}`
+    return country ? `En iyi ${adj}${kindWord}` : `En iyi ${kindWord}`
+  })()
+
   const applyGridAction = (action) => {
     if (!action) return
     if (action.type === 'sort')   setSortBy(action.value)
@@ -181,40 +197,43 @@ export default function App() {
   const platformChips  = country === HOME_COUNTRY ? TR_PLATFORMS : PLATFORMS
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', fontFamily: "'DM Sans', system-ui, -apple-system, sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');`}</style>
-
-      {/* ── BAŞLIK: iki sıra ──────────────────────────────────────────────── */}
+    <div className="app-shell">
+      {/* ── BAŞLIK: iki bant ──────────────────────────────────────────────────
+          Bant 1 kimlik + gezinme, bant 2 tek araç rayı (kapsam → arama → filtre).
+          Önceki dört bant içeriği ekranın beşte birine kadar aşağı itiyordu. */}
       <header className="app-header">
-        <div className="hdr-row hdr-brand">
-          <div className="brand">
-            <span className="brand-name">StreamTR</span>
-            <span className="brand-kicker">TÜRKİYE</span>
-          </div>
+        <div className="hdr-row">
+          <span className="brand">StreamTR</span>
+
+          <nav className="tabs" aria-label="Bölümler">
+            {TABS.map(t => {
+              const active  = tab === t.id
+              const busy    = Boolean(loading[dataKey(country, t.id)])
+              // İkon yüklenirken dönen göstergeye dönüşür: satır genişliği
+              // oynamaz, durum yine de okunur.
+              const Icon = busy ? Loader : TAB_ICON[t.icon]
+              return (
+                <button
+                  key={t.id}
+                  className={`tab${active ? ' tab-active' : ''}`}
+                  aria-current={active ? 'page' : undefined}
+                  onClick={() => setTab(t.id)}
+                >
+                  <Icon size={16} className={busy ? 'spin' : undefined} aria-hidden="true" />
+                  {t.label}
+                </button>
+              )
+            })}
+          </nav>
+
           <div className="hdr-actions">
             <AccountButton />
             <ThemePicker />
           </div>
         </div>
 
-        <div className="hdr-row hdr-nav">
-          <nav className="tabs">
-            {TABS.map(t => {
-              const active = tab === t.id
-              return (
-                <button
-                  key={t.id}
-                  className={`tab${active ? ' tab-active' : ''}`}
-                  onClick={() => setTab(t.id)}
-                >
-                  <span>{t.emoji}</span> {t.label}
-                  {loading[dataKey(country, t.id)] && <RefreshCw size={11} className="spin" />}
-                </button>
-              )
-            })}
-          </nav>
-
-          {/* Mercek — "Yerli" aslında ülke=TR demektir; üçüncü segment onu
+        <div className="toolbar">
+          {/* Kapsam — "Yerli" aslında ülke=TR demektir; üçüncü segment onu
               genelleştirir. Sana Özel favori/öneri sekmesidir, köken orada anlamsız. */}
           {!isSanaOzel && (
             <div className="lens" role="group" aria-label="İçerik kapsamı">
@@ -232,59 +251,49 @@ export default function App() {
                 onChange={v => setCountry(v)}
                 options={otherCountries.map(c => ({ value: c.code, label: c.label }))}
                 align="right"
-                minWidth={104}
+                minWidth={96}
               />
             </div>
           )}
+
+          {!isSanaOzel && (
+            <>
+              <SearchField search={search} />
+              <button
+                className={`ctl${aiOpen ? ' ctl-on' : ''}`}
+                onClick={() => setAiOpen(o => !o)}
+                aria-pressed={aiOpen}
+              >
+                <Sparkles size={15} style={{ color: 'var(--accent-ink)' }} aria-hidden="true" />
+                AI ile Ara
+              </button>
+            </>
+          )}
+
+          {/* Filtreler AI panelinde gizlenir: AI sonuçları filtrelenmiyor. */}
+          {!aiOpen && (isSanaOzel ? (
+            <div className="toolbar-filters toolbar-filters-lead">
+              <Dropdown
+                label="İçerik"
+                value={mediaType === 'all' ? null : mediaType}
+                onChange={v => setMediaType(v || 'all')}
+                options={[{ value: 'dizi', label: 'Dizi' }, { value: 'film', label: 'Film' }]}
+                minWidth={104}
+              />
+            </div>
+          ) : (
+            <FilterBar
+              genres={selectedGenres} onGenresChange={setSelectedGenres}
+              yearBuckets={yearBuckets} selectedYears={activeYearKeys} onYearsChange={setSelectedYears}
+              platforms={platformChips} platform={platform} onPlatformChange={setPlatform}
+              sortOptions={SORT_OPTIONS} sortBy={sortBy} onSortChange={setSortBy}
+              mediaType={mediaType} onMediaTypeChange={tab === 'trend' ? setMediaType : undefined}
+              trOnly={trOnly} onTrOnlyChange={setTrOnly} enriching={enriching[dk]}
+              hasActiveFilter={hasActiveFilter} onClear={clearFilters}
+            />
+          ))}
         </div>
       </header>
-
-      {/* ── ARAMA SATIRI ──────────────────────────────────────────────────── */}
-      {!isSanaOzel && (
-        <div className="search-row">
-          <div className="search-row-main">
-            <SearchBar search={search} />
-          </div>
-          <button
-            className={`ai-toggle${aiOpen ? ' ai-toggle-on' : ''}`}
-            onClick={() => setAiOpen(o => !o)}
-            aria-pressed={aiOpen}
-          >
-            <Sparkles size={13} /> AI ile Ara
-          </button>
-        </div>
-      )}
-
-      {/* ── AI PANELİ ─────────────────────────────────────────────────────── */}
-      {aiOpen && !isSanaOzel && (
-        <div className="ai-panel-wrap">
-          <AiSearchPanel ai={ai} onClose={() => setAiOpen(false)} />
-        </div>
-      )}
-
-      {/* ── FİLTRE ÇUBUĞU ─────────────────────────────────────────────────── */}
-      {!aiOpen && (isSanaOzel ? (
-        <div className="filter-bar">
-          <Dropdown
-            label="İçerik"
-            value={mediaType === 'all' ? null : mediaType}
-            onChange={v => setMediaType(v || 'all')}
-            options={[{ value: 'dizi', label: 'Dizi' }, { value: 'film', label: 'Film' }]}
-            minWidth={104}
-          />
-        </div>
-      ) : (
-        <FilterBar
-          genres={selectedGenres} onGenresChange={setSelectedGenres}
-          yearBuckets={yearBuckets} selectedYears={activeYearKeys} onYearsChange={setSelectedYears}
-          platforms={platformChips} platform={platform} onPlatformChange={setPlatform}
-          sortOptions={SORT_OPTIONS} sortBy={sortBy} onSortChange={setSortBy}
-          mediaType={mediaType} onMediaTypeChange={tab === 'trend' ? setMediaType : undefined}
-          trOnly={trOnly} onTrOnlyChange={setTrOnly} enriching={enriching[dk]}
-          shownCount={visibleFiltered.length} totalCount={filtered.length}
-          hasActiveFilter={hasActiveFilter} onClear={clearFilters}
-        />
-      ))}
 
       {/* ── ANA İÇERİK ────────────────────────────────────────────────────── */}
       <main className="app-main">
@@ -292,29 +301,29 @@ export default function App() {
        {isSanaOzel ? (
         <>
           <h2 className="section-title">
-            ⭐ Favorilerim
-            <span className="section-count">
-              ({favoritesFiltered.length}{mediaType !== 'all' ? ` / ${favorites.length}` : ''})
-            </span>
+            Favorilerim
+            {favorites.length > 0 && (
+              <span className="section-count tnum">
+                {favoritesFiltered.length}{mediaType !== 'all' ? ` / ${favorites.length}` : ''}
+              </span>
+            )}
           </h2>
 
           {favorites.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-icon">⭐</div>
-              <p className="empty-title">Henüz favori eklemediniz</p>
+              <Star size={40} className="empty-icon" aria-hidden="true" />
+              <p className="empty-title">Henüz favorin yok</p>
               <p className="empty-sub">
-                Kartlardaki ⭐ simgesine dokunarak beğendiklerinizi işaretleyin — size özel öneriler burada çıkar.
+                Kartlardaki yıldıza dokun; beğendiklerin burada toplansın. Sana özel
+                öneriler de bu listeye bakarak çıkar.
               </p>
             </div>
           ) : favoritesFiltered.length === 0 ? (
-            <p className="muted-note">Bu filtreye uygun favori yok.</p>
+            <p className="muted-note">Bu filtreye uygun favorin yok.</p>
           ) : (
-            <div className="grid-cards">
-              {favoritesFiltered.map((item, i) => (
-                <div key={`fav-${item.key}`} className="card-enter"
-                  style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}>
-                  <ContentCard item={item} isTrend={false} />
-                </div>
+            <div className="grid-cards enter">
+              {favoritesFiltered.map(item => (
+                <ContentCard key={`fav-${item.key}`} item={item} isTrend={false} />
               ))}
             </div>
           )}
@@ -322,15 +331,15 @@ export default function App() {
           {favorites.length > 0 && (
             <>
               <h2 className="section-title section-title-gap">
-                ✨ Sana Özel Öneriler
-                {recLoading && <RefreshCw size={12} className="spin" />}
+                Sana özel öneriler
+                {recLoading && <RefreshCw size={14} className="spin" aria-hidden="true" />}
               </h2>
 
               {recLoading && recommendations.length === 0 && <SkeletonGrid count={6} />}
 
               {!recLoading && recommendations.length === 0 && (
                 <p className="muted-note">
-                  {recError || 'Favorilerinize uygun yeni öneri bulunamadı. Daha fazla içerik favorileyin.'}
+                  {recError || 'Favorilerine uygun yeni öneri bulunamadı. Birkaç yapım daha favorile.'}
                 </p>
               )}
 
@@ -339,20 +348,23 @@ export default function App() {
               )}
 
               {recommendationsFiltered.length > 0 && (
-                <div className="grid-cards">
+                <div className="grid-cards enter">
                   {recommendationsFiltered.map((item, i) => (
-                    <div key={`rec-${item._tmdbId || item.title}-${i}`} className="card-enter"
-                      style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}>
-                      <ContentCard item={item} isTrend={false} />
-                    </div>
+                    <ContentCard key={`rec-${item._tmdbId || item.title}-${i}`} item={item} isTrend={false} />
                   ))}
                 </div>
               )}
             </>
           )}
         </>
-       ) : aiOpen ? null : (
+       ) : aiOpen ? (
+        <AiSearchPanel ai={ai} onClose={() => setAiOpen(false)} />
+       ) : (
         <>
+        {/* Arama sonucu ve sistem uyarıları içerik alanında yaşar; araç rayı
+            yalnız kontrolleri taşır. */}
+        <SearchResult search={search} />
+
         {/* ── EDİTORYAL RAFLAR ──────────────────────────────────────────── */}
         {showRails && rails.length > 0 && (
           <div className="rails-wrap">
@@ -364,11 +376,6 @@ export default function App() {
                 onShowAll={() => applyGridAction(r.gridAction)}
               />
             ))}
-            <div className="rails-divider">
-              <h2 className="rails-divider-title">
-                Tüm {countryAdjective(country)} {tab === 'filmler' ? 'Filmleri' : 'Dizileri'}
-              </h2>
-            </div>
           </div>
         )}
         {showRails && railsLoading && rails.length === 0 && (
@@ -377,13 +384,16 @@ export default function App() {
 
         {/* Hata bandı */}
         {error[dk] && !loading[dk] && (
-          <div className="error-band">
-            <div>
-              <p className="error-title">⚠ Veri yüklenirken hata oluştu</p>
-              <p className="error-sub">İçerik sunucusundan yüklenemedi. Lütfen tekrar deneyin.</p>
+          <div className="band band-danger">
+            <div className="band-row">
+              <AlertTriangle size={18} className="band-icon" aria-hidden="true" />
+              <div>
+                <p className="band-title">Veriler yüklenemedi</p>
+                <p className="band-sub">İçerik sunucusuna ulaşılamadı. Bağlantını kontrol edip yeniden dene.</p>
+              </div>
             </div>
-            <button className="error-retry" onClick={() => retry(dk)}>
-              <RefreshCw size={12} /> Yeniden Dene
+            <button className="btn btn-quiet" onClick={() => retry(dk)}>
+              <RefreshCw size={14} aria-hidden="true" /> Yeniden dene
             </button>
           </div>
         )}
@@ -393,15 +403,16 @@ export default function App() {
         {/* Boş durum */}
         {!loading[dk] && filtered.length === 0 && !error[dk] && (
           <div className="empty-state">
-            <div className="empty-icon">
-              {tab === 'trend' ? '🔥' : tab === 'filmler' ? '🎬' : '📺'}
-            </div>
+            <SearchX size={40} className="empty-icon" aria-hidden="true" />
             {data[dk].length === 0 ? (
               <p className="empty-title">Yükleniyor…</p>
             ) : (
               <>
-                <p className="empty-title">Seçilen filtrelere uygun içerik bulunamadı</p>
-                <button className="btn-accent" onClick={clearFilters}>Filtreleri Temizle</button>
+                <p className="empty-title">Bu filtrelerle eşleşen içerik yok</p>
+                <p className="empty-sub">
+                  Filtrelerden birini gevşetmeyi ya da hepsini temizleyip baştan başlamayı dene.
+                </p>
+                <button className="btn" onClick={clearFilters}>Filtreleri temizle</button>
               </>
             )}
           </div>
@@ -409,34 +420,44 @@ export default function App() {
 
         {/* İçerik ızgarası */}
         {!loading[dk] && visibleFiltered.length > 0 && (
-          <div className="grid-cards">
-            {visibleFiltered.map((item, i) => (
-              <div key={`${dk}-${item.title}-${i}`} className="card-enter"
-                style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}>
-                <ContentCard item={item} isTrend={tab === 'trend'} />
-              </div>
-            ))}
-          </div>
+          <>
+            <div className="grid-head">
+              <h2 className="grid-title">{gridHeading}</h2>
+              <span className="grid-count tnum">{filtered.length} sonuç</span>
+            </div>
+
+            <div className="grid-cards enter">
+              {visibleFiltered.map((item, i) => (
+                <ContentCard
+                  key={`${dk}-${item.title}-${i}`}
+                  item={item}
+                  isTrend={tab === 'trend'}
+                  // Diziler/Filmler sekmesinde tür sözcüğü zaten sekmenin adı.
+                  showKind={tab === 'trend'}
+                />
+              ))}
+            </div>
+          </>
         )}
 
-        {/* Daha çok göster */}
+        {/* Daha fazla */}
         {!loading[dk] && visibleFiltered.length > 0 && canShowMore && (
           <div className="more-wrap">
-            <button className="btn-accent" onClick={() => showMore(dk)} disabled={loadingMore[dk]}>
+            <button className="btn btn-quiet" onClick={() => showMore(dk)} disabled={loadingMore[dk]}>
               {loadingMore[dk]
-                ? <><Loader size={13} className="spin" /> Yükleniyor…</>
-                : <><ChevronDown size={13} /> Daha Çok Göster</>
+                ? <><Loader size={14} className="spin" aria-hidden="true" /> Yükleniyor…</>
+                : <><ChevronDown size={14} aria-hidden="true" /> Daha fazla göster</>
               }
             </button>
-            <p className="more-note">
+            <p className="more-note tnum">
               {visibleFiltered.length} / {filtered.length} gösteriliyor · en fazla {contentCap} içerik
             </p>
           </div>
         )}
 
         {!loading[dk] && !hasMore[dk] && data[dk].length >= contentCap && (
-          <p className="more-note more-note-center">
-            Tüm içerikler yüklendi · {data[dk].length} içerik
+          <p className="more-note tnum" style={{ textAlign: 'center' }}>
+            Tümü yüklendi · {data[dk].length} içerik
           </p>
         )}
         </>
@@ -446,13 +467,13 @@ export default function App() {
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
       <footer className="app-footer">
         <div className="footer-top">
-          <span className="brand-name footer-brand">STREAMTR</span>
+          <span className="footer-brand">StreamTR</span>
           <span className="footer-src">Veriler: TMDB · IMDB · Rotten Tomatoes</span>
         </div>
         <p className="footer-legal">
           Bu sitede yer alan bilgiler kişisel eğitim amaçlı AI ile tasarlanmış olup ticari bir amacı yoktur.
           <br />
-          Özgür Seyrek - <a href="mailto:seyrek@gmail.com">seyrek@gmail.com</a>
+          Özgür Seyrek — <a href="mailto:seyrek@gmail.com">seyrek@gmail.com</a>
         </p>
       </footer>
     </div>

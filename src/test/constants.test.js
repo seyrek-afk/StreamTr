@@ -60,21 +60,36 @@ describe('PLATFORMS', () => {
 })
 
 describe('THEMES', () => {
+  // Tema sözleşmesi — görsel dil v2 ile güncellendi:
+  //   + --accent-ink / --accent-contrast: vurgu rengi metin olarak WCAG AA'yı
+  //     geçmeyebiliyor (Netflix kırmızısı koyu zeminde 2.95:1). Metin ve dolgu
+  //     üstü mürekkep artık ayrı tokenlar.
+  //   + --surface / --surface-hover / --border-strong: tüm kontroller tek yüzey
+  //     ve tek kenarlık tokenını paylaşır; her bileşen kendi beyaz-alfasını
+  //     uydurmaz.
+  //   - --logo-grad KALDIRILDI: markanın gradyan metni terk edildi (gradyanın
+  //     koyu ucunda kontrast düşüyordu, tek katı renk hem daha güçlü hem AA).
+  //     Token yalnız o gradyan için vardı; kullanımı bitince token da bitti.
+  //   - --accent2 KALDIRILDI: hiçbir yerde okunmuyordu (ölü token).
   const REQUIRED_CSS_VARS = [
-    '--bg', '--bg-card', '--bg-header', '--accent', '--accent2',
-    '--accent-rgb', '--border', '--text', '--text-muted', '--text-faint',
-    '--tab-active', '--hover-border', '--trend-bar', '--logo-grad',
+    '--bg', '--bg-card', '--bg-elevated', '--bg-header',
+    '--surface', '--surface-hover',
+    '--accent', '--accent-ink', '--accent-contrast', '--accent-rgb',
+    '--border', '--border-strong', '--text', '--text-muted', '--text-faint',
+    '--tab-active', '--hover-border', '--trend-bar',
   ]
 
   it('should have 5 themes', () => {
     expect(THEMES).toHaveLength(5)
   })
 
+  // NOT: `emoji` alanı kaldırıldı — arayüzde emoji kullanılmıyor (her işletim
+  // sisteminde farklı çizilir, ikon setinin çizgisini tutturamaz, currentColor
+  // almaz). Tema kartında emojinin yerini temanın kendi renk önizlemesi aldı.
   it('every theme should have required fields', () => {
     THEMES.forEach(theme => {
       expect(theme).toHaveProperty('id')
       expect(theme).toHaveProperty('label')
-      expect(theme).toHaveProperty('emoji')
       expect(theme).toHaveProperty('desc')
       expect(theme).toHaveProperty('preview')
       expect(theme).toHaveProperty('css')
@@ -119,10 +134,12 @@ describe('TABS', () => {
     expect(TABS).toHaveLength(4)
   })
 
-  it('every tab should have id, emoji, label', () => {
+  // `emoji` → `icon`: sekme işareti artık lucide ikon anahtarı (bkz. TAB_ICON,
+  // App.jsx). Emoji arayüzden tümüyle çıkarıldı.
+  it('every tab should have id, icon, label', () => {
     TABS.forEach(tab => {
       expect(tab).toHaveProperty('id')
-      expect(tab).toHaveProperty('emoji')
+      expect(tab).toHaveProperty('icon')
       expect(tab).toHaveProperty('label')
     })
   })

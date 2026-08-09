@@ -18,6 +18,21 @@ export const GENRE_MAP = {
 }
 
 // ── Sayı formatla ────────────────────────────────────────────────────────────
+// Platform rozetinin mürekkebi — markanın renginin parlaklığına göre siyah ya
+// da beyaz. Hepsine beyaz vermek Prime'ın siyanında (#00A8E0) 2.7:1'e düşüyordu;
+// logotip olsa da okunmuyordu. WCAG'ın göreli parlaklık formülü, eşik 0.42
+// (bu eşikte her iki yön de ≥4.5:1 kalıyor).
+export function badgeInk(hex) {
+  const h = String(hex || '').replace('#', '')
+  if (h.length !== 6) return '#ffffff'
+  const lin = [0, 2, 4].map(i => {
+    const c = parseInt(h.slice(i, i + 2), 16) / 255
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+  })
+  const L = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+  return L > 0.18 ? '#101014' : '#ffffff'
+}
+
 export function fmtCount(n) {
   if (!n) return '—'
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
@@ -105,34 +120,33 @@ export function tmdbToTrendCard(item, rank) {
     _voteCount:     item.vote_count || 0,
     _weightedScore: weightedScore(item.vote_average, item.vote_count, item.media_type),
 
+    // Kriterlerin `icon` alanı kaldırıldı: emoji ikonlar arayüzden çıkarıldı
+    // (her OS'ta farklı çizilirler). Kriter satırı artık etiket + değer + skor
+    // ile okunuyor; ikon zaten bilgi taşımıyordu.
     popularityCriteria: [
       {
         label: 'Haftalık Sıra',
         value: `#${rank}`,
         source: 'TMDB Haftalık Trend',
         score: rankScore,
-        icon: '🔥',
       },
       {
         label: 'Ortalama Puan',
         value: `${(item.vote_average || 0).toFixed(1)} / 10`,
         source: 'TMDB Kullanıcı Oyları',
         score: voteScore,
-        icon: '⭐',
       },
       {
         label: 'Toplam Oy',
         value: fmtCount(item.vote_count),
         source: 'TMDB',
         score: voteCountScore,
-        icon: '🗳',
       },
       {
         label: 'Popülerlik Endeksi',
         value: item.popularity ? item.popularity.toFixed(0) : '—',
         source: 'TMDB Algoritması',
         score: popScore,
-        icon: '📊',
       },
     ],
   }

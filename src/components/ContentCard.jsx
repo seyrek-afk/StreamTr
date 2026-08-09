@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Star, TrendingUp, ChevronDown, ChevronUp, User } from 'lucide-react'
+import { Star, ChevronDown, ChevronUp, User, Film } from 'lucide-react'
 import PosterImg from './PosterImg.jsx'
 import DetailOverlay from './DetailOverlay.jsx'
 import FavoriteButton from './FavoriteButton.jsx'
 import TrailerEmbed from './TrailerEmbed.jsx'
 import { ALL_PLATFORMS } from '../constants/index.js'
 import { isValidTmdbRef, isValidTmdbId, mapTrProviders } from '../lib/tmdb.js'
+import { badgeInk } from '../lib/cards.js'
 
 // Rozet çözümlemesi küresel + yerli tüm sağlayıcıları kapsar; aksi halde
 // puhutv/TOD gibi yerli platformlar gri "PUH" fallback'ine düşerdi.
@@ -13,38 +14,27 @@ const PLAT_MAP = Object.fromEntries(ALL_PLATFORMS.map(p => [p.id, p]))
 
 const TMDB_KEY = import.meta.env.VITE_TMDB_KEY
 
-// ── Skor Rozeti ────────────────────────────────────────────────────────────────
-function ScoreBadge({ imdb, rt, lb }) {
+// ── Puan satırı ───────────────────────────────────────────────────────────────
+// Bir kahraman, iki destekçi. Önce üç puan da emoji + çerçeveli rozetti ve
+// eşit ağırlıkta bağırıyordu. IMDB puanı kartın en büyük ikinci tipografik
+// öğesi oldu; RT ve Letterboxd düz metne indi. "Taze/çürük" bilgisi kutuda
+// değil, sayının renginde yaşamaya devam ediyor.
+function ScoreLine({ imdb, rt, lb }) {
   if (!imdb && !rt && !lb) return null
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+    <div className="cc-scores">
       {imdb && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-          <Star size={11} fill="var(--accent)" color="var(--accent)" />
-          <span style={{ color: 'var(--accent)', fontSize: 13, fontWeight: 800, fontFamily: 'monospace' }}>{imdb}</span>
-          <span style={{ color: 'var(--text-faint)', fontSize: 9 }}>/10</span>
-        </div>
-      )}
-      {rt && (
-        <span style={{
-          fontSize: 9.5, fontWeight: 700, padding: '2px 5px', borderRadius: 3,
-          background: rt >= 60 ? 'rgba(76,175,80,0.13)' : 'rgba(244,67,54,0.13)',
-          border: `1px solid ${rt >= 60 ? 'rgba(76,175,80,0.3)' : 'rgba(244,67,54,0.3)'}`,
-          color: rt >= 60 ? '#81c784' : '#e57373',
-        }}>🍅 {rt}%</span>
-      )}
-      {lb && (
-        <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: 3,
-          fontSize: 9.5, fontWeight: 700, padding: '2px 5px', borderRadius: 3,
-          background: 'rgba(0,172,56,0.12)',
-          border: '1px solid rgba(0,172,56,0.28)',
-          color: '#4dcf7a',
-        }}>
-          🎞 {lb}
-          <span style={{ fontSize: 8, color: 'rgba(77,207,122,0.6)' }}>/5</span>
+        <span className="cc-imdb tnum">
+          <Star size={14} fill="currentColor" aria-hidden="true" />
+          {imdb}<span className="cc-imdb-max">/10</span>
         </span>
       )}
+      {rt && (
+        <span className={`cc-alt tnum ${rt >= 60 ? 'cc-alt-ok' : 'cc-alt-bad'}`} title="Rotten Tomatoes">
+          RT %{rt}
+        </span>
+      )}
+      {lb && <span className="cc-alt tnum" title="Letterboxd">LB {lb}</span>}
     </div>
   )
 }
@@ -53,45 +43,19 @@ function ScoreBadge({ imdb, rt, lb }) {
 function MiniCard({ item, onClick }) {
   const [imgErr, setImgErr] = useState(false)
   return (
-    <button
-      onClick={e => { e.stopPropagation(); onClick(item) }}
-      style={{
-        background: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 7, padding: 0, cursor: 'pointer',
-        display: 'flex', flexDirection: 'column',
-        width: 76, flexShrink: 0, overflow: 'hidden',
-        transition: 'border-color 0.15s, transform 0.15s',
-      }}
-      onMouseEnter={e => {
-        e.currentTarget.style.borderColor = 'rgba(var(--accent-rgb),0.45)'
-        e.currentTarget.style.transform   = 'translateY(-2px)'
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
-        e.currentTarget.style.transform   = 'translateY(0)'
-      }}
-    >
-      <div style={{ width: '100%', height: 108, background: 'rgba(255,255,255,0.04)', flexShrink: 0 }}>
+    <button className="mini-card" onClick={e => { e.stopPropagation(); onClick(item) }}>
+      <span className="mini-poster">
         {item.posterPath && !imgErr
           ? <img
               src={`https://image.tmdb.org/t/p/w92${item.posterPath}`}
-              alt={item.title}
+              alt=""
+              loading="lazy"
               onError={() => setImgErr(true)}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
-          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🎬</div>
-        }
-      </div>
-      <div style={{ padding: '4px 6px 6px' }}>
-        <p style={{
-          color: 'var(--text)', fontSize: 8.5, fontWeight: 600, lineHeight: 1.3, margin: 0,
-          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-        }}>{item.title}</p>
-        {item.year && (
-          <p style={{ color: 'var(--text-faint)', fontSize: 7.5, margin: '2px 0 0' }}>{item.year}</p>
-        )}
-      </div>
+          : <Film size={18} aria-hidden="true" />}
+      </span>
+      <span className="mini-title">{item.title}</span>
+      {item.year && <span className="mini-year">{item.year}</span>}
     </button>
   )
 }
@@ -101,66 +65,33 @@ function ActorCard({ actor, onClick, isActive }) {
   const [imgErr, setImgErr] = useState(false)
   const hasImg      = actor.profilePath && !imgErr
   const isClickable = !!(actor.id && onClick)
+  const Tag = isClickable ? 'button' : 'div'
   return (
-    <div
+    <Tag
+      className={`actor${isActive === false ? ' actor-dim' : ''}`}
       onClick={isClickable ? (e) => { e.stopPropagation(); onClick(actor) } : undefined}
-      style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        gap: 4, width: 62, flexShrink: 0,
-        cursor: isClickable ? 'pointer' : 'default',
-        opacity: isActive === false ? 0.5 : 1,
-        transition: 'opacity 0.15s',
-      }}
+      aria-pressed={isClickable ? isActive === true : undefined}
     >
-      <div style={{
-        width: 52, height: 52, borderRadius: '50%', overflow: 'hidden',
-        border: `1.5px solid ${isActive ? 'var(--accent)' : 'var(--border)'}`,
-        background: 'rgba(var(--accent-rgb),0.08)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        transition: 'border-color 0.15s',
-      }}>
+      <span className={`actor-photo${isActive ? ' actor-photo-on' : ''}`}>
         {hasImg
-          ? <img src={`https://image.tmdb.org/t/p/w185${actor.profilePath}`} alt={actor.name}
-              onError={() => setImgErr(true)}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <User size={22} color="var(--text-faint)" />
-        }
-      </div>
-      <span style={{
-        color: 'var(--text-muted)', fontSize: 8.5, textAlign: 'center', lineHeight: 1.25,
-        maxWidth: 60, overflow: 'hidden',
-        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-      }}>{actor.name}</span>
-      {actor.character && (
-        <span style={{
-          color: 'var(--text-faint)', fontSize: 7.5, textAlign: 'center',
-          fontStyle: 'italic', lineHeight: 1.2, maxWidth: 60,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%',
-        }}>{actor.character}</span>
-      )}
-    </div>
+          ? <img src={`https://image.tmdb.org/t/p/w185${actor.profilePath}`} alt="" loading="lazy"
+              onError={() => setImgErr(true)} />
+          : <User size={20} aria-hidden="true" />}
+      </span>
+      <span className="actor-name">{actor.name}</span>
+      {actor.character && <span className="actor-role">{actor.character}</span>}
+    </Tag>
   )
 }
 
 // ── Yorum Kartı ───────────────────────────────────────────────────────────────
 function ReviewCard({ review }) {
   return (
-    <div style={{
-      background: 'rgba(var(--accent-rgb),0.05)',
-      border: '1px solid rgba(var(--accent-rgb),0.15)',
-      borderRadius: 7, padding: '8px 10px',
-    }}>
-      <p style={{ color: 'var(--text-muted)', fontSize: 10.5, lineHeight: 1.65, fontStyle: 'italic', margin: 0 }}>
-        "{review.quote}"
-      </p>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5 }}>
-        <span style={{
-          background: 'rgba(var(--accent-rgb),0.15)', borderRadius: 3, padding: '1px 6px',
-          fontSize: 8.5, fontWeight: 700, color: 'var(--accent)',
-        }}>{review.source}</span>
-        {review.author && (
-          <span style={{ color: 'var(--text-faint)', fontSize: 8.5 }}>— {review.author}</span>
-        )}
+    <div className="review">
+      <q>{review.quote}</q>
+      <div className="review-src">
+        <b>{review.source}</b>
+        {review.author && <span>{review.author}</span>}
       </div>
     </div>
   )
@@ -169,25 +100,14 @@ function ReviewCard({ review }) {
 // ── Kriter Çubuğu ─────────────────────────────────────────────────────────────
 function CriteriaBar({ criterion }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-      <span style={{ fontSize: 13, flexShrink: 0, width: 18, textAlign: 'center' }}>{criterion.icon}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
-          <span style={{ color: 'var(--text-muted)', fontSize: 10, fontWeight: 600 }}>{criterion.label}</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-            <span style={{ color: 'var(--text)', fontSize: 11, fontWeight: 700, fontFamily: 'monospace' }}>{criterion.value}</span>
-            <span style={{
-              color: 'var(--accent)', fontSize: 9, fontWeight: 800,
-              background: 'rgba(var(--accent-rgb),0.12)',
-              borderRadius: 3, padding: '1px 5px', minWidth: 24, textAlign: 'center',
-            }}>{criterion.score}</span>
-          </div>
-        </div>
-        <div style={{ height: 5, background: 'rgba(255,255,255,0.07)', borderRadius: 3, overflow: 'hidden' }}>
-          <div style={{ width: `${criterion.score}%`, height: '100%', background: 'var(--trend-bar)', borderRadius: 3, transition: 'width 0.4s ease' }} />
-        </div>
-        <span style={{ color: 'var(--text-faint)', fontSize: 8, marginTop: 2, display: 'block' }}>Kaynak: {criterion.source}</span>
+    <div className="crit">
+      <div className="crit-head">
+        <span className="crit-label">{criterion.label}</span>
+        <span className="crit-value tnum">{criterion.value}</span>
+        <span className="crit-score tnum">{criterion.score}</span>
       </div>
+      <div className="cc-bar"><i style={{ width: `${criterion.score}%` }} /></div>
+      <span className="crit-src">Kaynak: {criterion.source}</span>
     </div>
   )
 }
@@ -196,18 +116,12 @@ function CriteriaBar({ criterion }) {
 function MiniSection({ title, items, loading, onMiniClick }) {
   if (!loading && (!items || items.length === 0)) return null
   return (
-    <div style={{ padding: '12px 14px 0', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-      <p style={{ color: 'var(--text-faint)', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 9px' }}>
-        {title}
-      </p>
-      {loading && (!items || items.length === 0) && (
-        <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>Yükleniyor…</span>
-      )}
+    <div className="cc-sec">
+      <p className="cc-sec-title">{title}</p>
+      {loading && (!items || items.length === 0) && <span className="cc-desc-alt">Yükleniyor…</span>}
       {items && items.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-          {items.map(mini => (
-            <MiniCard key={mini.tmdbId} item={mini} onClick={onMiniClick} />
-          ))}
+        <div className="cc-strip">
+          {items.map(mini => <MiniCard key={mini.tmdbId} item={mini} onClick={onMiniClick} />)}
         </div>
       )}
     </div>
@@ -215,7 +129,9 @@ function MiniSection({ title, items, loading, onMiniClick }) {
 }
 
 // ── Ana Bileşen ───────────────────────────────────────────────────────────────
-export default function ContentCard({ item, isTrend }) {
+// showKind=false → "Dizi/Film" sözcüğü yazılmaz. Diziler ve Filmler sekmelerinde
+// zaten hepsi aynı türden; her kartta tekrarlamak 20 kez aynı şeyi söylemekti.
+export default function ContentCard({ item, isTrend, showKind = true }) {
   const [open, setOpen] = useState(false)
 
   // ── TMDB ID çözümleme (mock data için) ──────────────────────────────────────
@@ -439,214 +355,131 @@ export default function ContentCard({ item, isTrend }) {
   // böylece aynı kart yapısı tüm sekmelerde (trend, listeler, öneriler) ortaktır.
   const hasCriteria = Array.isArray(item.popularityCriteria) && item.popularityCriteria.length > 0
 
+  // Tür + içerik tipi tek satırda düz metin: "Dizi · Dram · Suç". Önce her biri
+  // ayrı çerçeveli etiketti; üç kutu bir cümlelik bilgiyi taşıyordu.
+  // Tür sayısı 2 ile sınırlı: üçüncüsü satırı sarmalıyor ve kart ritmini bozuyordu.
+  const kindWord = (showKind && item.type) ? (item.type === 'film' ? 'Film' : 'Dizi') : null
+  const genreWords = (item.genres || []).slice(0, 2)
+
   return (
     <>
       <div
+        className={`cc${isTrend ? ' cc-trend' : ''}`}
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        aria-label={`${item.title} — detayları ${open ? 'kapat' : 'aç'}`}
         onClick={() => setOpen(o => !o)}
-        style={{
-          background: isTrend ? 'var(--bg-card-trend)' : 'var(--bg-card)',
-          border: `1px solid ${isTrend ? 'var(--border-trend)' : 'var(--border)'}`,
-          backdropFilter: 'var(--card-backdrop)',
-          WebkitBackdropFilter: 'var(--card-backdrop)',
-          borderRadius: 10, overflow: 'hidden', cursor: 'pointer',
-          transition: 'border-color 0.18s, transform 0.18s',
-        }}
-        onMouseEnter={e => {
-          e.currentTarget.style.borderColor = 'var(--hover-border)'
-          e.currentTarget.style.transform   = 'translateY(-3px)'
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.borderColor = isTrend ? 'var(--border-trend)' : 'var(--border)'
-          e.currentTarget.style.transform   = 'translateY(0)'
+        onKeyDown={e => {
+          if (e.target !== e.currentTarget) return
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(o => !o) }
         }}
       >
-        {isTrend && <div style={{ height: 2, background: 'var(--trend-bar)' }} />}
+        {isTrend && <div className="cc-trendbar" />}
 
-        <div style={{ display: 'flex', minHeight: 148 }}>
-          {/* Poster */}
-          <div style={{ width: 98, flexShrink: 0, position: 'relative' }}>
+        <div className="cc-head">
+          <div className="cc-poster">
             <PosterImg path={item.posterPath} title={item.title} />
 
-            {/* ⭐ Favori tuşu — poster sağ-üst köşe */}
-            <div style={{ position: 'absolute', top: 5, right: 5, zIndex: 2 }}>
+            <div className="cc-fav">
               <FavoriteButton item={item} size={15} />
             </div>
 
             {item.trendRank && (
-              <div style={{
-                position: 'absolute', top: 5, left: 5,
-                background: item.trendRank <= 3
-                  ? 'linear-gradient(135deg,#f5a623,#e50914)'
-                  : item.trendRank <= 10
-                    ? 'linear-gradient(135deg,rgba(var(--accent-rgb),0.9),rgba(var(--accent-rgb),0.6))'
-                    : 'rgba(0,0,0,0.75)',
-                borderRadius: 5, padding: '2px 6px',
-                fontFamily: 'monospace', fontSize: item.trendRank <= 9 ? 13 : 11,
-                fontWeight: 900, color: '#fff',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
-                border: item.trendRank <= 3 ? '1px solid rgba(255,200,0,0.4)' : '1px solid rgba(255,255,255,0.12)',
-                backdropFilter: 'blur(4px)',
-              }}>#{item.trendRank}</div>
+              <div className={`cc-rank tnum${item.trendRank <= 3 ? ' cc-rank-top' : ''}`}>
+                {item.trendRank}
+              </div>
             )}
 
-            {item.isNewRelease && (
-              <div style={{
-                position: 'absolute', bottom: 5, left: 5,
-                background: 'rgba(76,175,80,0.85)',
-                borderRadius: 3, padding: '1px 5px',
-                fontSize: 7.5, fontWeight: 900, color: '#fff', letterSpacing: '0.06em',
-              }}>YENİ</div>
-            )}
+            {item.isNewRelease && <div className="cc-new">YENİ</div>}
           </div>
 
-          {/* Bilgi */}
-          <div style={{ flex: 1, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 }}>
-              <span style={{
-                color: 'var(--text)', fontSize: 13, fontWeight: 700, lineHeight: 1.3, flex: 1,
-                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-              }}>{item.title}</span>
-              <span style={{ color: 'var(--text-faint)', fontSize: 9.5, flexShrink: 0, paddingTop: 1 }}>{item.year}</span>
+          <div className="cc-body">
+            <div className="cc-title-row">
+              <span className="cc-title" title={item.title}>{item.title}</span>
+              <span className="cc-year tnum">{item.year}</span>
             </div>
 
-            <ScoreBadge imdb={item.imdbScore} rt={item.rottenTomatoesScore} lb={item.letterboxdScore} />
+            <ScoreLine imdb={item.imdbScore} rt={item.rottenTomatoesScore} lb={item.letterboxdScore} />
 
-            <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-              {(item.genres || []).slice(0, 3).map(g => (
-                <span key={g} style={{
-                  background: 'rgba(255,255,255,0.055)', borderRadius: 3,
-                  padding: '1.5px 5px', fontSize: 9, color: 'var(--text-muted)',
-                }}>{g}</span>
-              ))}
-              {item.type && (
-                <span style={{
-                  background: item.type === 'film' ? 'rgba(229,9,20,0.18)' : 'rgba(0,168,224,0.18)',
-                  border: `1px solid ${item.type === 'film' ? 'rgba(229,9,20,0.35)' : 'rgba(0,168,224,0.35)'}`,
-                  borderRadius: 3, padding: '1.5px 5px', fontSize: 9, fontWeight: 800,
-                  color: item.type === 'film' ? '#ff7070' : '#70ccf0', letterSpacing: '0.04em',
-                }}>{item.type === 'film' ? 'FİLM' : 'DİZİ'}</span>
-              )}
-            </div>
+            {(kindWord || genreWords.length > 0) && (
+              <p className="cc-meta">
+                {kindWord && <span className="cc-kind">{kindWord}{genreWords.length > 0 ? ' · ' : ''}</span>}
+                {genreWords.join(' · ')}
+              </p>
+            )}
 
             {item.socialScore != null && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <TrendingUp size={9} color="var(--accent)" />
-                <div style={{ flex: 1, height: 3, background: 'rgba(255,255,255,0.07)', borderRadius: 2, overflow: 'hidden' }}>
-                  <div style={{ width: `${item.socialScore}%`, height: '100%', background: 'var(--trend-bar)', borderRadius: 2 }} />
-                </div>
-                <span style={{ color: 'var(--accent)', fontSize: 9, fontWeight: 800, minWidth: 22 }}>{item.socialScore}</span>
+              <div className="cc-social">
+                <div className="cc-bar"><i style={{ width: `${item.socialScore}%` }} /></div>
+                <span className="cc-social-n tnum">{item.socialScore}</span>
               </div>
             )}
 
-            {!open && hasCriteria && (
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 1 }}>
-                {item.popularityCriteria.map(c => (
-                  <span key={c.label} style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 3,
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: 4, padding: '1px 6px',
-                    fontSize: 8.5, color: 'var(--text-faint)',
-                  }}>
-                    <span style={{ fontSize: 9 }}>{c.icon}</span>
-                    <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{c.value}</span>
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'wrap' }}>
-              {/* Yerli yapım etiketi — platform rozetlerinden ÖNCE gelir:
-                  köken yapımın kalıcı özelliğidir, platform ise değişebilir. */}
+            <div className="cc-tags">
+              {/* Yerli yapım etiketi platform rozetlerinden ÖNCE gelir: köken
+                  yapımın kalıcı özelliğidir, platform ise değişebilir. */}
               {item.isYerli && <span className="tr-tag">TR YAPIMI</span>}
               {(item.platforms || []).map(p => {
                 const plat = PLAT_MAP[p]
                 return (
-                  <span key={p} style={{
-                    background: plat?.color || '#333', borderRadius: 2, padding: '1.5px 5px',
-                    fontSize: 7.5, fontWeight: 900, color: '#fff', letterSpacing: '0.06em',
-                  }}>{plat?.badge || p.substring(0, 3).toUpperCase()}</span>
+                  // Platform rengi MARKA verisidir (PLATFORMS), tema tokenı
+                  // değil — bu yüzden satır içi gelir. Mürekkep marka renginin
+                  // parlaklığından hesaplanır. Bilinmeyen sağlayıcı CSS'teki
+                  // nötr yedeğe düşer.
+                  <span
+                    key={p}
+                    className="cc-plat"
+                    style={plat?.color ? { background: plat.color, color: badgeInk(plat.color) } : undefined}
+                  >
+                    {plat?.badge || p.substring(0, 3).toUpperCase()}
+                  </span>
                 )
               })}
-              {effectiveTmdbId && item.platforms?.length === 0 && (
-                <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: 8 }}>📺 Genişlet → TR platformları</span>
-              )}
-              {item.duration && (
-                <span style={{ color: 'var(--text-faint)', fontSize: 9, marginLeft: 2 }}>⏱ {item.duration}dk</span>
-              )}
+              {item.duration && <span className="cc-dur tnum">{item.duration} dk</span>}
+              <span className="cc-chevron" aria-hidden="true">
+                {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </span>
             </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'flex-start', padding: '10px 10px 0 0' }}>
-            {open
-              ? <ChevronUp   size={13} color="var(--text-faint)" />
-              : <ChevronDown size={13} color="var(--text-faint)" />}
           </div>
         </div>
 
         {/* ── Genişletilmiş Detay ──────────────────────────────────────────── */}
         {open && (
-          <div
-            style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,0,0,0.35)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Poster + açıklama */}
-            <div style={{ display: 'flex', gap: 12, padding: '12px 12px 0' }}>
-              <div style={{ width: 110, flexShrink: 0, borderRadius: 8, overflow: 'hidden', height: 162 }}>
+          <div className="cc-detail" onClick={e => e.stopPropagation()}>
+            <div className="cc-sec cc-lead">
+              <div className="cc-lead-poster">
                 <PosterImg path={item.posterPath} title={item.title} />
               </div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {item.description && (
-                  <p style={{ color: 'var(--text-muted)', fontSize: 11.5, margin: 0, lineHeight: 1.7 }}>
-                    {item.description}
-                  </p>
-                )}
-                {item.trendReason && (
-                  <p style={{ color: 'var(--accent)', fontSize: 11, margin: 0, fontStyle: 'italic', lineHeight: 1.5, opacity: 0.85 }}>
-                    🔥 {item.trendReason}
-                  </p>
-                )}
+              <div className="cc-lead-body">
+                {item.description && <p className="cc-desc">{item.description}</p>}
+                {item.trendReason && <p className="cc-trend-reason">{item.trendReason}</p>}
                 {item.originalTitle && item.originalTitle !== item.title && (
-                  <p style={{ color: 'var(--text-faint)', fontSize: 9.5, margin: 0 }}>
-                    Orijinal adı: {item.originalTitle}
-                  </p>
+                  <p className="cc-desc-alt">Orijinal adı: {item.originalTitle}</p>
                 )}
                 {item.releaseDate && (
-                  <p style={{ color: 'var(--text-faint)', fontSize: 9.5, margin: 0 }}>
-                    📅 Yayın tarihi: {new Date(item.releaseDate).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                  <p className="cc-desc-alt">
+                    Yayın tarihi: {new Date(item.releaseDate).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })}
                   </p>
                 )}
-
-                {/* Fragman (resmi/güvenilir kaynak — uygulama içi oynatıcı) */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>
-                  <TrailerEmbed trailerKey={trailerKey} />
-                </div>
+                <TrailerEmbed trailerKey={trailerKey} />
               </div>
             </div>
 
-            {/* Türkiye'de İzle */}
             {effectiveTmdbId && (
-              <div style={{ padding: '12px 14px 0', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                <p style={{ color: 'var(--text-faint)', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 8px' }}>🇹🇷 Türkiye'de İzle</p>
-
-                {watchPlatforms === null && (
-                  <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>Yükleniyor…</span>
-                )}
+              <div className="cc-sec">
+                <p className="cc-sec-title">Türkiye'de izle</p>
+                {watchPlatforms === null && <span className="cc-desc-alt">Yükleniyor…</span>}
                 {watchPlatforms !== null && watchPlatforms.length > 0 && (
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <div className="cc-tags">
                     {watchPlatforms.map(pid => {
                       const plat = PLAT_MAP[pid]
                       return (
-                        <span key={pid} style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 5,
-                          background: plat ? plat.color + '22' : 'rgba(255,255,255,0.07)',
-                          border: `1px solid ${plat ? plat.color + '55' : 'rgba(255,255,255,0.12)'}`,
-                          borderRadius: 6, padding: '4px 10px',
-                          fontSize: 10.5, fontWeight: 700, color: '#fff',
+                        <span key={pid} className="cc-plat-full" style={{
+                          background: plat ? plat.color + '26' : 'var(--surface)',
+                          border: `1px solid ${plat ? plat.color + '66' : 'var(--border-strong)'}`,
                         }}>
-                          {plat && (
-                            <span style={{ background: plat.color, borderRadius: 3, padding: '1px 5px', fontSize: 8, fontWeight: 900 }}>{plat.badge}</span>
-                          )}
+                          {plat && <b style={{ background: plat.color, color: badgeInk(plat.color) }}>{plat.badge}</b>}
                           {plat ? plat.label : pid}
                         </span>
                       )
@@ -654,57 +487,42 @@ export default function ContentCard({ item, isTrend }) {
                   </div>
                 )}
                 {watchPlatforms !== null && watchPlatforms.length === 0 && (
-                  <span style={{ color: 'var(--text-faint)', fontSize: 10, background: 'rgba(255,255,255,0.04)', borderRadius: 5, padding: '4px 10px', display: 'inline-block' }}>
-                    Türkiye'de yayın bilgisi bulunamadı
-                  </span>
+                  <span className="cc-desc-alt">Türkiye'de yayın bilgisi bulunamadı.</span>
                 )}
               </div>
             )}
 
-            {/* Popülerlik Kriterleri */}
             {hasCriteria && (
-              <div style={{ padding: '14px 14px 4px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <p style={{ color: 'var(--text-faint)', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>Popülerlik Kriterleri</p>
-                  <span style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.05)', borderRadius: 3, padding: '1px 6px' }}>Kaynak: TMDB</span>
-                </div>
+              <div className="cc-sec">
+                <p className="cc-sec-title">Popülerlik kriterleri</p>
                 {item.popularityCriteria.map(c => <CriteriaBar key={c.label} criterion={c} />)}
-                <div style={{ marginTop: 6, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-faint)', fontSize: 9 }}>Bileşik Sosyal Skor</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ width: 80, height: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 2, overflow: 'hidden' }}>
-                      <div style={{ width: `${item.socialScore}%`, height: '100%', background: 'var(--trend-bar)', borderRadius: 2 }} />
-                    </div>
-                    <span style={{ color: 'var(--accent)', fontSize: 13, fontWeight: 900, fontFamily: 'monospace' }}>{item.socialScore}</span>
-                    <span style={{ color: 'var(--text-faint)', fontSize: 9 }}>/100</span>
-                  </div>
+                <div className="crit-total">
+                  <span className="cc-desc-alt">Bileşik sosyal skor</span>
+                  <span className="cc-imdb tnum">{item.socialScore}<span className="cc-imdb-max">/100</span></span>
                 </div>
               </div>
             )}
 
-            {/* Benzer Yapımlar */}
             <MiniSection
-              title="Benzer Yapımlar"
+              title="Benzer yapımlar"
               items={similarItems}
               loading={richLoading}
               onMiniClick={setOverlayItem}
             />
 
-            {/* Yönetmenin Diğer Yapımları */}
             {director && (
               <MiniSection
-                title={`${director.name} — Diğer Yapımları`}
+                title={`${director.name} — diğer yapımları`}
                 items={directorWorks}
                 loading={directorWorks === null}
                 onMiniClick={setOverlayItem}
               />
             )}
 
-            {/* Oyuncular */}
             {hasCast && (
-              <div style={{ padding: '12px 12px 0', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                <p style={{ color: 'var(--text-faint)', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', marginBottom: 8, textTransform: 'uppercase' }}>Oyuncular</p>
-                <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
+              <div className="cc-sec">
+                <p className="cc-sec-title">Oyuncular</p>
+                <div className="cc-strip">
                   {cast.slice(0, 8).map((actor, i) => (
                     <ActorCard
                       key={actor.id || i}
@@ -715,46 +533,36 @@ export default function ContentCard({ item, isTrend }) {
                   ))}
                 </div>
 
-                {/* Oyuncunun filmografisi alt paneli */}
                 {activeActorId && (() => {
                   const activeActor = cast.find(a => a.id === activeActorId)
                   const filmo       = actorFilmo[activeActorId]
                   const loading     = actorFilmoLoading[activeActorId]
                   return (
-                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                      <p style={{ color: 'var(--text-faint)', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 8px' }}>
-                        {activeActor?.name} — Filmografisi
-                      </p>
-                      {loading && <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>Yükleniyor…</span>}
+                    <div className="cc-subsec">
+                      <p className="cc-sec-title">{activeActor?.name} — filmografisi</p>
+                      {loading && <span className="cc-desc-alt">Yükleniyor…</span>}
                       {filmo && filmo.length > 0 && (
-                        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-                          {filmo.map(mini => (
-                            <MiniCard key={mini.tmdbId} item={mini} onClick={setOverlayItem} />
-                          ))}
+                        <div className="cc-strip">
+                          {filmo.map(mini => <MiniCard key={mini.tmdbId} item={mini} onClick={setOverlayItem} />)}
                         </div>
                       )}
-                      {filmo && filmo.length === 0 && (
-                        <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>Yapım bulunamadı.</span>
-                      )}
+                      {filmo && filmo.length === 0 && <span className="cc-desc-alt">Yapım bulunamadı.</span>}
                     </div>
                   )
                 })()}
               </div>
             )}
 
-            {/* Yorumlar */}
             {hasReviews && (
-              <div style={{ padding: '12px 12px 12px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                <p style={{ color: 'var(--text-faint)', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', marginBottom: 8, textTransform: 'uppercase' }}>Öne Çıkan Yorumlar</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {reviews.slice(0, 3).map((review, i) => (
-                    <ReviewCard key={i} review={review} />
-                  ))}
+              <div className="cc-sec cc-sec-end">
+                <p className="cc-sec-title">Öne çıkan yorumlar</p>
+                <div className="cc-reviews">
+                  {reviews.slice(0, 3).map((review, i) => <ReviewCard key={i} review={review} />)}
                 </div>
               </div>
             )}
 
-            {!hasCast && !hasReviews && !effectiveTmdbId && <div style={{ height: 12 }} />}
+            {!hasCast && !hasReviews && !effectiveTmdbId && <div style={{ height: 14 }} />}
           </div>
         )}
       </div>

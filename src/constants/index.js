@@ -46,19 +46,32 @@ export const POSTER_GRADIENTS = [
   ["#1a0a1e","#6a0dad"], ["#0d1b2a","#1b6b4b"], ["#2c1a0e","#b85c1a"],
 ]
 
+// Sekmeler. `icon` bir lucide ikon anahtarıdır (App.jsx eşler) — arayüzde emoji
+// KULLANILMAZ: her işletim sisteminde farklı çizilir, ikon setiyle aynı çizgi
+// kalınlığını tutturamaz ve currentColor'ı almaz.
+// Etiketler kısa isimlerdir; "en iyi" iddiası ızgaranın kendi başlığında durur.
 export const TABS = [
-  { id: "diziler",  emoji: "📺", label: "En İyi Diziler"  },
-  { id: "filmler",  emoji: "🎬", label: "En İyi Filmler"  },
-  { id: "trend",    emoji: "🔥", label: "Sosyal Trend"    },
-  { id: "sanaozel", emoji: "⭐", label: "Sana Özel"        },
+  { id: "diziler",  icon: "tv",    label: "Diziler"    },
+  { id: "filmler",  icon: "film",  label: "Filmler"    },
+  { id: "trend",    icon: "flame", label: "Trend"      },
+  { id: "sanaozel", icon: "star",  label: "Sana Özel"  },
 ]
 
 // ── Tema Sistemi ──────────────────────────────────────────────────────────────
+// Her tema AYNI sözleşmeyi doldurur; bileşenlerde sabit renk yoktur.
+//
+// Sözleşmedeki üç kural:
+//   1. --bg-elevated ve --bg-header OPAK olmak zorundadır (menü ve yapışkan
+//      başlık arkalarındaki içeriği örtmeli).
+//   2. --accent dolgu/kenarlık rengidir; METİN olarak --accent-ink kullanılır.
+//      İkisi çoğu temada aynıdır ama Netflix kırmızısı koyu zeminde 3:1'in
+//      altında kaldığı için orada ayrışır (WCAG AA).
+//   3. --text/-muted/-faint üç kademeli mürekkep rampasıdır ve üçü de
+//      en açık yüzey (--bg-elevated) üzerinde ≥4.5:1 olmak zorundadır.
 export const THEMES = [
   {
     id: 'cinema',
     label: 'Sinema Karanlığı',
-    emoji: '🎬',
     desc: 'Derin koyu, altın tonlu film atmosferi',
     preview: ['#0e0e1c', '#F5C518', '#E04528'],
     css: {
@@ -66,26 +79,28 @@ export const THEMES = [
       '--bg-card':         '#161624',
       '--bg-elevated':     '#1b1b30',
       '--bg-card-trend':   'rgba(20,10,10,0.97)',
-      '--bg-header':       'rgba(14,14,28,0.97)',
+      '--bg-header':       '#0c0c18',
+      '--surface':         'rgba(255,255,255,0.055)',
+      '--surface-hover':   'rgba(255,255,255,0.10)',
       '--accent':          '#F5C518',
-      '--accent2':         '#E04528',
+      '--accent-ink':      '#F5C518',
+      '--accent-contrast': '#14140f',
       '--accent-rgb':      '245,197,24',
       '--border':          'rgba(255,255,255,0.08)',
+      '--border-strong':   'rgba(255,255,255,0.16)',
       '--border-trend':    'rgba(245,100,0,0.15)',
       '--text':            '#ffffff',
-      '--text-muted':      'rgba(255,255,255,0.65)',
-      '--text-faint':      'rgba(255,255,255,0.32)',
+      '--text-muted':      'rgba(255,255,255,0.74)',
+      '--text-faint':      'rgba(255,255,255,0.58)',
       '--tab-active':      '#F5C518',
-      '--hover-border':    'rgba(245,197,24,0.30)',
+      '--hover-border':    'rgba(245,197,24,0.42)',
       '--trend-bar':       'linear-gradient(90deg,#F5C518,#E50914)',
-      '--logo-grad':       'linear-gradient(120deg,#F5C518 0%,#E04528 100%)',
       '--card-backdrop':   'none',
     }
   },
   {
     id: 'netflix',
     label: 'Netflix',
-    emoji: '▶',
     desc: 'Kırmızı-siyah, streaming klasiği',
     preview: ['#181818', '#E50914', '#e85f5f'],
     css: {
@@ -93,55 +108,61 @@ export const THEMES = [
       '--bg-card':         '#222222',
       '--bg-elevated':     '#2b2b2b',
       '--bg-card-trend':   'rgba(22,6,6,0.97)',
-      '--bg-header':       'rgba(24,24,24,0.97)',
+      '--bg-header':       '#141414',
+      '--surface':         'rgba(255,255,255,0.06)',
+      '--surface-hover':   'rgba(255,255,255,0.12)',
       '--accent':          '#E50914',
-      '--accent2':         '#e85f5f',
+      // Netflix kırmızısı metin olarak koyu zeminde 2.95:1 — AA'yı geçmiyor.
+      // Metin için açılmış varyant kullanılır; dolgu rengi markanın kendisidir.
+      '--accent-ink':      '#FF7A80',
+      '--accent-contrast': '#ffffff',
       '--accent-rgb':      '229,9,20',
       '--border':          'rgba(255,255,255,0.09)',
+      '--border-strong':   'rgba(255,255,255,0.18)',
       '--border-trend':    'rgba(229,9,20,0.20)',
       '--text':            '#ffffff',
-      '--text-muted':      'rgba(255,255,255,0.70)',
-      '--text-faint':      'rgba(255,255,255,0.35)',
+      '--text-muted':      'rgba(255,255,255,0.74)',
+      '--text-faint':      'rgba(255,255,255,0.58)',
       '--tab-active':      '#E50914',
-      '--hover-border':    'rgba(229,9,20,0.38)',
+      '--hover-border':    'rgba(229,9,20,0.55)',
       '--trend-bar':       'linear-gradient(90deg,#E50914,#e85f5f)',
-      '--logo-grad':       'linear-gradient(120deg,#E50914 0%,#ff9900 100%)',
       '--card-backdrop':   'none',
     }
   },
   {
     id: 'glass',
     label: 'Cam Efekti',
-    emoji: '💎',
-    desc: 'Glassmorphism, mor & mavi tonal',
+    desc: 'Yarı saydam kartlar, mor tonal',
     preview: ['#0e0e22', '#b068cc', '#c04ee0'],
     css: {
       '--bg':              '#0e0e22',
+      // Kartlar bilinçli olarak yarı saydam (temanın kimliği), menüler ve
+      // başlık DEĞİL: arkalarındaki ızgarayı örtmezlerse okunmazlar.
       '--bg-card':         'rgba(255,255,255,0.055)',
-      // Kartlar bilinçli olarak yarı saydam (cam etkisi), menüler DEĞİL:
-      // menü arkasındaki ızgarayı örtmezse okunmaz.
       '--bg-elevated':     '#1d1d3f',
       '--bg-card-trend':   'rgba(130,80,160,0.10)',
-      '--bg-header':       'rgba(14,14,34,0.80)',
+      '--bg-header':       '#0b0b1c',
+      '--surface':         'rgba(255,255,255,0.07)',
+      '--surface-hover':   'rgba(255,255,255,0.13)',
       '--accent':          '#b068cc',
-      '--accent2':         '#c04ee0',
+      '--accent-ink':      '#CC93E0',
+      '--accent-contrast': '#14101a',
       '--accent-rgb':      '176,104,204',
       '--border':          'rgba(255,255,255,0.10)',
+      '--border-strong':   'rgba(255,255,255,0.19)',
       '--border-trend':    'rgba(176,104,204,0.28)',
       '--text':            '#ffffff',
-      '--text-muted':      'rgba(255,255,255,0.70)',
-      '--text-faint':      'rgba(255,255,255,0.36)',
+      '--text-muted':      'rgba(255,255,255,0.74)',
+      '--text-faint':      'rgba(255,255,255,0.58)',
       '--tab-active':      '#b068cc',
-      '--hover-border':    'rgba(176,104,204,0.42)',
+      '--hover-border':    'rgba(176,104,204,0.55)',
       '--trend-bar':       'linear-gradient(90deg,#8a4faa,#c04ee0)',
-      '--logo-grad':       'linear-gradient(120deg,#8a4faa 0%,#c04ee0 100%)',
       '--card-backdrop':   'blur(12px)',
     }
   },
   {
     id: 'ocean',
     label: 'Gece Okyanusu',
-    emoji: '🌊',
     desc: 'Derin mavi, siyan enerji',
     preview: ['#060c22', '#009fd4', '#00c89e'],
     css: {
@@ -149,26 +170,28 @@ export const THEMES = [
       '--bg-card':         '#0a1830',
       '--bg-elevated':     '#0f2141',
       '--bg-card-trend':   'rgba(0,14,32,0.97)',
-      '--bg-header':       'rgba(6,12,34,0.97)',
+      '--bg-header':       '#050a1c',
+      '--surface':         'rgba(220,240,250,0.06)',
+      '--surface-hover':   'rgba(220,240,250,0.12)',
       '--accent':          '#009fd4',
-      '--accent2':         '#00c89e',
+      '--accent-ink':      '#3FBCEA',
+      '--accent-contrast': '#04121c',
       '--accent-rgb':      '0,159,212',
-      '--border':          'rgba(0,159,212,0.12)',
+      '--border':          'rgba(0,159,212,0.14)',
+      '--border-strong':   'rgba(0,159,212,0.34)',
       '--border-trend':    'rgba(0,159,212,0.20)',
       '--text':            '#ddf0fa',
-      '--text-muted':      'rgba(220,240,250,0.65)',
-      '--text-faint':      'rgba(220,240,250,0.32)',
+      '--text-muted':      'rgba(220,240,250,0.74)',
+      '--text-faint':      'rgba(220,240,250,0.58)',
       '--tab-active':      '#009fd4',
-      '--hover-border':    'rgba(0,159,212,0.40)',
+      '--hover-border':    'rgba(0,159,212,0.55)',
       '--trend-bar':       'linear-gradient(90deg,#009fd4,#00c89e)',
-      '--logo-grad':       'linear-gradient(120deg,#009fd4 0%,#00c89e 100%)',
       '--card-backdrop':   'none',
     }
   },
   {
     id: 'neon',
     label: 'Neon Siber',
-    emoji: '⚡',
     desc: 'Karanlık zemin, neon yeşil & siyan',
     preview: ['#0a0a16', '#00dc8a', '#00aee0'],
     css: {
@@ -176,19 +199,22 @@ export const THEMES = [
       '--bg-card':         '#0c0f0c',
       '--bg-elevated':     '#141a16',
       '--bg-card-trend':   'rgba(0,16,6,0.97)',
-      '--bg-header':       'rgba(10,10,22,0.97)',
+      '--bg-header':       '#08080f',
+      '--surface':         'rgba(224,250,224,0.055)',
+      '--surface-hover':   'rgba(224,250,224,0.11)',
       '--accent':          '#00dc8a',
-      '--accent2':         '#00aee0',
+      '--accent-ink':      '#00dc8a',
+      '--accent-contrast': '#04140c',
       '--accent-rgb':      '0,220,138',
-      '--border':          'rgba(0,220,138,0.10)',
+      '--border':          'rgba(0,220,138,0.12)',
+      '--border-strong':   'rgba(0,220,138,0.30)',
       '--border-trend':    'rgba(0,220,138,0.20)',
       '--text':            '#e0fae0',
-      '--text-muted':      'rgba(224,250,224,0.65)',
-      '--text-faint':      'rgba(224,250,224,0.32)',
+      '--text-muted':      'rgba(224,250,224,0.74)',
+      '--text-faint':      'rgba(224,250,224,0.58)',
       '--tab-active':      '#00dc8a',
-      '--hover-border':    'rgba(0,220,138,0.40)',
+      '--hover-border':    'rgba(0,220,138,0.55)',
       '--trend-bar':       'linear-gradient(90deg,#00dc8a,#00aee0)',
-      '--logo-grad':       'linear-gradient(120deg,#00dc8a 0%,#00aee0 100%)',
       '--card-backdrop':   'none',
     }
   },

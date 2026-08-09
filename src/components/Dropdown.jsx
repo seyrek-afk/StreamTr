@@ -11,13 +11,14 @@ import { ChevronDown, Check } from 'lucide-react'
 // tutar ve seçili değeri tek bakışta okunur kılar.
 //
 // NEDEN PORTAL (üretimde yakalandı): menü `position:absolute` iken KIRPILIYORDU.
-// Ülke menüsünün iki kırpma atası vardı — `.lens { overflow:hidden }` (segment
-// köşelerini yuvarlamak için) ve `.hdr-nav { overflow-x:auto }`. Menü açılıyor
-// ama görünmüyordu; kullanıcıya "hiçbir şey listelemiyor" gibi görünür.
+// Ülke menüsünün iki kırpma atası vardı — mercek segmenti (köşeleri yuvarlamak
+// için `overflow:hidden`) ve dar ekranda yatay kaydırılan gezinme satırı. Menü
+// açılıyor ama görünmüyordu; kullanıcıya "hiçbir şey listelemiyor" gibi görünür.
 // `overflow` değerlerini gevşetmek segment görünümünü ve dar ekran kaydırmasını
 // bozardı; doğru çözüm menüyü DOM ağacından çıkarmak. Portal + `position:fixed`
 // ile menü artık HİÇBİR atanın overflow'una tabi değil — bu kırpma sınıfı hata
-// bir daha üretilemez.
+// bir daha üretilemez. (Görsel dil v2'de filtre rayı yeniden düzenlendi ama
+// kırpan atalar hâlâ var: mercek ve dar ekran filtre şeridi.)
 //
 // multi=true → çoklu seçim (tür, yıl). Menü seçimde kapanmaz.
 
@@ -62,6 +63,9 @@ export default function Dropdown({
       next.left = Math.max(EDGE, left)
       next.maxWidth = vw - next.left - EDGE
     }
+    // Köken farkındalık: menü tetiğinin bulunduğu köşeden büyür. Ortadan
+    // ölçeklenen bir menü hangi düğmeye ait olduğunu anlatmaz.
+    next.transformOrigin = `${flip ? 'bottom' : 'top'} ${align === 'right' ? 'right' : 'left'}`
     setPos(next)
   }, [align, minWidth])
 
@@ -130,7 +134,7 @@ export default function Dropdown({
             onClick={() => toggle(o.value)}
           >
             <span>{o.label}</span>
-            {isSel && <Check size={11} />}
+            {isSel && <Check size={14} aria-hidden="true" />}
           </button>
         )
       })}
@@ -140,14 +144,14 @@ export default function Dropdown({
   return (
     <div className="dd-wrap" ref={wrapRef}>
       <button
-        className={`dd-trigger${active ? ' dd-active' : ''}`}
+        className={`ctl${active ? ' ctl-on' : ''}`}
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
         aria-haspopup="listbox"
         style={{ minWidth }}
       >
         <span className="dd-summary">{summary}</span>
-        <ChevronDown size={11} className="dd-chevron" style={{ transform: open ? 'rotate(180deg)' : 'none' }} />
+        <ChevronDown size={14} className="dd-chevron" aria-hidden="true" />
       </button>
 
       {open && typeof document !== 'undefined' && createPortal(menu, document.body)}
