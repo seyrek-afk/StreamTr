@@ -7,6 +7,14 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://image.tmdb.org https://secure.gravatar.com https://lh3.googleusercontent.com; connect-src 'self' https://api.themoviedb.org https://www.youtube.com https://*.supabase.co wss://*.supabase.co; frame-src https://www.youtube.com https://www.youtube-nocookie.com; object-src 'none'; base-uri 'self';" />
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+    <!-- Yazı tipleri burada yüklenir, bileşenin içinde @import ile DEĞİL:
+         çalışma zamanında enjekte edilen @import ilk boyamayı geciktiriyordu. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap"
+    />
     <title>StreamTR – Türkiye'nin En İyi İçerikleri</title>
     <meta name="description" content="Netflix, Prime Video, Disney+, Apple TV+ Türkiye'deki en iyi dizi ve filmler. IMDB, Rotten Tomatoes ve sosyal medya verisiyle." />
   </head>

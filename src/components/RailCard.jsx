@@ -19,7 +19,7 @@ export default function RailCard({ item }) {
   return (
     <>
       <div
-        className="rail-card btn-pressable"
+        className="rail-card"
         role="button"
         tabIndex={0}
         onClick={() => setOpen(true)}
@@ -41,8 +41,8 @@ export default function RailCard({ item }) {
           </div>
 
           {score != null && (
-            <span className="rail-score">
-              <Star size={9} fill="var(--accent)" color="var(--accent)" />
+            <span className="rail-score tnum">
+              <Star size={11} fill="currentColor" aria-hidden="true" />
               {score}
             </span>
           )}
@@ -55,7 +55,7 @@ export default function RailCard({ item }) {
               okunur kılar — raflar Bayesian Yerli Skor'a göre dizilir, bu yüzden
               8.4 · 1.2k oy, 8.9 · 30 oy'un üstünde çıkabilir. Oy sayısı olmadan
               bu sıra göze rastgele görünür. */}
-          <span className="rail-year">
+          <span className="rail-year tnum">
             {item.year || '—'}
             {item._voteCount ? ` · ${fmtCount(item._voteCount)} oy` : ''}
           </span>

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Star, User, X } from 'lucide-react'
+import { Star, User, X, Film } from 'lucide-react'
 import { ALL_PLATFORMS } from '../constants/index.js'
 import { isValidTmdbRef, mapTrProviders } from '../lib/tmdb.js'
+import { badgeInk } from '../lib/cards.js'
 import FavoriteButton from './FavoriteButton.jsx'
 import TrailerEmbed from './TrailerEmbed.jsx'
 
@@ -10,26 +11,20 @@ const TMDB_KEY = import.meta.env.VITE_TMDB_KEY
 // Küresel + yerli tüm sağlayıcılar (bkz. ContentCard'daki aynı gerekçe).
 const PLAT_MAP = Object.fromEntries(ALL_PLATFORMS.map(p => [p.id, p]))
 
+// Overlay oyuncu kartı — ContentCard'daki `.actor` ile aynı sınıfları kullanır:
+// aynı bilgi iki ekranda iki farklı boyda görünmesin.
 function OverlayActorCard({ actor }) {
   const [err, setErr] = useState(false)
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 60, flexShrink: 0 }}>
-      <div style={{
-        width: 48, height: 48, borderRadius: '50%', overflow: 'hidden',
-        border: '1.5px solid rgba(255,255,255,0.12)',
-        background: 'rgba(255,255,255,0.06)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
+    <div className="actor">
+      <span className="actor-photo">
         {actor.profilePath && !err
-          ? <img src={`https://image.tmdb.org/t/p/w185${actor.profilePath}`} alt={actor.name}
-              onError={() => setErr(true)}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <User size={20} color="rgba(255,255,255,0.3)" />}
-      </div>
-      <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: 8, textAlign: 'center', lineHeight: 1.25, maxWidth: 58, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{actor.name}</span>
-      {actor.character && (
-        <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 7, fontStyle: 'italic', maxWidth: 58, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center' }}>{actor.character}</span>
-      )}
+          ? <img src={`https://image.tmdb.org/t/p/w185${actor.profilePath}`} alt="" loading="lazy"
+              onError={() => setErr(true)} />
+          : <User size={20} aria-hidden="true" />}
+      </span>
+      <span className="actor-name">{actor.name}</span>
+      {actor.character && <span className="actor-role">{actor.character}</span>}
     </div>
   )
 }
@@ -118,151 +113,104 @@ export default function DetailOverlay({ item, onClose }) {
   }, [item?.tmdbId, item?.mediaType])
 
   const overlay = (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 200,
-        background: 'rgba(0,0,0,0.88)',
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        padding: '24px 16px', overflowY: 'auto',
-      }}
-      onClick={onClose}
-    >
+    <div className="modal-scrim modal-scrim-top" onClick={onClose}>
       <div
-        style={{
-          width: '100%', maxWidth: 520,
-          background: 'var(--bg-card)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: 12, overflow: 'hidden',
-          position: 'relative',
-        }}
+        className="modal modal-detail"
+        role="dialog" aria-modal="true" aria-label={item?.title || 'Detay'}
         onClick={e => e.stopPropagation()}
       >
-        {/* Kapat butonu */}
-        <button
-          onClick={onClose}
-          style={{
-            position: 'absolute', top: 10, right: 10, zIndex: 10,
-            background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.15)',
-            borderRadius: '50%', width: 28, height: 28,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', color: '#fff',
-          }}
-        >
-          <X size={14} />
+        <button className="icon-btn modal-close" onClick={onClose} aria-label="Kapat">
+          <X size={18} aria-hidden="true" />
         </button>
 
-        {loading && (
-          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-faint)', fontSize: 13 }}>
-            Yükleniyor…
-          </div>
-        )}
+        {loading && <p className="muted-note" style={{ textAlign: 'center' }}>Yükleniyor…</p>}
 
-        {error && (
-          <div style={{ padding: 30, textAlign: 'center', color: '#e57373', fontSize: 12 }}>
-            {error}
-          </div>
-        )}
+        {error && <p className="muted-note" style={{ textAlign: 'center', color: 'var(--danger-ink)' }}>{error}</p>}
 
         {detail && (
           <>
-            {/* Poster + başlık + açıklama */}
-            <div style={{ display: 'flex', gap: 14, padding: 16 }}>
-              <div style={{ width: 110, flexShrink: 0, borderRadius: 8, overflow: 'hidden', height: 162, background: 'rgba(255,255,255,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="cc-lead">
+              <div className="cc-lead-poster">
                 {detail.posterPath && !posterErr ? (
                   <img
                     src={`https://image.tmdb.org/t/p/w300${detail.posterPath}`}
-                    alt={detail.title}
+                    alt=""
                     onError={() => setPosterErr(true)}
                     style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                   />
                 ) : (
-                  <span style={{ fontSize: 28 }}>🎬</span>
+                  <div className="poster-fallback" style={{ background: 'var(--surface)' }}>
+                    <Film size={22} aria-hidden="true" />
+                  </div>
                 )}
               </div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <span style={{ color: 'var(--text)', fontSize: 14, fontWeight: 700, lineHeight: 1.3, flex: 1, paddingRight: 30 }}>
-                    {detail.title}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  {detail.year && <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>{detail.year}</span>}
-                  {detail.duration && <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>⏱ {detail.duration}dk</span>}
-                  {detail.imdbScore && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <Star size={10} fill="var(--accent)" color="var(--accent)" />
-                      <span style={{ color: 'var(--accent)', fontSize: 12, fontWeight: 800, fontFamily: 'monospace' }}>
-                        {detail.imdbScore}
-                      </span>
-                      <span style={{ color: 'var(--text-faint)', fontSize: 9 }}>/10</span>
-                    </div>
-                  )}
-                </div>
-                {detail.description && (
-                  <p style={{ color: 'var(--text-muted)', fontSize: 11, margin: 0, lineHeight: 1.65 }}>
-                    {detail.description}
-                  </p>
-                )}
 
-                {/* Butonlar: Fragman (gömülü oynatıcı) + Favori */}
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 2 }}>
+              <div className="cc-lead-body">
+                <h3 className="modal-title" style={{ paddingRight: 32 }}>{detail.title}</h3>
+
+                <div className="cc-scores">
+                  {detail.imdbScore && (
+                    <span className="cc-imdb tnum">
+                      <Star size={14} fill="currentColor" aria-hidden="true" />
+                      {detail.imdbScore}<span className="cc-imdb-max">/10</span>
+                    </span>
+                  )}
+                  {detail.year && <span className="cc-alt tnum">{detail.year}</span>}
+                  {detail.duration && <span className="cc-alt tnum">{detail.duration} dk</span>}
+                </div>
+
+                {detail.description && <p className="cc-desc">{detail.description}</p>}
+
+                <div className="cc-tags">
                   <TrailerEmbed trailerKey={trailerKey} compact />
                   <FavoriteButton item={item} size={18} />
                 </div>
               </div>
             </div>
 
-            {/* TR platformları */}
             {watchPlatforms !== null && (
-              <div style={{ padding: '10px 16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <p style={{ color: 'var(--text-faint)', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 7px' }}>
-                  🇹🇷 Türkiye'de İzle
-                </p>
+              <div className="cc-sec">
+                <p className="cc-sec-title">Türkiye'de izle</p>
                 {watchPlatforms.length > 0 ? (
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <div className="cc-tags">
                     {watchPlatforms.map(pid => {
                       const plat = PLAT_MAP[pid]
                       return (
-                        <span key={pid} style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 5,
-                          background: plat ? plat.color + '22' : 'rgba(255,255,255,0.07)',
-                          border: `1px solid ${plat ? plat.color + '55' : 'rgba(255,255,255,0.12)'}`,
-                          borderRadius: 6, padding: '4px 10px',
-                          fontSize: 10, fontWeight: 700, color: '#fff',
+                        <span key={pid} className="cc-plat-full" style={{
+                          background: plat ? plat.color + '26' : 'var(--surface)',
+                          border: `1px solid ${plat ? plat.color + '66' : 'var(--border-strong)'}`,
                         }}>
-                          {plat && <span style={{ background: plat.color, borderRadius: 3, padding: '1px 5px', fontSize: 8, fontWeight: 900 }}>{plat.badge}</span>}
+                          {plat && <b style={{ background: plat.color, color: badgeInk(plat.color) }}>{plat.badge}</b>}
                           {plat ? plat.label : pid}
                         </span>
                       )
                     })}
                   </div>
                 ) : (
-                  <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>Türkiye'de yayın bilgisi bulunamadı</span>
+                  <span className="cc-desc-alt">Türkiye'de yayın bilgisi bulunamadı.</span>
                 )}
               </div>
             )}
 
-            {/* Oyuncular */}
             {detail.cast.length > 0 && (
-              <div style={{ padding: '10px 16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <p style={{ color: 'var(--text-faint)', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 8px' }}>Oyuncular</p>
-                <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
+              <div className="cc-sec">
+                <p className="cc-sec-title">Oyuncular</p>
+                <div className="cc-strip">
                   {detail.cast.map((actor, i) => <OverlayActorCard key={i} actor={actor} />)}
                 </div>
               </div>
             )}
 
-            {/* Yorumlar */}
             {detail.reviews.length > 0 && (
-              <div style={{ padding: '10px 16px 16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <p style={{ color: 'var(--text-faint)', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 8px' }}>Öne Çıkan Yorumlar</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div className="cc-sec cc-sec-end">
+                <p className="cc-sec-title">Öne çıkan yorumlar</p>
+                <div className="cc-reviews">
                   {detail.reviews.map((r, i) => (
-                    <div key={i} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 7, padding: '8px 10px' }}>
-                      <p style={{ color: 'var(--text-muted)', fontSize: 10.5, lineHeight: 1.65, fontStyle: 'italic', margin: 0 }}>"{r.quote}"</p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5 }}>
-                        <span style={{ background: 'rgba(var(--accent-rgb),0.15)', borderRadius: 3, padding: '1px 6px', fontSize: 8.5, fontWeight: 700, color: 'var(--accent)' }}>{r.source}</span>
-                        {r.author && <span style={{ color: 'var(--text-faint)', fontSize: 8.5 }}>— {r.author}</span>}
+                    <div key={i} className="review">
+                      <q>{r.quote}</q>
+                      <div className="review-src">
+                        <b>{r.source}</b>
+                        {r.author && <span>{r.author}</span>}
                       </div>
                     </div>
                   ))}

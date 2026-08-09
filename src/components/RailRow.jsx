@@ -48,8 +48,8 @@ export default function RailRow({ title, items, onShowAll }) {
       <div className="rail-header">
         <h3 className="rail-heading">{title}</h3>
         {onShowAll && (
-          <button className="rail-showall" onClick={onShowAll}>
-            Tümü <ChevronRight size={12} />
+          <button className="link-btn" onClick={onShowAll}>
+            Tümü <ChevronRight size={14} aria-hidden="true" />
           </button>
         )}
       </div>

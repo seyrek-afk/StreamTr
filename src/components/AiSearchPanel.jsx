@@ -17,13 +17,13 @@ export default function AiSearchPanel({ ai, onClose }) {
   return (
     <section className="ai-panel">
       <div className="ai-head">
-        <div className="ai-title">
-          <Sparkles size={14} />
-          <span>AI ile Ara</span>
+        <h2 className="ai-title">
+          <Sparkles size={20} aria-hidden="true" />
+          AI ile Ara
           <span className="ai-sub">ne izlemek istediğini kendi cümlelerinle yaz</span>
-        </div>
-        <button className="ai-close" onClick={() => { clear(); onClose?.() }} aria-label="AI aramayı kapat">
-          <X size={14} />
+        </h2>
+        <button className="icon-btn" onClick={() => { clear(); onClose?.() }} aria-label="AI aramayı kapat">
+          <X size={18} aria-hidden="true" />
         </button>
       </div>
 
@@ -38,12 +38,13 @@ export default function AiSearchPanel({ ai, onClose }) {
           }}
           rows={2}
           maxLength={400}
+          aria-label="Ne izlemek istediğini yaz"
           placeholder="Örn: Evde arkadaşlarla izleyeceğiz, puanı yüksek ama eski kült bir aksiyon filmi olsun"
         />
         <div className="ai-actions">
-          <span className="ai-hint"><CornerDownLeft size={10} /> Enter ile ara</span>
-          <button className="ai-submit" onClick={submit} disabled={!prompt.trim() || loading}>
-            {loading ? <><Loader size={12} className="spin" /> Aranıyor…</> : <>Ara</>}
+          <span className="ai-hint"><CornerDownLeft size={13} aria-hidden="true" /> Enter ile ara</span>
+          <button className="btn" onClick={submit} disabled={!prompt.trim() || loading}>
+            {loading ? <><Loader size={14} className="spin" aria-hidden="true" /> Aranıyor…</> : 'Ara'}
           </button>
         </div>
       </div>
@@ -88,13 +89,10 @@ export default function AiSearchPanel({ ai, onClose }) {
 
       {!loading && results.length > 0 && (
         <>
-          <p className="ai-count">{results.length} sonuç</p>
-          <div className="grid-cards">
+          <p className="ai-count tnum">{results.length} sonuç</p>
+          <div className="grid-cards enter">
             {results.map((item, i) => (
-              <div key={`ai-${item._mediaType}-${item._tmdbId}-${i}`} className="card-enter"
-                style={{ animationDelay: `${Math.min(i * 0.03, 0.25)}s` }}>
-                <ContentCard item={item} isTrend={false} />
-              </div>
+              <ContentCard key={`ai-${item._mediaType}-${item._tmdbId}-${i}`} item={item} isTrend={false} />
             ))}
           </div>
         </>

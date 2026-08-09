@@ -1,23 +1,17 @@
+// İskelet ızgara — gerçek kartın geometrisini birebir taklit eder (poster 108px,
+// yükseklik 162px). Ölçüler tutmazsa veri gelince düzen zıplıyor; iskelet tam da
+// bunu önlemek için var.
 export default function SkeletonGrid({ count = 8 }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 13 }}>
+    <div className="grid-cards" aria-hidden="true">
       {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          className="skeleton-animate"
-          style={{
-            background: 'var(--bg-card)', borderRadius: 10, height: 148,
-            border: '1px solid var(--border)', overflow: 'hidden',
-          }}
-        >
-          <div style={{ display: 'flex', height: '100%' }}>
-            <div style={{ width: 98, background: 'rgba(255,255,255,0.04)' }} />
-            <div style={{ flex: 1, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ height: 12, width: '72%', background: 'rgba(255,255,255,0.055)', borderRadius: 3 }} />
-              <div style={{ height: 10, width: '42%', background: 'rgba(255,255,255,0.035)', borderRadius: 3 }} />
-              <div style={{ height: 9,  width: '58%', background: 'rgba(255,255,255,0.025)', borderRadius: 3 }} />
-              <div style={{ height: 9,  width: '32%', background: 'rgba(255,255,255,0.035)', borderRadius: 3 }} />
-            </div>
+        <div key={i} className="skeleton-card skeleton-animate">
+          <div className="skeleton-poster" />
+          <div className="skeleton-body">
+            <span style={{ width: '72%', height: 13 }} />
+            <span style={{ width: '40%', height: 11 }} />
+            <span style={{ width: '58%', height: 10 }} />
+            <span style={{ width: '30%', height: 10 }} />
           </div>
         </div>
       ))}

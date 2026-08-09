@@ -1,483 +1,1050 @@
-/* ── Varsayılan CSS değişkenleri (Sinema Karanlığı teması) ─────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   StreamTR — görsel dil v2 · "Sinema duvarı"
+
+   Tez: posterler içeriğin kahramanı, arayüz onların sahnesi. Cesaret renkten
+   değil; büyük posterden, gerçek bir tipografik ölçekten, kararlı boşluktan ve
+   TEK bir kontrol dilinden gelir. Vurgu rengi yalnızca "şu an seçili olan" ve
+   "puan" için ayrılmıştır — her yere sürülen vurgu hiçbir yeri vurgulamaz.
+
+   Katman sırası: tokenlar → temel → hareket → kontrol dili → başlık → menü →
+   arama → AI → ızgara → kart → raflar → durumlar → footer → uyarlama.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Tokenlar ───────────────────────────────────────────────────────────────
+   Renk değerleri ThemeContext tarafından documentElement'e yazılır; buradaki
+   set "Sinema Karanlığı" varsayılanıdır. Renkler ASLA bileşende sabitlenmez —
+   beş tema da aynı sözleşmeyi doldurur (bkz. constants/index.js). */
 :root {
+  /* Yüzeyler */
   --bg:              #0e0e1c;
   --bg-card:         #161624;
   /* Yükseltilmiş yüzey (açılır menü, raf okları). Kartın aksine ARKASINI
-     örtmesi gerektiği için her temada opak olmak zorundadır. */
+     örtmesi gerektiği için her temada opak olmak ZORUNDA. */
   --bg-elevated:     #1b1b30;
   --bg-card-trend:   rgba(20,10,10,0.97);
-  --bg-header:       rgba(14,14,28,0.97);
-  --accent:          #F5C518;
-  --accent2:         #E04528;
+  /* Başlık bandı opak: yapışkan başlık altından içerik geçerken bulanık cam
+     yerine kararlı bir bant istiyoruz (hem daha net, hem bir kompozisyon
+     katmanı daha az). */
+  --bg-header:       #0c0c18;
+  /* Kontrol yüzeyi — tüm etkileşimli kontroller tek zemini paylaşır. */
+  --surface:         rgba(255,255,255,0.055);
+  --surface-hover:   rgba(255,255,255,0.10);
+
+  /* Vurgu */
+  --accent:          #F5C518;   /* dolgu ve kenarlık */
+  --accent-ink:      #F5C518;   /* METİN olarak vurgu — AA garantili */
+  --accent-contrast: #14140f;   /* dolu vurgu üzerindeki mürekkep */
   --accent-rgb:      245,197,24;
+
+  /* Kenarlıklar: hairline ayırıcı vs. kontrol kenarı iki ayrı iş. */
   --border:          rgba(255,255,255,0.08);
+  --border-strong:   rgba(255,255,255,0.16);
   --border-trend:    rgba(245,100,0,0.15);
-  --text:            #ffffff;
-  --text-muted:      rgba(255,255,255,0.65);
-  --text-faint:      rgba(255,255,255,0.32);
-  --tab-active:      #F5C518;
   --hover-border:    rgba(245,197,24,0.30);
+
+  /* Mürekkep rampası — üç kademe, hepsi AA (bkz. tasarım raporu ölçümleri). */
+  --text:            #ffffff;
+  --text-muted:      rgba(255,255,255,0.74);
+  --text-faint:      rgba(255,255,255,0.58);
+
+  --tab-active:      #F5C518;
   --trend-bar:       linear-gradient(90deg,#F5C518,#E50914);
-  --logo-grad:       linear-gradient(120deg,#F5C518 0%,#E04528 100%);
   --card-backdrop:   none;
 
-  /* Yerleşim ritmi — tek yerden yönetilen boşluk ölçeği. Ferahlık bu üç
-     değerin tutarlı kullanılmasından gelir, tek tek px kararlarından değil. */
-  --gutter:      22px;
-  --row-gap:     10px;
-  --section-gap: 26px;
+  /* Durum renkleri temadan bağımsızdır: "taze" her temada yeşil, "hata" her
+     temada kırmızıdır. Bu yüzden bilinçli olarak yalnız :root'ta yaşarlar ve
+     tema sözleşmesinin parçası değildirler. */
+  --ok-ink:          #7ed492;
+  --danger-ink:      #ff8f8f;
+  --danger-surface:  rgba(229,9,20,0.10);
+  --danger-border:   rgba(229,9,20,0.28);
+
+  /* Tipografik ölçek — önceden 7.5px ile 14px arasına 13 farklı boy
+     sıkışmıştı. Altı basamak kaldı; taban 11px. */
+  --fs-display: 26px;  /* marka */
+  --fs-h1:      20px;  /* bölüm ve raf başlıkları */
+  --fs-h2:      15px;  /* kart başlığı, sekme */
+  --fs-body:    13px;  /* gövde, kontrol etiketi, menü seçeneği */
+  --fs-meta:    12px;  /* ikincil bilgi, sayaç, yıl */
+  --fs-micro:   11px;  /* rozet ve logotip — mutlak taban, istisnası yok */
+
+  /* Yarıçap — üç basamak. Hap (999px) yok: her kontrol aynı köşeyi kullanır. */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+
+  /* Kontrol ölçeği — tek yükseklik tüm çubuğu hizalar. */
+  --ctl-h: 36px;
+
+  /* Hareket — özel eğriler; CSS'in yerleşik easing'leri çok yumuşak kalıyor. */
+  --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --dur-1: 120ms;  /* basma, renk, odak */
+  --dur-2: 180ms;  /* menü, panel, giriş */
+
+  /* Anlamsal z-index — 999 gibi keyfi değer yok. */
+  --z-header:   40;
+  --z-suggest: 150;
+  --z-menu:    200;
+  --z-modal:   300;
+  --z-player:  400;
+
+  /* Yerleşim ritmi */
+  --gutter:      24px;
+  --section-gap: 30px;
 }
 
+/* ── Temel ────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 16px; }
-body { background: var(--bg); color: var(--text); overflow-x: hidden; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  font-size: var(--fs-body);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, textarea { font: inherit; color: inherit; }
 
-/* ── Animasyonlar ─────────────────────────────────────────────────────────── */
-@keyframes shimmer {
-  0%   { background-position: -600px 0; }
-  100% { background-position:  600px 0; }
+/* Sayısal veri her yerde hizalı okunur (puanlar, sayaçlar, yıllar).
+   `monospace` KULLANILMAZ: Windows'ta Courier New'e düşüp tipografiyi bozuyordu. */
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* Tek odak halkası — klavye kullanıcısı için her kontrolde aynı işaret. */
+.tab, .lens-option, .ctl, .btn, .dd-option, .dd-clear, .link-btn,
+.cc, .rail-card, .ai-example, .search-suggest-item, .icon-btn {
+  outline: none;
 }
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+.tab:focus-visible, .lens-option:focus-visible, .ctl:focus-visible,
+.btn:focus-visible, .dd-option:focus-visible, .dd-clear:focus-visible,
+.link-btn:focus-visible, .cc:focus-visible, .rail-card:focus-visible,
+.ai-example:focus-visible, .search-suggest-item:focus-visible,
+.icon-btn:focus-visible, .search-field:focus-within {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 2px;
 }
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+/* Kırpılan bağlamlarda halka içeri alınır (segment, menü satırı). */
+.lens-option:focus-visible, .dd-option:focus-visible, .dd-clear:focus-visible {
+  outline-offset: -2px;
 }
-@keyframes dropdownIn {
-  from { opacity: 0; transform: scale(0.97) translateY(-4px); }
-  to   { opacity: 1; transform: scale(1)    translateY(0);    }
-}
+
+/* ── Hareket ilkeleri ───────────────────────────────────────────────────────
+   Yalnız transform/opacity animasyonu; çıkış girişten hızlı; 300ms üstü yok. */
+@keyframes shimmer  { from { background-position: -600px 0 } to { background-position: 600px 0 } }
+@keyframes spin     { to { transform: rotate(360deg) } }
+@keyframes fadeIn   { from { opacity: 0 } to { opacity: 1 } }
+@keyframes popIn    { from { opacity: 0; transform: scale(0.96) } to { opacity: 1; transform: scale(1) } }
+
+.spin { animation: spin 0.7s linear infinite; }
+
+/* Izgara girişleri: kart BAŞINA kademeli animasyon yoktu edildi. Filtreleme
+   günde onlarca kez yapılan bir eylem; 20 kartın sırayla süzülmesi arayüzü
+   yavaş hissettiriyordu. Yerine kapsayıcı düzeyinde tek, kısa bir çapraz
+   geçiş var — "yeni veri geldi" bilgisini verir, bekletmez. */
+.enter { animation: fadeIn 160ms var(--ease-out) both; }
 
 .skeleton-animate {
   background: linear-gradient(90deg,
     rgba(255,255,255,0.03) 25%,
     rgba(255,255,255,0.07) 50%,
-    rgba(255,255,255,0.03) 75%
-  );
+    rgba(255,255,255,0.03) 75%);
   background-size: 800px 100%;
-  animation: shimmer 1.8s infinite;
+  animation: shimmer 1.2s infinite;
+}
+.skeleton-card {
+  display: flex; min-height: 162px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--r-lg); overflow: hidden;
+}
+.skeleton-poster { width: 108px; flex: 0 0 108px; background: rgba(255,255,255,0.04); }
+.skeleton-body { flex: 1; padding: 12px 13px; display: flex; flex-direction: column; gap: 9px; }
+.skeleton-body > span { display: block; background: rgba(255,255,255,0.05); border-radius: 3px; }
+
+/* Poster */
+.poster-img, .poster-fallback { width: 100%; height: 100%; }
+.poster-img { position: relative; }
+.poster-img img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+.poster-fallback {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 7px; padding: 10px; color: rgba(255,255,255,0.75);
+}
+.poster-fallback span {
+  font-size: var(--fs-micro); font-weight: 700; text-align: center;
+  line-height: 1.35; word-break: break-word; color: rgba(255,255,255,0.9);
 }
 
-.card-enter     { animation: fadeUp      0.28s ease both; }
-.dropdown-enter { animation: dropdownIn 0.14s cubic-bezier(0.23,1,0.32,1) both; }
-.spin           { animation: spin       1s linear infinite; }
+/* ══ KONTROL DİLİ ══════════════════════════════════════════════════════════
+   Dört hiyerarşi katmanı, dört görsel ifade. Kural tek cümlede:
+     dolu   = eylem      (Ara, AI ile Ara, Daha fazla göster)
+     çerçeve= filtre     (Tür, Yıl, Platform, Sırala, Yayında)
+     segment= kapsam     (Dünya | Yerli | Ülke)
+     çıplak = gezinme    (sekmeler)
+   Yükseklik, yarıçap, tipografi ve odak halkası dördünde de aynı. */
 
-/* ── Özel kaydırma çubuğu ─────────────────────────────────────────────────── */
-::-webkit-scrollbar        { height: 3px; width: 4px; }
-::-webkit-scrollbar-track  { background: transparent; }
-::-webkit-scrollbar-thumb  { background: rgba(255,255,255,0.15); border-radius: 2px; }
+.ctl {
+  display: inline-flex; align-items: center; justify-content: space-between;
+  gap: 7px;
+  height: var(--ctl-h); padding: 0 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  color: var(--text-muted);
+  font-size: var(--fs-body); font-weight: 500;
+  white-space: nowrap; cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out),
+              border-color var(--dur-1) var(--ease-out),
+              color var(--dur-1) var(--ease-out),
+              transform var(--dur-1) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .ctl:hover { background: var(--surface-hover); color: var(--text); }
+}
+.ctl:active { transform: scale(0.97); }
+.ctl:disabled { opacity: 0.5; cursor: not-allowed; }
+.ctl:disabled:active { transform: none; }
 
-[data-theme="glass"] .content-card {
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+/* Aktif filtre SESSİZ bir vurgu taşır: yazı + kenarlık renklenir, zemin dolmaz.
+   Dolgu eylemlere ayrılmıştır; filtre geçicidir, kapsam anahtarını bastırmamalı. */
+.ctl-on {
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  background: var(--surface);
+  font-weight: 700;
 }
 
-.btn-pressable:active { transform: scale(0.97); }
-@media (prefers-reduced-motion: reduce) {
-  .btn-pressable:active { transform: none; }
+/* Eylem — tek dolu kontrol tipi. */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  height: var(--ctl-h); padding: 0 18px;
+  border: 1px solid transparent; border-radius: var(--r-md);
+  background: var(--accent); color: var(--accent-contrast);
+  font-size: var(--fs-body); font-weight: 700;
+  white-space: nowrap; cursor: pointer;
+  transition: filter var(--dur-1) var(--ease-out),
+              transform var(--dur-1) var(--ease-out),
+              opacity var(--dur-1) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) { .btn:hover { filter: brightness(1.08); } }
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:disabled:active { transform: none; }
+
+/* İkincil eylem — dolu değil ama eylem: nötr yüzey, güçlü mürekkep. */
+.btn-quiet {
+  background: var(--surface); color: var(--text);
+  border-color: var(--border-strong);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn-quiet:hover { background: var(--surface-hover); filter: none; }
 }
 
-/* ══ BAŞLIK ═══════════════════════════════════════════════════════════════
-   Önceden üç sıra kontrol vardı (platform çipleri / sekmeler+mercek /
-   tür+yıl çipleri) ve içeriği ekranın altına itiyordu. Şimdi iki sıra:
-   marka + gezinme. Filtreler kendi çubuğunda toplandı. */
+/* Metin düğmesi (Tümü, Temizle, Kod gelmedi mi?) */
+.link-btn {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: none; border: none; border-radius: var(--r-sm);
+  color: var(--text-faint); font-size: var(--fs-meta); font-weight: 600;
+  padding: 4px 2px; cursor: pointer;
+  transition: color var(--dur-1) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) { .link-btn:hover { color: var(--text); } }
+
+/* İkon düğmesi — kontrol yüksekliğinde kare. */
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: var(--ctl-h); height: var(--ctl-h); flex-shrink: 0;
+  background: none; border: none; border-radius: var(--r-md);
+  color: var(--text-faint); cursor: pointer;
+  transition: color var(--dur-1) var(--ease-out),
+              background var(--dur-1) var(--ease-out),
+              transform var(--dur-1) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .icon-btn:hover { color: var(--text); background: var(--surface-hover); }
+}
+.icon-btn:active { transform: scale(0.94); }
+
+/* ══ BAŞLIK ════════════════════════════════════════════════════════════════
+   Önce dört banttı: marka / sekmeler+mercek / arama+AI / filtreler. İçerik
+   1440×900'de ancak 195px'ten sonra başlıyordu. Şimdi iki bant: kimlik+gezinme
+   ve tek bir araç rayı. Hiçbir yetenek gizlenmedi, yalnız aynı satıra alındı. */
 .app-header {
-  position: sticky; top: 0; z-index: 60;
+  position: sticky; top: 0; z-index: var(--z-header);
   background: var(--bg-header);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
-.hdr-row {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 14px; padding: 0 var(--gutter);
-}
-.hdr-brand { padding-top: 12px; }
-.brand { display: flex; align-items: baseline; gap: 8px; }
-.brand-name {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 26px; letter-spacing: 0.06em;
-  background: var(--logo-grad);
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent;
-  line-height: 1;
-}
-.brand-kicker {
-  font-size: 9px; color: var(--text-faint);
-  letter-spacing: 0.15em; font-weight: 700;
-}
-.hdr-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
-.hdr-nav { margin-top: 6px; align-items: flex-end; overflow-x: auto; }
-.tabs { display: flex; gap: 2px; }
+.hdr-row {
+  display: flex; align-items: center; gap: 18px;
+  padding: 0 var(--gutter);
+  min-height: 56px;
+}
+
+.brand {
+  display: inline-flex; align-items: baseline; flex-shrink: 0;
+  font-family: 'Bebas Neue', system-ui, sans-serif;
+  font-size: var(--fs-display); line-height: 1;
+  letter-spacing: 0.04em;
+  /* Gradyan metin bilinçli olarak kaldırıldı: dekoratifti, gradyanın koyu ucunda
+     kontrastı düşüyordu ve her temada farklı okunuyordu. Tek katı renk daha
+     güçlü duruyor. */
+  color: var(--accent-ink);
+}
+
+/* Gezinme — kutusuz. "Yer" bildirir, kontrol gibi görünmez. */
+.tabs { display: flex; align-items: center; gap: 2px; min-width: 0; }
 .tab {
-  background: transparent; border: none;
-  border-bottom: 2px solid transparent;
+  position: relative;
+  display: inline-flex; align-items: center; gap: 7px;
+  background: none; border: none;
+  padding: 6px 12px; border-radius: var(--r-sm);
   color: var(--text-faint);
-  padding: 8px 14px 10px; font-size: 12.5px; font-weight: 500;
-  cursor: pointer; font-family: inherit; white-space: nowrap;
-  display: flex; align-items: center; gap: 5px;
-  margin-bottom: -1px;
-  transition: color 0.14s ease-out, border-color 0.14s ease-out;
+  font-size: var(--fs-h2); font-weight: 500;
+  cursor: pointer; white-space: nowrap;
+  transition: color var(--dur-1) var(--ease-out);
+}
+.tab svg { flex-shrink: 0; opacity: 0.75; }
+@media (hover: hover) and (pointer: fine) {
+  .tab:not(.tab-active):hover { color: var(--text); }
+}
+.tab-active { color: var(--text); font-weight: 700; }
+.tab-active svg { opacity: 1; color: var(--accent-ink); }
+/* Aktif sekmenin altındaki çizgi pseudo-element: kenarlık eklemek satırı
+   piksel kaydırıyordu, bu kaydırmıyor. */
+.tab-active::after {
+  content: ''; position: absolute; left: 12px; right: 12px; bottom: -2px;
+  height: 2px; background: var(--tab-active); border-radius: 2px 2px 0 0;
+}
+
+.hdr-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0; }
+
+/* ── Hesap ─────────────────────────────────────────────────────────────────
+   Kendi kutusu var ama görünümü tema düğmesiyle birebir aynı: başlıkta tek
+   bir düğme dili. */
+.acct { position: relative; display: inline-flex; }
+.acct-avatar {
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  display: grid; place-items: center; object-fit: cover;
+}
+.acct-initial {
+  background: rgba(var(--accent-rgb), 0.22); color: var(--accent-ink);
+  font-size: var(--fs-micro); font-weight: 700;
+}
+.acct-name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.acct-menu {
+  position: absolute; right: 0; top: calc(100% + 8px);
+  width: 240px; z-index: var(--z-menu);
+  background: var(--bg-elevated); border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg); padding: 6px;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.55);
+  transform-origin: top right;
+  animation: popIn var(--dur-2) var(--ease-out) both;
+}
+.acct-head { padding: 8px 10px 10px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.acct-head-name {
+  color: var(--text); font-size: var(--fs-body); font-weight: 700; margin: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.acct-head-mail {
+  color: var(--text-faint); font-size: var(--fs-meta); margin: 4px 0 0;
+  display: flex; align-items: center; gap: 6px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.acct-item {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  background: none; border: none; border-radius: var(--r-sm);
+  padding: 9px 10px; color: var(--text-muted);
+  font-size: var(--fs-body); cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
-  .tab:not(.tab-active):hover { color: var(--text-muted); }
+  .acct-item:hover { background: var(--surface-hover); color: var(--text); }
 }
-.tab-active {
-  color: var(--tab-active); font-weight: 700;
-  border-bottom-color: var(--tab-active);
-}
-.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.acct-item:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -2px; }
 
-/* ── Mercek: Dünya | Yerli | Ülke ▾ ───────────────────────────────────────
-   "Yerli" aslında ülke=TR demektir; üçüncü segment onu genelleştirir.
-   Marka satırı zaten "StreamTR TÜRKİYE" (= Türkiye'de yayında olan) dediği
-   için mercek "Yerli" der (= Türk yapımı) — iki kavram çakışmasın. */
+/* ── Araç rayı: kapsam → arama → filtre ────────────────────────────────────
+   Soldan sağa okunuşu "hangi katalog → ne arıyorsun → nasıl daralt". */
+.toolbar {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 var(--gutter) 12px;
+}
+.toolbar-filters {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  margin-left: auto;
+}
+/* Sana Özel'de rayda başka kontrol yok; tek başına sağa yaslanmış bir menü
+   ortada asılı kalıyordu. */
+.toolbar-filters-lead { margin-left: 0; }
+
+/* Kapsam — fiziksel bir anahtar gibi: tek çerçeve, bölmeli, dolu aktif segment. */
 .lens {
-  display: inline-flex; align-items: stretch;
-  border: 1px solid var(--border); border-radius: 8px;
-  background: rgba(255,255,255,0.03);
-  flex-shrink: 0; margin-bottom: 6px; overflow: hidden;
+  display: inline-flex; align-items: stretch; flex-shrink: 0;
+  height: var(--ctl-h);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  padding: 3px;
+  gap: 2px;
 }
 .lens-option {
-  border: none; background: transparent;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; background: transparent; border-radius: 7px;
   color: var(--text-faint);
-  font-family: inherit; font-size: 11px; font-weight: 600;
-  padding: 6px 13px; min-height: 30px; cursor: pointer; white-space: nowrap;
-  transition: background 0.14s ease-out, color 0.14s ease-out;
+  font-size: var(--fs-body); font-weight: 500;
+  padding: 0 13px; cursor: pointer; white-space: nowrap;
+  transition: background var(--dur-1) var(--ease-out),
+              color var(--dur-1) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .lens-option:not([aria-pressed="true"]):hover { color: var(--text); }
 }
 .lens-option[aria-pressed="true"] {
-  background: rgba(var(--accent-rgb), 0.15);
-  color: var(--accent); font-weight: 700;
+  background: var(--bg-elevated);
+  color: var(--text); font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.45);
 }
+/* Mercek içindeki ülke menüsü segmentin kardeşidir — kendi çerçevesi olmaz. */
+.lens .ctl {
+  height: auto; border: none; background: transparent;
+  border-radius: 7px; padding: 0 11px;
+  font-weight: 500;
+}
+.lens .ctl-on { background: var(--bg-elevated); color: var(--text); font-weight: 700; }
 @media (hover: hover) and (pointer: fine) {
-  .lens-option:not([aria-pressed="true"]):hover {
-    background: rgba(255,255,255,0.05); color: var(--text-muted);
-  }
-}
-.lens-option:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-/* Mercek içindeki ülke menüsü segment gibi görünsün — kendi kenarlığı olmasın */
-.lens .dd-trigger {
-  border: none; border-left: 1px solid var(--border);
-  border-radius: 0; min-height: 30px;
+  .lens .ctl:hover { background: var(--surface-hover); }
 }
 
-/* ══ AÇILIR MENÜ ══════════════════════════════════════════════════════════ */
-.dd-wrap { position: relative; flex-shrink: 0; }
-.dd-trigger {
-  display: inline-flex; align-items: center; justify-content: space-between;
-  gap: 6px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--border); border-radius: 8px;
-  color: var(--text-muted);
-  font-family: inherit; font-size: 11.5px; font-weight: 600;
-  padding: 6px 10px; min-height: 32px; cursor: pointer; white-space: nowrap;
-  transition: border-color 0.14s ease-out, color 0.14s ease-out, background 0.14s ease-out;
-}
-@media (hover: hover) and (pointer: fine) {
-  .dd-trigger:hover { border-color: var(--hover-border); color: var(--text); }
-}
-.dd-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.dd-active {
-  background: rgba(var(--accent-rgb), 0.12);
-  border-color: rgba(var(--accent-rgb), 0.4);
-  color: var(--accent); font-weight: 700;
-}
+/* ══ AÇILIR MENÜ ═══════════════════════════════════════════════════════════ */
+.dd-wrap { position: relative; flex-shrink: 0; display: inline-flex; }
 .dd-summary { overflow: hidden; text-overflow: ellipsis; }
-.dd-chevron { flex-shrink: 0; transition: transform 0.14s cubic-bezier(0.23,1,0.32,1); }
+.dd-chevron {
+  flex-shrink: 0; opacity: 0.6;
+  transition: transform var(--dur-1) var(--ease-out);
+}
+.ctl[aria-expanded="true"] .dd-chevron { transform: rotate(180deg); }
 
 /* Menü body'ye portal edilir ve viewport koordinatlarıyla konumlanır
-   (bkz. Dropdown.jsx'teki "NEDEN PORTAL" notu). top/left/right/max-height
-   satır içi stil olarak gelir; burada yalnız görünüm tanımlanır.
+   (bkz. Dropdown.jsx'teki "NEDEN PORTAL" notu). Konum satır içi stil olarak
+   gelir; burada yalnız görünüm tanımlanır.
 
    Zemin --bg-elevated: menü ARKASINDAKİ içeriği örtmek ZORUNDA. Eskiden
-   --bg-card kullanılıyordu; "Cam Efekti" temasında o değer
-   rgba(255,255,255,0.055) olduğu için menü şeffaf kalıyor ve okunmuyordu.
-   --bg-elevated her temada OPAK olmakla yükümlüdür. */
+   --bg-card kullanılıyordu; "Cam Efekti" temasında o değer saydam olduğu için
+   menü okunmuyordu. --bg-elevated her temada OPAK olmakla yükümlüdür. */
 .dd-menu {
-  position: fixed; z-index: 200;
+  position: fixed; z-index: var(--z-menu);
   overflow-y: auto; overscroll-behavior: contain;
   background: var(--bg-elevated);
-  border: 1px solid var(--border); border-radius: 9px;
-  box-shadow: 0 12px 38px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.35);
-  padding: 4px;
-  animation: dropdownIn 0.13s cubic-bezier(0.23,1,0.32,1) both;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  box-shadow: 0 14px 40px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.4);
+  padding: 5px;
+  /* Köken farkında: menü tetiğinden büyür, ekranın ortasından değil.
+     transform-origin'i Dropdown.jsx hesaplar (üst/alt, sol/sağ). */
+  animation: popIn var(--dur-2) var(--ease-out) both;
 }
 .dd-option {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   width: 100%; text-align: left;
-  background: none; border: none; border-radius: 6px;
+  background: none; border: none; border-radius: var(--r-sm);
   color: var(--text-muted);
-  font-family: inherit; font-size: 11.5px;
-  padding: 7px 9px; cursor: pointer; white-space: nowrap;
-  transition: background 0.1s ease-out, color 0.1s ease-out;
+  font-size: var(--fs-body);
+  padding: 8px 10px; cursor: pointer; white-space: nowrap;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
-  .dd-option:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+  .dd-option:hover { background: var(--surface-hover); color: var(--text); }
 }
-.dd-option:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.dd-option-sel { color: var(--accent); font-weight: 700; background: rgba(var(--accent-rgb),0.09); }
+.dd-option-sel { color: var(--accent-ink); font-weight: 700; }
 .dd-clear {
   display: block; width: 100%; text-align: left;
-  background: none; border: none; border-radius: 6px;
-  color: var(--text-faint); font-family: inherit; font-size: 10.5px;
-  padding: 6px 9px; margin-bottom: 2px; cursor: pointer;
+  background: none; border: none; border-radius: var(--r-sm);
+  color: var(--text-faint); font-size: var(--fs-meta);
+  padding: 7px 10px; margin-bottom: 4px; cursor: pointer;
   border-bottom: 1px solid var(--border);
+  transition: color var(--dur-1) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) { .dd-clear:hover { color: var(--text); } }
+
+/* ══ ARAMA ═════════════════════════════════════════════════════════════════
+   Arama kutusu artık kendi bandını yemiyor; araç rayında büyüyen bir alan. */
+.search-field {
+  position: relative;
+  display: flex; align-items: center;
+  flex: 1 1 240px; min-width: 180px;
+  height: var(--ctl-h);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+.search-field-on { border-color: var(--accent); }
+.search-icon { display: flex; align-items: center; padding: 0 10px; flex-shrink: 0; }
+.search-input {
+  flex: 1; min-width: 0; height: 100%;
+  background: transparent; border: none; outline: none;
+  color: var(--text); font-size: var(--fs-body);
+}
+.search-input::placeholder { color: var(--text-faint); }
+/* type="search" semantiği korunur ama tarayıcının kendi temizle düğmesi
+   gizlenir: bizim X düğmemizle yan yana iki çarpı çıkıyordu. */
+.search-input::-webkit-search-cancel-button,
+.search-input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+
+.search-menu {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+  z-index: var(--z-suggest);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  box-shadow: 0 14px 40px rgba(0,0,0,0.55);
+  padding: 5px; overflow: hidden;
+  transform-origin: top center;
+  animation: popIn var(--dur-2) var(--ease-out) both;
+}
+.search-correction {
+  padding: 7px 10px; margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-faint); font-size: var(--fs-meta); line-height: 1.5;
+}
+.search-correction b { color: var(--text); font-weight: 700; }
+.search-suggest-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; text-align: left;
+  background: none; border: none; border-radius: var(--r-sm);
+  padding: 8px 10px; cursor: pointer; color: var(--text);
+  transition: background var(--dur-1) var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
-  .dd-clear:hover { color: var(--text-muted); }
+  .search-suggest-item:hover { background: var(--surface-hover); }
+}
+.search-suggest-main { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.search-suggest-title {
+  font-size: var(--fs-body); font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.search-suggest-orig, .search-suggest-year {
+  color: var(--text-faint); font-size: var(--fs-meta);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0;
 }
 
-/* ══ ARAMA SATIRI ═════════════════════════════════════════════════════════ */
-.search-row {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 14px var(--gutter) 0;
-}
-.search-row-main { flex: 1; min-width: 0; }
-.ai-toggle {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: rgba(var(--accent-rgb), 0.10);
-  border: 1px solid rgba(var(--accent-rgb), 0.32);
-  border-radius: 10px;
-  color: var(--accent);
-  font-family: inherit; font-size: 12px; font-weight: 700;
-  padding: 0 14px; height: 40px; cursor: pointer; white-space: nowrap;
-  flex-shrink: 0;
-  transition: background 0.15s ease-out, border-color 0.15s ease-out, transform 0.12s ease-out;
-}
-@media (hover: hover) and (pointer: fine) {
-  .ai-toggle:hover { background: rgba(var(--accent-rgb), 0.18); }
-}
-.ai-toggle:active { transform: scale(0.98); }
-.ai-toggle-on {
-  background: var(--accent); color: #14140f;
-  border-color: var(--accent);
-}
-.ai-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-.searchbar { padding: 0; }
-.searchbar-note {
-  margin: 6px 2px 0; font-size: 10.5px; color: var(--text-faint);
-}
-
-/* ══ AI PANELİ ════════════════════════════════════════════════════════════ */
-.ai-panel-wrap { padding: 12px var(--gutter) 0; }
+/* ══ AI PANELİ ═════════════════════════════════════════════════════════════ */
 .ai-panel {
-  border: 1px solid rgba(var(--accent-rgb), 0.22);
-  background: rgba(var(--accent-rgb), 0.035);
-  border-radius: 14px;
-  padding: 16px 18px 18px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-card);
+  border-radius: var(--r-lg);
+  padding: 20px;
+  margin-bottom: var(--section-gap);
 }
 .ai-head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 .ai-title {
-  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
-  color: var(--accent); font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  color: var(--text); font-size: var(--fs-h1); font-weight: 700;
+  letter-spacing: -0.01em;
 }
-.ai-sub {
-  color: var(--text-faint); font-size: 10.5px; font-weight: 500;
-}
-.ai-close {
-  background: none; border: none; color: var(--text-faint);
-  cursor: pointer; padding: 2px; display: flex; flex-shrink: 0;
-}
-@media (hover: hover) and (pointer: fine) { .ai-close:hover { color: var(--text); } }
+.ai-title svg { color: var(--accent-ink); }
+.ai-sub { color: var(--text-faint); font-size: var(--fs-meta); font-weight: 400; }
 
 .ai-input-wrap {
-  background: rgba(0,0,0,0.22);
-  border: 1px solid var(--border); border-radius: 10px;
-  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border-strong); border-radius: var(--r-md);
+  padding: 12px 14px;
+  transition: border-color var(--dur-1) var(--ease-out);
 }
+.ai-input-wrap:focus-within { border-color: var(--accent); }
 .ai-input {
   width: 100%; background: transparent; border: none; outline: none; resize: none;
-  color: var(--text); font-family: inherit; font-size: 12.5px; line-height: 1.55;
+  color: var(--text); font-size: var(--fs-body); line-height: 1.6;
 }
 .ai-input::placeholder { color: var(--text-faint); }
 .ai-actions {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 .ai-hint {
-  display: inline-flex; align-items: center; gap: 4px;
-  color: var(--text-faint); font-size: 10px;
+  display: inline-flex; align-items: center; gap: 5px;
+  color: var(--text-faint); font-size: var(--fs-meta);
 }
-.ai-submit {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: var(--accent); color: #14140f;
-  border: none; border-radius: 8px;
-  font-family: inherit; font-size: 11.5px; font-weight: 700;
-  padding: 7px 16px; cursor: pointer;
-  transition: opacity 0.14s ease-out, transform 0.12s ease-out;
-}
-.ai-submit:disabled { opacity: 0.4; cursor: not-allowed; }
-.ai-submit:not(:disabled):active { transform: scale(0.98); }
 
-.ai-examples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.ai-examples { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
 .ai-example {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--border); border-radius: 14px;
-  color: var(--text-muted); font-family: inherit; font-size: 11px;
-  padding: 5px 12px; cursor: pointer; text-align: left;
-  transition: border-color 0.14s ease-out, color 0.14s ease-out, background 0.14s ease-out;
+  background: var(--surface);
+  border: 1px solid var(--border-strong); border-radius: var(--r-md);
+  color: var(--text-muted); font-size: var(--fs-meta);
+  padding: 7px 13px; cursor: pointer; text-align: left;
+  transition: background var(--dur-1) var(--ease-out),
+              color var(--dur-1) var(--ease-out),
+              transform var(--dur-1) var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
-  .ai-example:hover {
-    border-color: rgba(var(--accent-rgb),0.4); color: var(--text);
-    background: rgba(var(--accent-rgb),0.07);
-  }
+  .ai-example:hover { background: var(--surface-hover); color: var(--text); }
 }
+.ai-example:active { transform: scale(0.97); }
 
-.ai-explain {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
-  margin: 14px 0 4px;
-}
-.ai-explain-label { color: var(--text-faint); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.ai-explain { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 16px 0 4px; }
+.ai-explain-label { color: var(--text-faint); font-size: var(--fs-meta); }
 .ai-chip {
   display: inline-flex; align-items: center; gap: 5px;
-  background: rgba(var(--accent-rgb),0.10);
-  border: 1px solid rgba(var(--accent-rgb),0.28);
-  border-radius: 12px; padding: 2px 10px;
-  color: var(--text); font-size: 10.5px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm); padding: 4px 10px;
+  color: var(--text); font-size: var(--fs-meta);
 }
-.ai-chip-k { color: var(--accent); font-weight: 700; }
+.ai-chip-k { color: var(--text-faint); }
 .ai-source {
-  margin-left: 2px; padding: 2px 8px; border-radius: 12px;
-  background: var(--accent); color: #14140f;
-  font-size: 9px; font-weight: 800; letter-spacing: 0.06em;
+  padding: 4px 9px; border-radius: var(--r-sm);
+  background: var(--accent); color: var(--accent-contrast);
+  font-size: var(--fs-micro); font-weight: 700;
 }
-.ai-notice {
-  color: var(--text-muted); font-size: 11px; line-height: 1.6;
-  margin-top: 12px; padding: 8px 11px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--border); border-radius: 8px;
+.ai-notice, .ai-error {
+  color: var(--text-muted); font-size: var(--fs-body); line-height: 1.65;
+  margin-top: 14px; padding: 10px 13px;
+  background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--r-md);
 }
-.ai-error { color: var(--text-muted); font-size: 12px; margin-top: 14px; line-height: 1.6; }
-.ai-count { color: var(--text-faint); font-size: 10.5px; margin: 14px 0 10px; }
+.ai-count { color: var(--text-faint); font-size: var(--fs-meta); margin: 16px 0 12px; }
 
-/* ══ FİLTRE ÇUBUĞU ════════════════════════════════════════════════════════ */
-.filter-bar {
-  display: flex; align-items: center; flex-wrap: wrap;
-  gap: 7px;
-  padding: 12px var(--gutter);
-}
-.fb-spacer { flex: 1; min-width: 0; }
-.fb-count { color: var(--text-faint); font-size: 10.5px; white-space: nowrap; }
-.fb-toggle {
-  display: inline-flex; align-items: center; gap: 5px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--border); border-radius: 8px;
-  color: var(--text-muted);
-  font-family: inherit; font-size: 11.5px; font-weight: 600;
-  padding: 6px 11px; min-height: 32px; cursor: pointer; white-space: nowrap;
-  transition: border-color 0.14s ease-out, color 0.14s ease-out, background 0.14s ease-out;
-}
-@media (hover: hover) and (pointer: fine) {
-  .fb-toggle:hover { border-color: var(--hover-border); color: var(--text); }
-}
-.fb-toggle-on {
-  background: rgba(var(--accent-rgb),0.12);
-  border-color: rgba(var(--accent-rgb),0.4);
-  color: var(--accent); font-weight: 700;
-}
-.fb-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.fb-clear {
-  display: inline-flex; align-items: center; gap: 4px;
-  background: none; border: 1px solid var(--border); border-radius: 8px;
-  color: var(--text-faint); font-family: inherit; font-size: 10.5px;
-  padding: 6px 10px; cursor: pointer; white-space: nowrap;
-}
-@media (hover: hover) and (pointer: fine) {
-  .fb-clear:hover { color: var(--text-muted); border-color: var(--hover-border); }
-}
+/* ══ ANA İÇERİK ════════════════════════════════════════════════════════════ */
+/* İçerik kısa olduğunda (AI paneli, boş durum, hata) footer sayfanın ortasında
+   asılı kalıyordu. Kabuk dikey flex: main boşluğu yutar, footer hep dipte. */
+.app-shell { min-height: 100vh; display: flex; flex-direction: column; }
+.app-main { flex: 1; padding: 20px var(--gutter) 72px; }
 
-/* ══ ANA İÇERİK ═══════════════════════════════════════════════════════════ */
-.app-main { padding: 4px var(--gutter) 64px; }
+/* Izgaranın kendi başlığı var: hem "neye bakıyorum" der hem sayacı taşır.
+   Sayaç eskiden filtre çubuğundaydı; oysa o bir kontrol değil, listenin
+   geri bildirimidir — listeyle birlikte durması gerekiyordu. */
+.grid-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 14px; margin-bottom: 14px; flex-wrap: wrap;
+}
+.grid-title {
+  font-size: var(--fs-h1); font-weight: 700; color: var(--text);
+  letter-spacing: -0.01em; text-wrap: balance;
+  display: flex; align-items: center; gap: 9px;
+}
+.grid-count { color: var(--text-faint); font-size: var(--fs-meta); white-space: nowrap; }
 
 .grid-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 14px;
+  /* align-items:start ZORUNLU: varsayılan `stretch` ile bir kart açıldığında
+     aynı satırdaki komşular onun boyuna geriliyor ve posterleri 700px'e
+     uzuyordu. Kart yüksekliğini içerik belirler, komşusu değil. */
+  align-items: start;
 }
 
 .section-title {
-  display: flex; align-items: center; gap: 7px;
-  font-size: 14px; font-weight: 700; color: var(--text);
-  margin: 6px 0 13px;
+  display: flex; align-items: center; gap: 9px;
+  font-size: var(--fs-h1); font-weight: 700; color: var(--text);
+  letter-spacing: -0.01em;
+  margin: 0 0 14px;
 }
 .section-title-gap { margin-top: var(--section-gap); }
-.section-count { color: var(--text-faint); font-size: 11px; font-weight: 500; }
+.section-count { color: var(--text-faint); font-size: var(--fs-meta); font-weight: 400; }
 
-.muted-note { color: var(--text-faint); font-size: 12px; padding: 14px 0; line-height: 1.6; }
+.muted-note { color: var(--text-faint); font-size: var(--fs-body); padding: 14px 0; line-height: 1.65; }
 
-.empty-state { text-align: center; padding: 64px 20px; color: var(--text-faint); }
-.empty-icon { font-size: 46px; margin-bottom: 13px; opacity: 0.6; }
-.empty-title { font-size: 13px; margin-bottom: 10px; color: var(--text-muted); }
-.empty-sub { font-size: 11px; color: var(--text-faint); line-height: 1.65; max-width: 420px; margin: 0 auto; }
-
-.btn-accent {
-  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-  background: rgba(var(--accent-rgb),0.10);
-  border: 1px solid rgba(var(--accent-rgb),0.32);
-  border-radius: 9px; padding: 9px 22px;
-  color: var(--accent); font-family: inherit; font-size: 12.5px; font-weight: 600;
-  cursor: pointer;
-  transition: background 0.14s ease-out, transform 0.12s ease-out;
+/* ══ İÇERİK KARTI ══════════════════════════════════════════════════════════
+   Okuma sırası: poster → başlık+yıl → tek kahraman puan → tür → nerede izlenir.
+   Önce her bilgi kendi çerçeveli rozetindeydi; on rozet aynı ağırlıkta
+   bağırınca hiçbiri okunmuyordu. Artık yalnız platform logotipleri ve "TR
+   yapımı" etiketi çerçeveli — geri kalanı düz metin hiyerarşisi. */
+.cc {
+  /* Dikey flex + `.cc-head { flex: 1 }`: satırdaki en uzun kart yüksekliği
+     belirler, poster o yüksekliği doldurur. Böylece ızgara ne olursa olsun
+     poster duvarı hizalı kalır — kartın altında boş dilim oluşmaz. */
+  display: flex; flex-direction: column; width: 100%; text-align: left;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  backdrop-filter: var(--card-backdrop);
+  -webkit-backdrop-filter: var(--card-backdrop);
+  border-radius: var(--r-lg); overflow: hidden; cursor: pointer;
+  transition: border-color var(--dur-2) var(--ease-out),
+              transform var(--dur-2) var(--ease-out);
 }
-.btn-accent:disabled { opacity: 0.55; cursor: not-allowed; }
+.cc-trend { background: var(--bg-card-trend); border-color: var(--border-trend); }
 @media (hover: hover) and (pointer: fine) {
-  .btn-accent:not(:disabled):hover { background: rgba(var(--accent-rgb),0.18); }
+  .cc:hover { border-color: var(--hover-border); transform: translateY(-2px); }
 }
-.btn-accent:not(:disabled):active { transform: scale(0.98); }
+.cc-trendbar { height: 2px; background: var(--trend-bar); flex-shrink: 0; }
 
-.more-wrap { text-align: center; margin-top: var(--section-gap); }
-.more-note { color: var(--text-faint); font-size: 9.5px; margin-top: 7px; }
-.more-note-center { text-align: center; margin-top: 20px; }
+/* Açık kart tüm ızgara genişliğini kaplar. 300px'lik bir kolonda posterden
+   sonra metne 190px kalıyordu; açıklama, oyuncular ve benzer yapımlar orada
+   okunmuyordu. Açılan kart kendi satırına geçer ve nefes alır. */
+.cc[aria-expanded="true"] { grid-column: 1 / -1; }
 
-.error-band {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  background: rgba(229,9,20,0.08); border: 1px solid rgba(229,9,20,0.2);
-  border-radius: 11px; padding: 15px 18px; margin-bottom: 16px;
+.cc-head { display: flex; flex: 1; min-height: 162px; }
+
+.cc-poster { position: relative; width: 108px; flex: 0 0 108px; background: var(--bg); }
+.cc-fav  { position: absolute; top: 6px; right: 6px; z-index: 2; }
+.cc-rank {
+  position: absolute; top: 6px; left: 6px; z-index: 2;
+  min-width: 26px; padding: 1px 6px 0; border-radius: var(--r-sm);
+  font-family: 'Bebas Neue', system-ui, sans-serif;
+  font-size: 17px; line-height: 1.25; text-align: center; letter-spacing: 0.02em;
+  color: #fff; background: rgba(0,0,0,0.78);
+  border: 1px solid rgba(255,255,255,0.16);
 }
-.error-title { color: rgba(255,120,120,0.9); font-size: 12px; font-weight: 600; margin-bottom: 4px; }
-.error-sub { color: rgba(255,100,100,0.55); font-size: 10.5px; }
-.error-retry {
-  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
-  background: rgba(229,9,20,0.15); border: 1px solid rgba(229,9,20,0.35);
-  border-radius: 8px; padding: 7px 15px;
-  color: #ff7070; font-family: inherit; font-size: 12px; cursor: pointer;
+/* İlk üç sıra markanın vurgusuyla işaretlenir — "en tepedekiler" tek bakışta. */
+.cc-rank-top { background: var(--accent); color: var(--accent-contrast); border-color: transparent; }
+.cc-new {
+  position: absolute; left: 6px; bottom: 6px; z-index: 2;
+  background: var(--ok-ink); color: #0b1a0f;
+  border-radius: 4px; padding: 1px 6px;
+  font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.04em;
 }
 
-/* ══ EDİTORYAL RAFLAR ═════════════════════════════════════════════════════ */
+.cc-body {
+  flex: 1; min-width: 0;
+  padding: 12px 13px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.cc-title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+/* Başlık daima iki satırlık yer tutar: tek satırlık başlıklar yüzünden kartlar
+   birbirinden 20px kısa/uzun olmasın — poster duvarının hizası buna bağlı. */
+.cc-title {
+  font-size: var(--fs-h2); font-weight: 700; line-height: 1.28; color: var(--text);
+  letter-spacing: -0.01em; min-height: 2.56em;
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.cc-year { color: var(--text-faint); font-size: var(--fs-meta); flex-shrink: 0; }
+
+/* Tek kahraman puan + iki destekçi. Rozet kutuları kalktı; "taze/çürük"
+   bilgisi rengin kendisinde yaşamaya devam ediyor. */
+.cc-scores { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.cc-imdb {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: var(--accent-ink); font-size: var(--fs-h2); font-weight: 700;
+}
+.cc-imdb-max { color: var(--text-faint); font-size: var(--fs-micro); font-weight: 400; }
+.cc-alt { color: var(--text-faint); font-size: var(--fs-meta); }
+.cc-alt-ok  { color: var(--ok-ink); }
+.cc-alt-bad { color: var(--danger-ink); }
+
+.cc-meta {
+  color: var(--text-muted); font-size: var(--fs-meta); line-height: 1.4;
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical;
+}
+.cc-kind { color: var(--text-faint); }
+
+/* Ölçek çubukları genişliğe sınırlı: kart açıldığında tüm ızgarayı kaplayan
+   4px'lik bir çubuk oranı değil, sadece uzunluğu gösteriyordu. */
+.cc-social { display: flex; align-items: center; gap: 7px; max-width: 340px; }
+.cc-bar { flex: 1; height: 3px; background: var(--surface); border-radius: 2px; overflow: hidden; }
+.cc-bar > i { display: block; height: 100%; background: var(--trend-bar); }
+.cc-social-n { color: var(--accent-ink); font-size: var(--fs-meta); font-weight: 700; }
+
+.cc-tags { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: auto; }
+/* Platform logotipi — markanın kendi rengi satır içinden gelir; buradaki
+   zemin bilinmeyen sağlayıcı için nötr yedektir. */
+.cc-plat {
+  background: #3f3f46;
+  border-radius: 4px; padding: 2px 6px;
+  font-size: var(--fs-micro); font-weight: 700; color: #fff; letter-spacing: 0.05em;
+}
+.cc-dur { color: var(--text-faint); font-size: var(--fs-meta); }
+.cc-chevron { margin-left: auto; color: var(--text-faint); display: flex; flex-shrink: 0; }
+
+.fav-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0; border-radius: 50%;
+  background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.22);
+  color: rgba(255,255,255,0.85); cursor: pointer;
+  transition: background var(--dur-1) var(--ease-out),
+              border-color var(--dur-1) var(--ease-out),
+              color var(--dur-1) var(--ease-out),
+              transform var(--dur-1) var(--ease-out);
+}
+.fav-btn:active { transform: scale(0.92); }
+.fav-btn:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+  .fav-btn:hover { background: rgba(0,0,0,0.8); color: #fff; }
+}
+.fav-btn-on {
+  background: rgba(var(--accent-rgb), 0.22);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* Yerli yapım etiketi — bayrak emoji yerine tipografik rozet. */
+.tr-tag {
+  display: inline-flex; align-items: center;
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  border-radius: 4px; padding: 1px 6px;
+  font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.05em; white-space: nowrap;
+}
+
+/* Genişletilmiş detay */
+.cc-detail { border-top: 1px solid var(--border); background: rgba(0,0,0,0.28); cursor: default; }
+.cc-sec { padding: 16px 16px 0; border-top: 1px solid var(--border); }
+.cc-sec:first-child { border-top: none; }
+.cc-sec-end { padding-bottom: 16px; }
+.cc-subsec { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.cc-sec-title {
+  color: var(--text-faint); font-size: var(--fs-meta); font-weight: 700;
+  margin: 0 0 10px;
+}
+.cc-desc { color: var(--text-muted); font-size: var(--fs-body); line-height: 1.7; margin: 0; max-width: 68ch; text-wrap: pretty; }
+.cc-desc-alt { color: var(--text-faint); font-size: var(--fs-meta); margin: 0; }
+.cc-trend-reason { color: var(--accent-ink); font-size: var(--fs-body); line-height: 1.6; margin: 0; }
+
+.cc-lead { display: flex; gap: 14px; }
+/* Açık kartta posteri iki kez göstermenin anlamı yok — üstteki özet satırı
+   zaten posteri taşıyor. (Detay overlay'inde üst satır olmadığı için orada
+   poster kalır.) */
+.cc[aria-expanded="true"] .cc-lead-poster { display: none; }
+.cc-lead-poster {
+  width: 116px; height: 174px; flex-shrink: 0;
+  border-radius: var(--r-md); overflow: hidden; background: var(--bg);
+}
+.cc-lead-body { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+
+.cc-plat-full {
+  display: inline-flex; align-items: center; gap: 7px;
+  border-radius: var(--r-sm); padding: 6px 11px;
+  font-size: var(--fs-meta); font-weight: 700; color: #fff;
+}
+.cc-plat-full > b { border-radius: 3px; padding: 1px 5px; font-size: var(--fs-micro); }
+
+/* Yatay şerit — benzer yapımlar, oyuncular, filmografi hep aynı ritimde. */
+.cc-strip { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
+
+.mini-card {
+  display: flex; flex-direction: column; gap: 4px;
+  width: 84px; flex-shrink: 0; padding: 0;
+  background: none; border: none; text-align: left; cursor: pointer;
+  transition: transform var(--dur-1) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .mini-card:hover { transform: translateY(-2px); }
+  .mini-card:hover .mini-poster { border-color: var(--hover-border); }
+}
+.mini-card:active { transform: scale(0.97); }
+.mini-poster {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; aspect-ratio: 2 / 3; overflow: hidden;
+  background: var(--surface); color: var(--text-faint);
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+.mini-poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mini-title {
+  color: var(--text); font-size: var(--fs-micro); font-weight: 600; line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.mini-year { color: var(--text-faint); font-size: var(--fs-micro); }
+
+.actor {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  width: 68px; flex-shrink: 0; padding: 0;
+  background: none; border: none; text-align: center;
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+button.actor { cursor: pointer; }
+.actor-dim { opacity: 0.45; }
+.actor-photo {
+  display: flex; align-items: center; justify-content: center;
+  width: 56px; height: 56px; border-radius: 50%; overflow: hidden;
+  border: 2px solid var(--border-strong); background: var(--surface);
+  color: var(--text-faint);
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+.actor-photo-on { border-color: var(--accent); }
+.actor-photo img { width: 100%; height: 100%; object-fit: cover; }
+.actor-name {
+  color: var(--text-muted); font-size: var(--fs-micro); line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+.actor-role {
+  color: var(--text-faint); font-size: var(--fs-micro); font-style: italic;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.crit { margin-bottom: 12px; max-width: 520px; }
+.crit-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 5px; }
+.crit-label { color: var(--text-muted); font-size: var(--fs-meta); flex: 1; }
+.crit-value { color: var(--text); font-size: var(--fs-meta); font-weight: 700; }
+.crit-score { color: var(--accent-ink); font-size: var(--fs-meta); font-weight: 700; min-width: 24px; text-align: right; }
+.crit-src { color: var(--text-faint); font-size: var(--fs-micro); margin-top: 4px; display: block; }
+.crit-total {
+  display: flex; align-items: baseline; justify-content: space-between;
+  max-width: 520px;
+  margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--border);
+}
+
+.cc-reviews { display: flex; flex-direction: column; gap: 8px; }
+.review {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 11px 13px;
+}
+.review q { color: var(--text-muted); font-size: var(--fs-body); line-height: 1.7; font-style: italic; }
+.review-src { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.review-src b {
+  background: var(--surface); border-radius: 4px; padding: 2px 7px;
+  font-size: var(--fs-micro); font-weight: 700; color: var(--text-faint);
+}
+.review-src span { color: var(--text-faint); font-size: var(--fs-micro); }
+
+/* ══ MODAL ═════════════════════════════════════════════════════════════════
+   Modal ekranın ortasında kalır ve merkezinden ölçeklenir: bir tetiğe bağlı
+   olmadığı için köken-farkındalık burada geçerli DEĞİL (o kural açılır
+   menülere ait). */
+.modal-scrim {
+  position: fixed; inset: 0; z-index: var(--z-modal);
+  background: rgba(0,0,0,0.75);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  animation: fadeIn var(--dur-2) var(--ease-out) both;
+}
+.modal {
+  width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  padding: 20px 20px 24px;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.6);
+  transform-origin: center;
+  animation: popIn var(--dur-2) var(--ease-out) both;
+}
+/* Uzun içerikli detay üstten hizalanır; ortalanınca uzun kart taşıyordu. */
+.modal-scrim-top { align-items: flex-start; padding: 24px 16px; overflow-y: auto; }
+.modal-detail { position: relative; max-width: 560px; max-height: none; padding: 20px 0 0; }
+.modal-detail > .cc-lead { padding: 0 20px; }
+.modal-close { position: absolute; top: 10px; right: 10px; z-index: 2; }
+
+.modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 18px; }
+.modal-title {
+  display: flex; align-items: center; gap: 9px;
+  color: var(--text); font-size: var(--fs-h1); font-weight: 700;
+  letter-spacing: -0.01em; margin: 0;
+}
+.modal-sub { color: var(--text-faint); font-size: var(--fs-meta); margin: 5px 0 0; }
+
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.theme-card {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 0 0 4px; background: none; border: none; text-align: left; cursor: pointer;
+  border-radius: var(--r-md);
+  transition: transform var(--dur-1) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .theme-card:hover { transform: translateY(-2px); }
+  .theme-card:hover .theme-preview { border-color: var(--border-strong); }
+}
+.theme-card:active { transform: scale(0.97); }
+.theme-card:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 3px; }
+.theme-preview {
+  position: relative; display: block; height: 84px; margin-bottom: 8px;
+  border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden;
+  transition: border-color var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out);
+}
+.theme-card-on .theme-preview { box-shadow: 0 0 0 2px var(--tc-accent); border-color: transparent; }
+.theme-mock {
+  position: absolute; top: 12px; left: 10px; right: 10px; height: 28px;
+  display: flex; align-items: center; gap: 6px; padding: 0 8px;
+  border: 1px solid; border-radius: var(--r-sm);
+}
+.theme-mock-2 {
+  top: 48px; height: 22px;
+  background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.07);
+}
+.theme-mock i { display: block; border-radius: 2px; }
+.theme-check {
+  position: absolute; top: 7px; right: 7px;
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+.theme-name { color: var(--text); font-size: var(--fs-body); font-weight: 700; }
+.theme-desc { color: var(--text-faint); font-size: var(--fs-micro); line-height: 1.4; }
+
+/* ── Form alanları ─────────────────────────────────────────────────────────
+   Kontrolle aynı yükseklik ve yarıçap; girdi kutusu ayrı bir dil konuşmaz. */
+.field {
+  width: 100%; height: var(--ctl-h); padding: 0 12px;
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: var(--r-md); color: var(--text);
+  font-size: var(--fs-body); outline: none;
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+.field::placeholder { color: var(--text-faint); }
+.field:focus { border-color: var(--accent); }
+.field-with-icon { position: relative; display: flex; align-items: center; }
+.field-with-icon > svg { position: absolute; left: 12px; color: var(--text-faint); pointer-events: none; }
+.field-with-icon .field { padding-left: 36px; }
+.field-code { height: 52px; text-align: center; letter-spacing: 0.45em; font-size: var(--fs-h1); }
+
+.modal-auth { max-width: 400px; }
+.auth-body { display: flex; flex-direction: column; gap: 11px; }
+.auth-primary { width: 100%; margin-top: 4px; }
+.btn-google { width: 100%; background: #fff; color: #1f1f1f; }
+.auth-sep { position: relative; text-align: center; margin: 2px 0; }
+.auth-sep::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid var(--border); }
+.auth-sep span {
+  position: relative; background: var(--bg-elevated); padding: 0 10px;
+  color: var(--text-faint); font-size: var(--fs-meta);
+}
+.auth-msg {
+  border-radius: var(--r-md); padding: 9px 12px;
+  font-size: var(--fs-meta); line-height: 1.55; margin: 0;
+}
+.auth-msg-error { color: var(--danger-ink); background: var(--danger-surface); border: 1px solid var(--danger-border); }
+.auth-msg-ok    { color: var(--ok-ink); background: rgba(16,185,129,0.10); border: 1px solid rgba(16,185,129,0.28); }
+code { font-size: 0.92em; color: var(--accent-ink); }
+
+/* ── Fragman oynatıcı ─────────────────────────────────────────────────────── */
+.player-scrim {
+  position: fixed; inset: 0; z-index: var(--z-player);
+  background: rgba(0,0,0,0.93);
+  display: flex; align-items: center; justify-content: center; padding: 4vh 16px;
+  animation: fadeIn var(--dur-2) var(--ease-out) both;
+}
+.player { position: relative; width: min(1100px, 96vw); }
+.player-close {
+  position: absolute; top: -16px; right: -16px; z-index: 2;
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-elevated); border: 1px solid var(--border-strong);
+  color: var(--text); cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+  transition: transform var(--dur-1) var(--ease-out);
+}
+.player-close:active { transform: scale(0.94); }
+.player-close:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+.player-frame {
+  width: 100%; aspect-ratio: 16 / 9; max-height: 86vh;
+  background: #000; border-radius: var(--r-lg); overflow: hidden;
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.75);
+}
+.player-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+.btn-compact { height: 32px; padding: 0 13px; font-size: var(--fs-meta); }
+
+/* ══ EDİTORYAL RAFLAR ══════════════════════════════════════════════════════ */
 .rails-wrap { margin-bottom: var(--section-gap); }
-.rails-divider { border-top: 1px solid var(--border); padding-top: 16px; margin-top: 2px; }
-.rails-divider-title {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--text-faint); margin: 0;
-}
-
 .rail-section { margin-bottom: var(--section-gap); }
 .rail-header {
   display: flex; align-items: baseline; justify-content: space-between;
-  gap: 12px; margin-bottom: 10px;
+  gap: 12px; margin-bottom: 12px;
 }
-.rail-heading { font-size: 14px; font-weight: 700; color: var(--text); margin: 0; letter-spacing: 0.01em; }
-.rail-showall {
-  display: inline-flex; align-items: center; gap: 2px;
-  background: none; border: none; color: var(--text-faint);
-  font-family: inherit; font-size: 11px; font-weight: 600;
-  padding: 4px 2px; cursor: pointer; flex-shrink: 0;
-  transition: color 0.14s ease-out;
+.rail-heading {
+  font-size: var(--fs-h1); font-weight: 700; color: var(--text);
+  margin: 0; letter-spacing: -0.01em;
 }
-@media (hover: hover) and (pointer: fine) { .rail-showall:hover { color: var(--accent); } }
-.rail-showall:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 
 .rail-viewport { position: relative; }
 .rail-scroller {
-  display: flex; gap: 10px;
+  display: flex; gap: 12px;
   overflow-x: auto; overflow-y: hidden;
   scroll-snap-type: x proximity;
   scroll-padding-left: 2px;
@@ -496,97 +1063,168 @@ body { background: var(--bg); color: var(--text); overflow-x: hidden; }
 @media (hover: hover) and (pointer: fine) {
   .rail-arrow {
     display: flex; align-items: center; justify-content: center;
-    position: absolute; top: calc(50% - 18px); transform: translateY(-50%);
-    z-index: 5; width: 30px; height: 30px; border-radius: 50%;
-    border: 1px solid var(--border); background: var(--bg-elevated);
-    color: var(--text-muted); cursor: pointer; opacity: 0;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.45);
-    transition: opacity 0.16s ease-out, color 0.16s ease-out, border-color 0.16s ease-out;
+    position: absolute; top: calc(50% - 22px); transform: translateY(-50%);
+    z-index: 5; width: 34px; height: 34px; border-radius: 50%;
+    border: 1px solid var(--border-strong); background: var(--bg-elevated);
+    color: var(--text); cursor: pointer; opacity: 0;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    transition: opacity var(--dur-2) var(--ease-out),
+                border-color var(--dur-1) var(--ease-out);
   }
   .rail-viewport:hover .rail-arrow { opacity: 1; }
-  .rail-arrow:hover { color: var(--accent); border-color: var(--hover-border); }
-  .rail-arrow:focus-visible { opacity: 1; outline: 2px solid var(--accent); outline-offset: 2px; }
-  .rail-arrow-left  { left: -8px; }
-  .rail-arrow-right { right: -8px; }
+  .rail-arrow:hover { border-color: var(--accent); }
+  .rail-arrow:focus-visible { opacity: 1; outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+  .rail-arrow-left  { left: -10px; }
+  .rail-arrow-right { right: -10px; }
 }
 
 .rail-card {
-  flex: 0 0 auto; width: 132px; cursor: pointer; border-radius: 8px;
-  transition: transform 0.16s cubic-bezier(0.23,1,0.32,1);
+  flex: 0 0 auto; width: 148px; cursor: pointer; border-radius: var(--r-md);
+  transition: transform var(--dur-2) var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
   .rail-card:hover { transform: translateY(-3px); }
   .rail-card:hover .rail-poster { border-color: var(--hover-border); }
 }
-.rail-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.rail-card:active { transform: scale(0.97); }
 .rail-poster {
   position: relative; width: 100%; aspect-ratio: 2 / 3;
-  border-radius: 8px; overflow: hidden;
+  border-radius: var(--r-md); overflow: hidden;
   background: var(--bg-card); border: 1px solid var(--border);
-  transition: border-color 0.16s ease-out;
+  transition: border-color var(--dur-2) var(--ease-out);
 }
-.rail-fav { position: absolute; top: 4px; right: 4px; z-index: 2; }
+.rail-fav { position: absolute; top: 5px; right: 5px; z-index: 2; }
 .rail-score {
-  position: absolute; left: 4px; bottom: 4px; z-index: 2;
-  display: inline-flex; align-items: center; gap: 3px;
-  background: rgba(0,0,0,0.78); border-radius: 5px; padding: 1.5px 5px;
-  font-size: 10px; font-weight: 800; font-family: monospace; color: var(--accent);
+  position: absolute; left: 5px; bottom: 5px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(0,0,0,0.8); border-radius: var(--r-sm); padding: 2px 7px;
+  font-size: var(--fs-meta); font-weight: 700; color: var(--accent-ink);
 }
-.rail-meta { display: flex; flex-direction: column; gap: 1px; padding: 7px 2px 0; }
+.rail-meta { display: flex; flex-direction: column; gap: 2px; padding: 9px 2px 0; }
 .rail-title {
-  font-size: 11.5px; font-weight: 600; color: var(--text); line-height: 1.3;
+  font-size: var(--fs-body); font-weight: 600; color: var(--text); line-height: 1.35;
   display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2;
   -webkit-box-orient: vertical; overflow: hidden;
 }
-.rail-year { font-size: 9.5px; color: var(--text-faint); font-weight: 500; }
+.rail-year { font-size: var(--fs-meta); color: var(--text-faint); }
 
-/* Yerli yapım etiketi — kartta bayrak emoji yerine tipografik rozet. */
-.tr-tag {
-  display: inline-flex; align-items: center;
-  border: 1px solid rgba(var(--accent-rgb), 0.42);
-  background: rgba(var(--accent-rgb), 0.10);
-  color: var(--accent);
-  border-radius: 3px; padding: 0.5px 5px;
-  font-size: 7.5px; font-weight: 900; letter-spacing: 0.08em; white-space: nowrap;
+/* ══ DURUMLAR ══════════════════════════════════════════════════════════════
+   Boş durum arayüzü öğretir: ne olduğunu söyler ve çıkışı gösterir. */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  text-align: center; padding: 72px 20px;
 }
+.empty-icon { color: var(--text-faint); opacity: 0.55; }
+.empty-title { font-size: var(--fs-h1); font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
+.empty-sub { font-size: var(--fs-body); color: var(--text-faint); line-height: 1.7; max-width: 46ch; }
 
-/* ══ FOOTER ═══════════════════════════════════════════════════════════════ */
+.band {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  border-radius: var(--r-lg); padding: 14px 18px; margin-bottom: 18px;
+  background: var(--surface); border: 1px solid var(--border-strong);
+}
+.band-danger { background: var(--danger-surface); border-color: var(--danger-border); }
+.band-title { color: var(--text); font-size: var(--fs-body); font-weight: 700; margin-bottom: 3px; }
+.band-sub   { color: var(--text-faint); font-size: var(--fs-meta); line-height: 1.55; }
+.band-icon  { color: var(--danger-ink); flex-shrink: 0; }
+.band-row   { display: flex; align-items: flex-start; gap: 11px; min-width: 0; }
+
+.more-wrap { text-align: center; margin-top: var(--section-gap); }
+.more-note { color: var(--text-faint); font-size: var(--fs-meta); margin-top: 10px; }
+
+/* ══ FOOTER ════════════════════════════════════════════════════════════════ */
 .app-footer {
   border-top: 1px solid var(--border);
-  padding: 18px var(--gutter) 26px;
-  display: flex; flex-direction: column; gap: 14px;
-  background: rgba(0,0,0,0.25);
+  padding: 26px var(--gutter) 34px;
+  display: flex; flex-direction: column; gap: 16px;
+  background: var(--bg-header);
 }
-.footer-top {
-  display: flex; justify-content: space-between; align-items: center;
-  gap: 12px; flex-wrap: wrap;
+.footer-top { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
+.footer-brand {
+  font-family: 'Bebas Neue', system-ui, sans-serif;
+  font-size: var(--fs-h1); letter-spacing: 0.04em; color: var(--text-muted); line-height: 1;
 }
-.footer-brand { font-size: 12px; }
-.footer-src { color: var(--text-faint); font-size: 9px; }
+.footer-src { color: var(--text-faint); font-size: var(--fs-meta); }
 .footer-legal {
-  text-align: center; margin: 0 auto; max-width: 680px;
-  color: var(--text-faint); font-size: 10.5px; line-height: 1.65;
-  border-top: 1px solid var(--border); padding-top: 14px;
+  text-align: center; margin: 0 auto; max-width: 62ch;
+  color: var(--text-faint); font-size: var(--fs-meta); line-height: 1.7;
+  border-top: 1px solid var(--border); padding-top: 18px;
+  text-wrap: pretty;
 }
-.footer-legal a { color: var(--text-muted); text-decoration: none; }
+.footer-legal a { color: var(--text-muted); text-decoration: underline; text-underline-offset: 2px; }
 
-/* ══ DAR EKRAN ════════════════════════════════════════════════════════════ */
-@media (max-width: 640px) {
-  :root { --gutter: 14px; --section-gap: 22px; }
-  .grid-cards { grid-template-columns: 1fr; }
-  .search-row { flex-wrap: wrap; }
-  .ai-toggle { width: 100%; justify-content: center; }
-  .hdr-nav { align-items: center; }
-  .lens { margin-bottom: 8px; }
+/* ══ UYARLAMA ══════════════════════════════════════════════════════════════
+   Yapısal uyarlama: bantlar bölünür, dokunma hedefleri büyür. Tipografi
+   akışkan değil — kullanıcı aynı DPI'da bakıyor, başlığın ekranla birlikte
+   küçülmesi okunurluğu iyileştirmiyor. */
+@media (max-width: 1080px) {
+  .toolbar-filters { margin-left: 0; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .rail-card, .rail-arrow, .rail-showall, .lens-option,
-  .dd-trigger, .dd-option, .fb-toggle, .btn-accent, .ai-toggle, .ai-submit,
-  .tab, .ai-example {
-    transition: none;
+@media (max-width: 720px) {
+  :root { --gutter: 16px; --section-gap: 24px; --ctl-h: 40px; --fs-display: 24px; --fs-h1: 18px; }
+
+  /* Marka + hesap üstte kalır, sekmeler kendi satırına iner ve yatay kayar.
+     Kenardaki solma "devamı var" der. Önceden mercek de bu satırdaydı ve dar
+     ekranda görünür alanın dışına taşarak ERİŞİLEMEZ oluyordu. */
+  .hdr-row { flex-wrap: wrap; gap: 10px; min-height: 0; padding-top: 10px; padding-bottom: 4px; }
+  .tabs {
+    order: 3; width: 100%;
+    overflow-x: auto; scrollbar-width: none; padding-bottom: 6px;
+    /* Hafif solma: taşma olduğunda "devamı var" der, sığdığında son etiketi
+       okunmaz hâle getirmez. */
+    -webkit-mask-image: linear-gradient(90deg, #000 95%, rgba(0,0,0,0.3));
+            mask-image: linear-gradient(90deg, #000 95%, rgba(0,0,0,0.3));
   }
-  .rail-card:hover { transform: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { font-size: var(--fs-body); padding: 8px 10px; }
+  .tab-active::after { bottom: 0; }
+
+  /* Mercek kendi tam genişlikte satırında: üç segment eşit paylaşır. */
+  .lens { width: 100%; }
+  .lens-option, .lens .ctl { flex: 1; justify-content: center; }
+  .search-field { flex: 1 1 200px; }
+  /* Filtreler tek satırda yatay kayar — iki satıra sarıp 90px yer yemesin. */
+  .toolbar-filters {
+    width: 100%; flex-wrap: nowrap; overflow-x: auto;
+    scrollbar-width: none; padding-bottom: 2px;
+  }
+  .toolbar-filters::-webkit-scrollbar { display: none; }
+
+  .toolbar { gap: 7px; padding-bottom: 10px; }
+  .app-main { padding-top: 14px; }
+  .grid-cards { grid-template-columns: 1fr; }
+  /* Tek kolonda kart çok geniş kalıyor: poster büyür, boşluk azalır. */
+  .cc-poster { width: 124px; flex-basis: 124px; }
+  .cc-head { min-height: 186px; }
+  .cc-tags { margin-top: 12px; }
+  .rail-card { width: 132px; }
+  .band { flex-direction: column; align-items: stretch; }
+  .cc-lead { flex-direction: column; }
+  .cc-lead-poster { width: 104px; height: 156px; }
+}
+
+/* Çok dar ekranda başlık düğmeleri ikona iner; etiket yerine erişilebilir ad
+   ve title devreye girer. */
+@media (max-width: 460px) {
+  .hide-narrow { display: none; }
+  .acct-name { max-width: 0; }
+}
+
+/* ══ AZALTILMIŞ HAREKET ════════════════════════════════════════════════════
+   Hareket azaltılır, yok edilmez: anlam taşıyan renk/opaklık geçişleri kalır,
+   yer değiştiren ve ölçeklenen her şey durur. */
+@media (prefers-reduced-motion: reduce) {
+  .ctl, .btn, .btn-quiet, .icon-btn, .link-btn, .tab, .lens-option,
+  .dd-option, .dd-clear, .ai-example, .rail-card, .rail-arrow, .cc,
+  .search-suggest-item, .rail-poster, .search-field {
+    transition-property: color, background-color, border-color, opacity;
+    transition-duration: var(--dur-1);
+  }
+  .ctl:active, .btn:active, .icon-btn:active, .ai-example:active,
+  .rail-card:active, .cc:hover, .rail-card:hover { transform: none; }
+  .dd-menu, .search-menu, .enter { animation: fadeIn var(--dur-1) linear both; }
+  .skeleton-animate { animation: none; }
   .rail-scroller { scroll-behavior: auto; }
-  .dd-menu { animation: none; }
+  .spin { animation-duration: 1.4s; }
 }

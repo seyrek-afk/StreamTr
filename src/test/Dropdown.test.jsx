@@ -18,8 +18,9 @@ describe('Dropdown', () => {
   })
 
   // KIRPILMA REGRESYONU (üretimde yakalandı): menü `position:absolute` iken
-  // `.lens { overflow:hidden }` ve `.hdr-nav { overflow-x:auto }` atalarınca
-  // kırpılıyor, ülke menüsü "hiçbir şey listelemiyor" gibi görünüyordu.
+  // mercek segmenti (`overflow:hidden`) ve dar ekranda yatay kaydırılan
+  // kontrol şeridi (`overflow-x:auto`) tarafından kırpılıyor, ülke menüsü
+  // "hiçbir şey listelemiyor" gibi görünüyordu.
   // Menünün tetikten AYRI bir kökte (portal) durması bunun tek yapısal garantisi;
   // menü tekrar tetiğin içine taşınırsa bu test düşer.
   it('menüyü tetiğin DOM alt ağacının dışına (portal) çizer', () => {
