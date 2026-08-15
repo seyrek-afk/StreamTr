@@ -4,15 +4,19 @@ import PosterImg from './PosterImg.jsx'
 import FavoriteButton from './FavoriteButton.jsx'
 import DetailOverlay from './DetailOverlay.jsx'
 
-// Haftanın spot ışığı: trend listesinin en tepesindeki yapım.
+// Spot ışığı: bulunulan sekmenin listesinin başındaki yapım.
 //
 // Izgara "hepsi eşit" der; bu blok "önce şuna bak" der. Sinema dilinde perde
 // açıldığında tek bir film oynar — üst blok o rolü üstlenir, ızgara ise salonun
 // geri kalanıdır.
 //
+// Konuyu ve kicker'ı çağıran verir: hangi listenin başı olduğu ve o listenin
+// nasıl adlandırıldığı sekmeye bağlıdır, bileşenin bilmesi gereken bir şey
+// değildir.
+//
 // Poster fare için tıklanabilir ama klavye/ekran okuyucu için GİZLİ: aynı eylemi
 // açıkça adlandıran bir düğme zaten var, iki durak koymanın faydası yok.
-export default function HeroSpotlight({ item }) {
+export default function HeroSpotlight({ item, kicker = 'Listenin zirvesinde' }) {
   const [open, setOpen] = useState(false)
   if (!item) return null
 
@@ -39,7 +43,7 @@ export default function HeroSpotlight({ item }) {
       </div>
 
       <div className="hero-body">
-        <p className="hero-kicker">Bu hafta perdede</p>
+        <p className="hero-kicker">{kicker}</p>
 
         <h2 className="hero-title" id="hero-title">{item.title}</h2>
 
