@@ -123,13 +123,13 @@ describe('FavoritesContext — Supabase sync yolu', () => {
   })
 })
 
-describe('FavoritesContext — cycleLike Supabase yolları', () => {
+describe('FavoritesContext — setLike Supabase yolları', () => {
   beforeEach(() => {
     localStorage.clear()
     vi.resetModules()
   })
 
-  it('cycleLike — oturumlu kullanıcı için DB upsert çağrılır', async () => {
+  it('setLike — oturumlu kullanıcı için DB upsert çağrılır', async () => {
     const upsertFn = vi.fn().mockResolvedValue({ data: null, error: null })
     const deleteFn = vi.fn().mockResolvedValue({ data: null, error: null })
     const eqFn = vi.fn().mockReturnThis()
@@ -156,14 +156,14 @@ describe('FavoritesContext — cycleLike Supabase yolları', () => {
 
     const item = { title: 'Test', year: '2023', _tmdbId: 100, _mediaType: 'movie', genres: ['Dram'] }
 
-    act(() => { result.current.cycleLike(item) })
+    act(() => { result.current.setLike(item, LIKE_YES) })
 
     // İyimser güncelleme anında gerçekleşir
     expect(result.current.likeLevel(item)).toBe(LIKE_YES)
     expect(result.current.count).toBe(1)
   })
 
-  it('cycleLike üç kez → ekle, yükselt, kaldır (Supabase yok)', async () => {
+  it('setLike — ekle, yükselt, kaldır (Supabase yok)', async () => {
     _mockSupabase = null
     _mockUser = null
 
@@ -173,20 +173,20 @@ describe('FavoritesContext — cycleLike Supabase yolları', () => {
 
     const item = { title: 'Çift Toggle', year: '2023', genres: ['Aksiyon'] }
 
-    act(() => { result.current.cycleLike(item) })
+    act(() => { result.current.setLike(item, LIKE_YES) })
     expect(result.current.count).toBe(1)
     expect(result.current.likeLevel(item)).toBe(LIKE_YES)
 
-    act(() => { result.current.cycleLike(item) })
+    act(() => { result.current.setLike(item, LIKE_LOVE) })
     expect(result.current.count).toBe(1)
     expect(result.current.likeLevel(item)).toBe(LIKE_LOVE)
 
-    act(() => { result.current.cycleLike(item) })
+    act(() => { result.current.setLike(item, LIKE_NONE) })
     expect(result.current.count).toBe(0)
     expect(result.current.likeLevel(item)).toBe(LIKE_NONE)
   })
 
-  it('cycleLike boş key (null item) → sessizce yok sayılır', async () => {
+  it('setLike boş key (null item) → sessizce yok sayılır', async () => {
     _mockSupabase = null
     _mockUser = null
 
@@ -194,7 +194,7 @@ describe('FavoritesContext — cycleLike Supabase yolları', () => {
     const wrapper = ({ children }) => React.createElement(FavoritesProvider, null, children)
     const { result } = renderHook(() => useFavorites(), { wrapper })
 
-    act(() => { result.current.cycleLike({ title: '', year: '' }) })
+    act(() => { result.current.setLike({ title: '', year: '' }, LIKE_YES) })
     // key boş string → atlansın (favKey: 'title::')
     // Buradaki önemli nokta: uygulama çökmemeli
     expect(result.current.count).toBeGreaterThanOrEqual(0)
@@ -228,7 +228,7 @@ describe('FavoritesContext — toSnapshot alanları', () => {
       _mediaType: 'movie',
     }
 
-    act(() => { result.current.cycleLike(item) })
+    act(() => { result.current.setLike(item, LIKE_YES) })
 
     const snap = result.current.saved[0]
     expect(snap.key).toBe('tmdb:movie:777')
@@ -253,7 +253,7 @@ describe('FavoritesContext — toSnapshot alanları', () => {
     const { result } = renderHook(() => useFavorites(), { wrapper })
 
     const item = { title: 'Mock İçerik', year: 2020, genres: ['Dram'] }
-    act(() => { result.current.cycleLike(item) })
+    act(() => { result.current.setLike(item, LIKE_YES) })
 
     const snap = result.current.saved[0]
     expect(snap.key).toBe('title:Mock İçerik:2020')
@@ -268,7 +268,7 @@ describe('FavoritesContext — toSnapshot alanları', () => {
 
     // Mini item: tmdbId/mediaType (search sonucu) kullanan format
     const miniItem = { title: 'Mini', year: '2022', tmdbId: 333, mediaType: 'tv', genres: [] }
-    act(() => { result.current.cycleLike(miniItem) })
+    act(() => { result.current.setLike(miniItem, LIKE_YES) })
 
     const snap = result.current.saved[0]
     expect(snap.key).toBe('tmdb:tv:333')

@@ -86,25 +86,50 @@ describe('HeroSlider', () => {
   })
 })
 
-describe('SaveControls', () => {
+describe('SaveControls — üçlü grup', () => {
   beforeEach(() => { localStorage.clear() })
 
-  // Erişilebilir ad DURUMU değil BİR SONRAKİ EYLEMİ söyler; döngülü kontrolde
-  // kullanıcının bilmesi gereken şey budur.
-  it('kalbin erişilebilir adı bir sonraki eylemi söyler', () => {
+  it('üç simgeyi de aynı anda gösterir — hiçbiri gizli değil', () => {
     sar(<SaveControls item={yapim(1)} />)
-    const kalp = screen.getByRole('button', { name: 'Beğendim olarak işaretle' })
-    fireEvent.click(kalp)
-    expect(screen.getByRole('button', { name: 'Bayıldım olarak yükselt' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Bayıldım olarak yükselt' }))
-    expect(screen.getByRole('button', { name: 'Beğeniyi kaldır' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Beğendim olarak işaretle' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Bayıldım olarak işaretle' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'İzleyeceklerime ekle' })).toBeTruthy()
+  })
+
+  // Doğrudan seçim: 1. kademeden geçmeden 2. kademeye gidilebilmeli.
+  it('boştan doğrudan Bayıldım seçilebilir', () => {
+    sar(<SaveControls item={yapim(1)} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Bayıldım olarak işaretle' }))
+    expect(screen.getByRole('button', { name: 'Bayıldım işaretini kaldır' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Beğendim olarak işaretle' }).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  // İki kademe aynı eksen: biri seçilince diğeri bırakılmalı.
+  it('Beğendim ile Bayıldım birbirini dışlar', () => {
+    sar(<SaveControls item={yapim(1)} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Beğendim olarak işaretle' }))
+    expect(screen.getByRole('button', { name: 'Beğenimi kaldır' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Bayıldım olarak işaretle' }))
+    expect(screen.getByRole('button', { name: 'Beğendim olarak işaretle' }).getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByRole('button', { name: 'Bayıldım işaretini kaldır' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('aynı düğmeye tekrar basmak seçimi kaldırır', () => {
+    sar(<SaveControls item={yapim(1)} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Beğendim olarak işaretle' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Beğenimi kaldır' }))
+    expect(screen.getByRole('button', { name: 'Beğendim olarak işaretle' }).getAttribute('aria-pressed')).toBe('false')
   })
 
   it('ayraç beğeniden bağımsız çalışır', () => {
     sar(<SaveControls item={yapim(1)} />)
     fireEvent.click(screen.getByRole('button', { name: 'İzleyeceklerime ekle' }))
     expect(screen.getByRole('button', { name: 'İzleyeceklerimden çıkar' })).toBeTruthy()
-    // beğeni hâlâ boş
-    expect(screen.getByRole('button', { name: 'Beğendim olarak işaretle' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Beğendim olarak işaretle' }).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('grubun erişilebilir adı yapımı söyler', () => {
+    sar(<SaveControls item={yapim(1)} />)
+    expect(screen.getByRole('group', { name: 'Yapım 1 — kaydetme' })).toBeTruthy()
   })
 })

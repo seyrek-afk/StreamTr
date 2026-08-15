@@ -55,22 +55,33 @@ describe('FavoritesContext', () => {
     expect(result.current.count).toBe(0)
   })
 
-  // Kalp döngüsü: yok → Beğendim → Bayıldım → yok
-  it('cycleLike üç durumu sırayla gezer', () => {
+  // Doğrudan seçim: aradaki durumlardan geçmeye gerek yok.
+  it('setLike istenen kademeyi doğrudan yazar', () => {
     const { result } = renderHook(() => useFavorites(), { wrapper })
 
     expect(result.current.likeLevel(tmdbItem)).toBe(LIKE_NONE)
-    act(() => { result.current.cycleLike(tmdbItem) })
-    expect(result.current.likeLevel(tmdbItem)).toBe(LIKE_YES)
-    expect(result.current.liked).toHaveLength(1)
-
-    act(() => { result.current.cycleLike(tmdbItem) })
+    // Boştan doğrudan 2. kademeye — 1'den geçmeden
+    act(() => { result.current.setLike(tmdbItem, LIKE_LOVE) })
     expect(result.current.likeLevel(tmdbItem)).toBe(LIKE_LOVE)
     expect(result.current.loved).toHaveLength(1)
     expect(result.current.liked).toHaveLength(0)
+  })
 
-    act(() => { result.current.cycleLike(tmdbItem) })
-    expect(result.current.likeLevel(tmdbItem)).toBe(LIKE_NONE)
+  // İki kademe aynı eksenin değerleri; biri diğerini bırakmalı, yoksa yapım
+  // iki rafta birden görünürdü.
+  it('Beğendim ile Bayıldım birbirini dışlar', () => {
+    const { result } = renderHook(() => useFavorites(), { wrapper })
+    act(() => { result.current.setLike(tmdbItem, LIKE_YES) })
+    expect(result.current.liked).toHaveLength(1)
+    act(() => { result.current.setLike(tmdbItem, LIKE_LOVE) })
+    expect(result.current.liked).toHaveLength(0)
+    expect(result.current.loved).toHaveLength(1)
+  })
+
+  it('setLike ile sıfırlanınca kayıt silinir', () => {
+    const { result } = renderHook(() => useFavorites(), { wrapper })
+    act(() => { result.current.setLike(tmdbItem, LIKE_YES) })
+    act(() => { result.current.setLike(tmdbItem, LIKE_NONE) })
     expect(result.current.count).toBe(0)
   })
 
@@ -82,7 +93,7 @@ describe('FavoritesContext', () => {
     expect(result.current.isWatchlisted(tmdbItem)).toBe(true)
     expect(result.current.likeLevel(tmdbItem)).toBe(LIKE_NONE)
 
-    act(() => { result.current.cycleLike(tmdbItem) })
+    act(() => { result.current.setLike(tmdbItem, LIKE_YES) })
     expect(result.current.isWatchlisted(tmdbItem)).toBe(true)
     expect(result.current.likeLevel(tmdbItem)).toBe(LIKE_YES)
   })
@@ -92,9 +103,9 @@ describe('FavoritesContext', () => {
   it('beğeni sıfırlanınca izleme listesindeki kayıt SİLİNMEZ', () => {
     const { result } = renderHook(() => useFavorites(), { wrapper })
     act(() => { result.current.toggleWatchlist(tmdbItem) })
-    act(() => { result.current.cycleLike(tmdbItem) })   // 1
-    act(() => { result.current.cycleLike(tmdbItem) })   // 2
-    act(() => { result.current.cycleLike(tmdbItem) })   // 0
+    act(() => { result.current.setLike(tmdbItem, LIKE_YES) })
+    act(() => { result.current.setLike(tmdbItem, LIKE_LOVE) })
+    act(() => { result.current.setLike(tmdbItem, LIKE_NONE) })
     expect(result.current.count).toBe(1)
     expect(result.current.watchlist).toHaveLength(1)
   })
@@ -108,7 +119,7 @@ describe('FavoritesContext', () => {
 
   it('stores a snapshot with the fields needed for recommendations', () => {
     const { result } = renderHook(() => useFavorites(), { wrapper })
-    act(() => { result.current.cycleLike(mockItem) })
+    act(() => { result.current.setLike(mockItem, LIKE_YES) })
 
     const snap = result.current.saved[0]
     expect(snap.key).toBe('title:Breaking Bad:2008')
@@ -118,7 +129,7 @@ describe('FavoritesContext', () => {
 
   it('persists to localStorage', () => {
     const { result } = renderHook(() => useFavorites(), { wrapper })
-    act(() => { result.current.cycleLike(tmdbItem) })
+    act(() => { result.current.setLike(tmdbItem, LIKE_YES) })
 
     const stored = JSON.parse(localStorage.getItem('streamtr-favorites'))
     expect(stored).toHaveLength(1)
