@@ -13,7 +13,7 @@
 // aktifleşince raflar zaten gizlenir (bkz. App: rafların görünürlük kuralı).
 
 import { VOTE_MIN } from './discover.js'
-import { countryAdjective } from '../constants/countries.js'
+import { countryContentTitle } from '../constants/countries.js'
 
 // TMDB tarih parametreleri YYYY-MM-DD ister.
 function iso(d) {
@@ -37,13 +37,16 @@ export const RAIL_MIN_ITEMS = 4
 
 export function railsFor(tab, country = 'TR', now = new Date()) {
   if (!country) return []
-  const adj = countryAdjective(country)
+  // Ad öbeğini countryContentTitle kurar: sıfat karşılığı olmayan ülkelerde
+  // elle kurulan tamlama "Norveç yapımı Dizileri" gibi fazla tamlama üretiyordu.
+  const diziler = countryContentTitle(country, 'dizi', { titleCase: true })
+  const filmler = countryContentTitle(country, 'film', { titleCase: true })
 
   if (tab === 'diziler') {
     const rails = [
       {
         key: 'yuksek-puanli',
-        title: `Yüksek Puanlı ${adj} Dizileri`,
+        title: `Yüksek Puanlı ${diziler}`,
         mediaType: 'tv',
         params: { 'vote_count.gte': VOTE_MIN, sort_by: 'vote_average.desc' },
         sortByWeighted: true,
@@ -92,7 +95,7 @@ export function railsFor(tab, country = 'TR', now = new Date()) {
     return [
       {
         key: 'yuksek-puanli',
-        title: `Yüksek Puanlı ${adj} Filmleri`,
+        title: `Yüksek Puanlı ${filmler}`,
         mediaType: 'movie',
         params: { 'vote_count.gte': VOTE_MIN, sort_by: 'vote_average.desc' },
         sortByWeighted: true,
