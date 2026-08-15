@@ -4,7 +4,7 @@ import {
   Tv, Film, Flame, Star, SearchX,
 } from 'lucide-react'
 import { PLATFORMS, TR_PLATFORMS, TABS } from './constants/index.js'
-import { COUNTRIES, countryLabel, countryAdjective } from './constants/countries.js'
+import { COUNTRIES, countryLabel, countryContentTitle } from './constants/countries.js'
 import { useStreamData, dataKey } from './hooks/useStreamData.js'
 import { useSearch }     from './hooks/useSearch.js'
 import { useRecommendations } from './hooks/useRecommendations.js'
@@ -201,9 +201,12 @@ export default function App() {
   const kindWord = tab === 'filmler' ? 'filmler' : 'diziler'
   const gridHeading = (() => {
     if (tab === 'trend') return 'Sosyalde konuşulanlar'
-    const adj = country ? `${countryAdjective(country)} ` : ''
-    if (showRails) return `Tüm ${adj}${kindWord}`
-    return country ? `En iyi ${adj}${kindWord}` : `En iyi ${kindWord}`
+    // Ülke merceğinde ad öbeğini countryContentTitle kurar: sıfatı elle
+    // birleştirmek "Tüm Türk diziler" gibi eksik tamlamalar üretiyordu.
+    const what = country
+      ? countryContentTitle(country, tab === 'filmler' ? 'film' : 'dizi')
+      : kindWord
+    return showRails ? `Tüm ${what}` : `En iyi ${what}`
   })()
 
   const applyGridAction = (action) => {

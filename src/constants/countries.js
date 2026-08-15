@@ -53,15 +53,36 @@ export function isKnownCountry(code) {
   return Boolean(BY_CODE[code])
 }
 
-// Raf ve başlık metinlerinde kullanılan sıfat biçimi.
-// "Kore Dizileri" / "Türk Filmleri" gibi. Karşılığı olmayan ülkede ada düşer
-// ("Norveç yapımı") — uydurma sıfat türetmek yerine dürüst ve okunur.
+// Sıfat karşılıkları. Doğrudan dışarı verilmez: çıplak sıfat iki farklı
+// dilbilgisi yapısına zorlanınca birini bozuyordu (bkz. countryContentTitle).
 const ADJECTIVE = {
   TR: 'Türk', KR: 'Kore', US: 'Amerikan', GB: 'İngiliz', JP: 'Japon',
   IN: 'Hint', FR: 'Fransız', DE: 'Alman', ES: 'İspanyol', IT: 'İtalyan',
   RU: 'Rus', CN: 'Çin', IR: 'İran', BR: 'Brezilya', MX: 'Meksika',
 }
 
-export function countryAdjective(code) {
-  return ADJECTIVE[code] || `${countryLabel(code)} yapımı`
+const trUpperFirst = (s) => s.charAt(0).toLocaleUpperCase('tr') + s.slice(1)
+
+// Ülke + içerik türü için TAM ad öbeği.
+//
+// Türkçede burada iki ayrı yapı var ve hangisinin kurulacağı sıfat karşılığının
+// olup olmamasına bağlı:
+//   sıfat varsa → isim tamlaması : "Türk dizileri",  "Kore filmleri"
+//   sıfat yoksa → sıfat öbeği    : "Norveç yapımı diziler"
+//
+// Tek bir biçimi ikisine birden uygulamak daima birini bozar: "Türk diziler"
+// (eksik tamlama) ya da "Norveç yapımı dizileri" (fazla tamlama). Bu yüzden
+// seçim çağıranda değil, burada tek yerde yapılır — daha önce sıfat dizgesi
+// dışarı verildiği için ızgara başlığı ilkini, raf başlıkları ikincisini
+// üretiyordu.
+//
+// titleCase: raf başlıkları Başlık Düzeni kullanır, ızgara başlığı cümle
+// düzeni. Ad öbeğinin kendisi ikisinde de aynı, yalnız yazımı değişir.
+export function countryContentTitle(code, kind, { titleCase = false } = {}) {
+  const noun = kind === 'film' ? 'film' : 'dizi'
+  const adj = ADJECTIVE[code]
+  const words = adj
+    ? [adj, `${noun}leri`]
+    : [countryLabel(code), 'yapımı', `${noun}ler`]
+  return (titleCase ? words.map(trUpperFirst) : words).join(' ')
 }

@@ -3,7 +3,7 @@ import {
   weightedScore, sortByWeightedScore, discoverUrl, listParams, poolMean,
   VOTE_MIN, BAYES_M, BAYES_C,
 } from '../lib/discover.js'
-import { COUNTRIES, countryLabel, countryAdjective, isKnownCountry } from '../constants/countries.js'
+import { COUNTRIES, countryLabel, countryContentTitle, isKnownCountry } from '../constants/countries.js'
 
 describe('weightedScore — Bayesian ağırlıklı puan', () => {
   it('düşük oylu yüksek ortalamayı havuz ortalamasına çeker', () => {
@@ -149,11 +149,27 @@ describe('COUNTRIES', () => {
     expect(countryLabel('ZZ')).toBe('ZZ')
   })
 
-  it('countryAdjective karşılığı olmayan ülkede uydurmaz', () => {
-    expect(countryAdjective('KR')).toBe('Kore')
-    expect(countryAdjective('TR')).toBe('Türk')
-    // Sıfatı olmayan ülkede "Norveç yapımı" gibi dürüst bir biçime düşer
-    expect(countryAdjective('NO')).toContain('Norveç')
+  // DİLBİLGİSİ REGRESYONU: sıfat karşılığı olan ülkede isim tamlaması kurulur
+  // ("Türk dizileri"), olmayanda sıfat öbeği ("Norveç yapımı diziler"). Tek
+  // biçim ikisine birden uygulanırsa biri daima bozulur — üretimde ızgara
+  // başlığı "Tüm Türk diziler", raf başlığı "… Norveç yapımı Dizileri"
+  // üretiyordu.
+  it('countryContentTitle sıfatlı ülkede tamlama kurar', () => {
+    expect(countryContentTitle('TR', 'dizi')).toBe('Türk dizileri')
+    expect(countryContentTitle('TR', 'film')).toBe('Türk filmleri')
+    expect(countryContentTitle('KR', 'dizi')).toBe('Kore dizileri')
+  })
+
+  it('countryContentTitle sıfatı olmayan ülkede uydurmaz, sıfat öbeğine düşer', () => {
+    expect(countryContentTitle('NO', 'dizi')).toBe('Norveç yapımı diziler')
+    expect(countryContentTitle('NO', 'film')).toBe('Norveç yapımı filmler')
+    // Fazla tamlama kurulmamalı
+    expect(countryContentTitle('NO', 'dizi')).not.toContain('dizileri')
+  })
+
+  it('countryContentTitle başlık düzeninde her sözcüğü büyütür', () => {
+    expect(countryContentTitle('TR', 'dizi', { titleCase: true })).toBe('Türk Dizileri')
+    expect(countryContentTitle('NO', 'film', { titleCase: true })).toBe('Norveç Yapımı Filmler')
   })
 
   it('isKnownCountry doğrular', () => {
