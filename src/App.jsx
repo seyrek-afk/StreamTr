@@ -172,20 +172,29 @@ export default function App() {
   const showRails = railsEligible && !hasActiveFilter && !searchActive && !loading[dk]
 
   // ── Spot ışığı (hero) ─────────────────────────────────────────────────────
-  // Konu HER ZAMAN trend listesinin tepesidir; sekme değişince spot değişmez.
-  // Bu yüzden trend verisi aktif sekmeden bağımsız olarak istenir — fetchTab
-  // kendi `loaded` kapısıyla korunduğu için tekrar istek atmaz ve Trend
-  // sekmesinin önbelleğini de peşinen ısıtır.
-  const trendKey = dataKey(country, 'trend')
-  useEffect(() => { if (!isSanaOzel) fetchTab(trendKey) }, [trendKey, isSanaOzel])
-
-  // Sıralama ölçütü lib/hero.js'te; ızgarayla aynı ölçüdü kullanması şart
-  // olduğu için orada tek yerde ve testli duruyor.
-  const heroItem = isSanaOzel ? null : pickHeroItem(data[trendKey])
+  // Konu, BULUNULAN sekmenin listesinin başıdır: Diziler'de dizi, Filmler'de
+  // film, Trend'de haftanın en çok konuşulanı. Sekme değişince spot da değişir.
+  //
+  // Kaynak bilerek `filtered` — yani ızgaranın çizdiği sıralı listenin ta
+  // kendisi. Sıralama ölçütü sekmeye göre değiştiği için (sosyal etki /
+  // ağırlıklı puan / ham IMDB) ölçütü burada tekrarlamak ikisinin ayrışmasına
+  // davetiye olurdu; aynı diziyi paylaşmak uyuşmazlığı imkânsız kılar.
+  const heroItem = isSanaOzel ? null : pickHeroItem(filtered)
 
   // Hero raflarla aynı kapıdan geçer: arama, filtre veya AI paneli aktifken
   // kullanıcı belirli bir şey arıyordur — küratörlü blok o niyeti böler.
-  const showHero = Boolean(heroItem) && !isSanaOzel && !aiOpen && !searchActive && !hasActiveFilter
+  const showHero = Boolean(heroItem) && !isSanaOzel && !aiOpen && !searchActive &&
+    !hasActiveFilter && !loading[dk]
+
+  // Kicker ızgara başlığıyla aynı yerde durur: ikisi de "bu liste ne" sorusuna
+  // cevap verir, ayrı yerlerde tanımlanırsa birbirinden habersiz kalırlar.
+  const heroKicker = tab === 'trend' ? 'Bu hafta perdede' : 'Listenin zirvesinde'
+
+  // Hero ızgaranın 1. sırasını YUKARI ALIR, kopyalamaz. Aynı poster iki yüz
+  // piksel arayla iki kez görününce tasarım değil hata gibi okunuyor. Sayaçlar
+  // ("100 sonuç", "X / Y gösteriliyor") dokunulmadan doğru kalır: yapım hâlâ
+  // listenin bir üyesi ve hâlâ ekranda, yalnız yeri değişti.
+  const gridItems = showHero ? visibleFiltered.slice(1) : visibleFiltered
 
   // Izgaranın başlığı: raflar varken "geri kalanı" işaret eder, tek başınayken
   // sekmenin kısa adının taşımadığı iddiayı ("en iyi") üstlenir.
@@ -382,7 +391,7 @@ export default function App() {
         <SearchResult search={search} />
 
         {/* ── SPOT IŞIĞI ────────────────────────────────────────────────── */}
-        {showHero && <HeroSpotlight item={heroItem} />}
+        {showHero && <HeroSpotlight item={heroItem} kicker={heroKicker} />}
 
         {/* ── EDİTORYAL RAFLAR ──────────────────────────────────────────── */}
         {showRails && rails.length > 0 && (
@@ -438,7 +447,7 @@ export default function App() {
         )}
 
         {/* İçerik ızgarası */}
-        {!loading[dk] && visibleFiltered.length > 0 && (
+        {!loading[dk] && gridItems.length > 0 && (
           <>
             <div className="grid-head">
               <h2 className="grid-title">{gridHeading}</h2>
@@ -446,7 +455,7 @@ export default function App() {
             </div>
 
             <div className="grid-cards enter">
-              {visibleFiltered.map((item, i) => (
+              {gridItems.map((item, i) => (
                 <ContentCard
                   key={`${dk}-${item.title}-${i}`}
                   item={item}

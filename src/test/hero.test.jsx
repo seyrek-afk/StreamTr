@@ -19,40 +19,34 @@ const renderHero = (item) =>
   render(<FavoritesProvider><HeroSpotlight item={item} /></FavoritesProvider>)
 
 describe('pickHeroItem', () => {
-  it('socialScore en yüksek olanı seçer', () => {
-    const items = [
-      { title: 'A', socialScore: 61 },
-      { title: 'B', socialScore: 93 },
-      { title: 'C', socialScore: 77 },
-    ]
-    expect(pickHeroItem(items).title).toBe('B')
+  it('sıralı listenin başını verir', () => {
+    const items = [{ title: 'A' }, { title: 'B' }, { title: 'C' }]
+    expect(pickHeroItem(items).title).toBe('A')
   })
 
-  // TUTARLILIK REGRESYONU: trend ızgarası da socialScore'a göre sıralanır.
-  // Hero ham liste sırasını (veya trendRank'i) kullanırsa "1. sıradaki yapım"
-  // hero'da ve ızgaranın ilk kartında FARKLI çıkar.
-  it('ham liste sırasını değil socialScore sırasını kullanır', () => {
+  // TUTARLILIK REGRESYONU: sıralama ölçütü sekmeye göre değişir (trend sosyal
+  // etkiye, ülke merceği ağırlıklı puana, Dünya ham IMDB'ye bakar) ve ızgarada
+  // bir kez uygulanır. Bu fonksiyon kendi başına yeniden sıralarsa — hangi
+  // ölçütle olursa olsun — "1. sıradaki yapım" hero'da ve ızgaranın ilk
+  // kartında FARKLI çıkar. O yüzden burada sıralama OLMAMALI.
+  it('kendi başına yeniden sıralamaz: puanı düşük olsa da başı verir', () => {
     const items = [
-      { title: 'Listede ilk', socialScore: 40, trendRank: 1 },
-      { title: 'Sosyalde ilk', socialScore: 95, trendRank: 9 },
+      { title: 'Izgaranın ilki', imdbScore: 6.1, socialScore: 40, _weightedScore: 3 },
+      { title: 'Puanı yüksek',   imdbScore: 9.4, socialScore: 99, _weightedScore: 9 },
     ]
-    expect(pickHeroItem(items).title).toBe('Sosyalde ilk')
+    expect(pickHeroItem(items).title).toBe('Izgaranın ilki')
   })
 
-  it('kaynak diziyi yerinde sıralamaz', () => {
-    const items = [{ title: 'A', socialScore: 10 }, { title: 'B', socialScore: 90 }]
+  it('kaynak diziye dokunmaz', () => {
+    const items = [{ title: 'A' }, { title: 'B' }]
     pickHeroItem(items)
-    expect(items[0].title).toBe('A')
+    expect(items.map(i => i.title)).toEqual(['A', 'B'])
   })
 
   it('boş, tanımsız ve dizi olmayan girdide null döner', () => {
     expect(pickHeroItem([])).toBeNull()
     expect(pickHeroItem(undefined)).toBeNull()
     expect(pickHeroItem(null)).toBeNull()
-  })
-
-  it('socialScore taşımayan kayıtlarda çökmez', () => {
-    expect(pickHeroItem([{ title: 'A' }, { title: 'B' }]).title).toBe('A')
   })
 })
 
@@ -65,9 +59,22 @@ describe('HeroSpotlight', () => {
   it('künyeyi ve puanı gösterir', () => {
     renderHero(ITEM)
     expect(screen.getByText('Kurak Günler')).toBeTruthy()
-    expect(screen.getByText('Bu hafta perdede')).toBeTruthy()
     expect(screen.getByText(/Film · Dram · Gerilim · 2022/)).toBeTruthy()
     expect(screen.getByText('7.3')).toBeTruthy()
+  })
+
+  // Kicker sekmeye göre değişir: Trend'de "bu hafta" doğrudur, Diziler'de
+  // yanıltıcı olurdu (o liste haftalık değil, puan sıralı).
+  it('kicker metnini çağırandan alır', () => {
+    render(
+      <FavoritesProvider><HeroSpotlight item={ITEM} kicker="Bu hafta perdede" /></FavoritesProvider>
+    )
+    expect(screen.getByText('Bu hafta perdede')).toBeTruthy()
+  })
+
+  it('kicker verilmezse sekmeden bağımsız güvenli bir metne düşer', () => {
+    renderHero(ITEM)
+    expect(screen.getByText('Listenin zirvesinde')).toBeTruthy()
   })
 
   // Ekran okuyucu düğmeyi bağlamsız duyduğunda "Detaya bak" hangi yapım belli

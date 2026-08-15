@@ -1,13 +1,13 @@
-// Spot ışığının konusunu seçer: trend listesinin tepesindeki yapım.
+// Spot ışığının konusu: EKRANDA GÖRÜNEN listenin başındaki yapım.
 //
-// Sıralama ölçütü BİLEREK socialScore'dur, TMDB'nin ham sırası (trendRank)
-// değil. Trend sekmesindeki ızgara da varsayılan olarak socialScore'a göre
-// sıralanır; hero başka bir ölçüt kullansaydı "1. sıradaki yapım" sayfanın iki
-// yerinde iki farklı şey olurdu.
+// Bu fonksiyon bilerek sıralama YAPMAZ. Sıralama ölçütü sekmeye göre değişir —
+// trend sosyal etkiye, ülke merceği ağırlıklı puana, Dünya merceği ham IMDB
+// puanına bakar. Ölçüt burada bir kez daha yazılsaydı, ızgaranınkiyle er geç
+// ayrışır ve "1. sıradaki yapım" sayfanın iki yerinde iki farklı şey olurdu.
 //
-// Girdi dizisi KOPYALANIR: kaynak, ekranda başka bir sıralamayla kullanılıyor
-// olabilir ve sort() yerinde çalışır.
-export function pickHeroItem(items) {
-  if (!Array.isArray(items) || items.length === 0) return null
-  return [...items].sort((a, b) => (b.socialScore || 0) - (a.socialScore || 0))[0] || null
+// Bu yüzden çağıran, ızgaranın kullandığı SIRALI listeyi verir; burada yalnız
+// başı alınır. Uyuşmazlık böylece mümkün olmaktan çıkar.
+export function pickHeroItem(orderedItems) {
+  if (!Array.isArray(orderedItems) || orderedItems.length === 0) return null
+  return orderedItems[0] || null
 }
