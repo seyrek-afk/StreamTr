@@ -51,6 +51,12 @@
   --trend-bar:       linear-gradient(90deg,#F5C518,#E50914);
   --card-backdrop:   none;
 
+  /* Marka bloğu — başlık bandındaki kütle. Zemini vurgu rengi DEĞİL: bandda
+     tek altın odak kalsın diye vurgu yalnız "TR" hecesinde ve blok kenarında
+     yaşar. Beş tema da bu iki değeri doldurur. */
+  --brand-bg:        #312E81;
+  --brand-ink:       #F5F4FA;
+
   /* Durum renkleri temadan bağımsızdır: "taze" her temada yeşil, "hata" her
      temada kırmızıdır. Bu yüzden bilinçli olarak yalnız :root'ta yaşarlar ve
      tema sözleşmesinin parçası değildirler. */
@@ -283,16 +289,28 @@ button, input, textarea { font: inherit; color: inherit; }
   min-height: 56px;
 }
 
+/* Marka bir yazı değil, bandın SOL UCUNU tutan bir kütle. Düz metin hâlinde
+   logotip bandın içinde eriyordu; blok ona bir ağırlık merkezi veriyor.
+   Bloğun zemini bilinçli olarak vurgu rengi değil (bkz. --brand-bg): aktif
+   sekme zaten dolu vurgu taşıyor, iki dolu vurgu bandda birbiriyle yarışırdı.
+   Vurgu yalnız "TR" hecesinde ve sağ kenarda kalır. */
 .brand {
-  display: inline-flex; align-items: baseline; flex-shrink: 0;
+  display: inline-flex; align-items: center; flex-shrink: 0;
+  align-self: stretch;
+  /* Kenara dayanır: satırın kendi payını geri alır. */
+  margin-left: calc(var(--gutter) * -1);
+  padding: 0 18px;
+  background: var(--brand-bg);
+  border-right: 2px solid var(--accent);
   font-family: 'Bebas Neue', system-ui, sans-serif;
   font-size: var(--fs-display); line-height: 1;
   letter-spacing: 0.04em;
   /* Gradyan metin bilinçli olarak kaldırıldı: dekoratifti, gradyanın koyu ucunda
      kontrastı düşüyordu ve her temada farklı okunuyordu. Tek katı renk daha
      güçlü duruyor. */
-  color: var(--accent-ink);
+  color: var(--brand-ink);
 }
+.brand-tr { color: var(--accent-ink); }
 
 /* Gezinme — kutusuz. "Yer" bildirir, kontrol gibi görünmez. */
 .tabs { display: flex; align-items: center; gap: 2px; min-width: 0; }
@@ -1161,6 +1179,9 @@ code { font-size: 0.92em; color: var(--accent-ink); }
      Kenardaki solma "devamı var" der. Önceden mercek de bu satırdaydı ve dar
      ekranda görünür alanın dışına taşarak ERİŞİLEMEZ oluyordu. */
   .hdr-row { flex-wrap: wrap; gap: 10px; min-height: 0; padding-top: 10px; padding-bottom: 4px; }
+  /* Blok dar ekranda da bandın köşesine dayanır: satırın dikey payını da geri
+     alır, yoksa üstünde 10px'lik bir şerit kalıp "yapıştırılmış" görünür. */
+  .brand { margin-top: -10px; margin-bottom: -4px; padding: 10px 14px; }
   .tabs {
     order: 3; width: 100%;
     overflow-x: auto; scrollbar-width: none; padding-bottom: 6px;

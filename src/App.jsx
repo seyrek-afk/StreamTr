@@ -202,7 +202,7 @@ export default function App() {
           Önceki dört bant içeriği ekranın beşte birine kadar aşağı itiyordu. */}
       <header className="app-header">
         <div className="hdr-row">
-          <span className="brand">StreamTR</span>
+          <span className="brand">Stream<span className="brand-tr">TR</span></span>
 
           <nav className="tabs" aria-label="Bölümler">
             {TABS.map(t => {
