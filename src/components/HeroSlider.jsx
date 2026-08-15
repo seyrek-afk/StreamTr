@@ -63,11 +63,6 @@ export default function HeroSlider({ items = [], count = 10 }) {
         aria-roledescription="slide"
         aria-label={`${i + 1} / ${n}: ${item.title}`}
       >
-        {gorsel
-          ? <img className="hslide-img" src={gorsel} alt="" loading="eager" decoding="async" />
-          : <div className="hslide-img hslide-img-yok" />}
-        <div className="hslide-scrim" />
-
         <div className="hslide-body">
           <p className="hslide-kick">
             Sana özel öneri
@@ -90,30 +85,39 @@ export default function HeroSlider({ items = [], count = 10 }) {
           </div>
         </div>
 
-        {n > 1 && (
-          <>
-            <button className="hslide-arrow hslide-arrow-l" onClick={() => git(-1)} aria-label="Önceki öneri">
-              <ChevronLeft size={20} aria-hidden="true" />
-            </button>
-            <button className="hslide-arrow hslide-arrow-r" onClick={() => git(1)} aria-label="Sonraki öneri">
-              <ChevronRight size={20} aria-hidden="true" />
-            </button>
-          </>
-        )}
+        {/* Görsel kendi kolonunda ve kaynakla aynı oranda (16:9) — kırpma yok.
+            Metin üstünde durmadığı için okunurluk perdesi de gerekmiyor. */}
+        <div className="hslide-media">
+          {gorsel
+            ? <img className="hslide-img" src={gorsel} alt="" loading="eager" decoding="async" />
+            : <div className="hslide-img hslide-img-yok" />}
+        </div>
       </div>
 
+      {/* Oklar ve noktalar tek gezinme kümesinde: oklar görselin üstünde
+          yüzerken hem metne biniyor hem kompozisyonu kapatıyorlardı. */}
       {n > 1 && (
-        <div className="hslide-dots" role="tablist" aria-label="Öneri seç">
-          {dilimler.map((d, idx) => (
-            <button
-              key={d.key || d.title || idx}
-              role="tab"
-              aria-selected={idx === i}
-              aria-label={`${idx + 1}. öneri: ${d.title}`}
-              className={`hslide-dot${idx === i ? ' hslide-dot-on' : ''}`}
-              onClick={() => setI(idx)}
-            />
-          ))}
+        <div className="hslide-nav">
+          <button className="hslide-arrow" onClick={() => git(-1)} aria-label="Önceki öneri">
+            <ChevronLeft size={18} aria-hidden="true" />
+          </button>
+
+          <div className="hslide-dots" role="tablist" aria-label="Öneri seç">
+            {dilimler.map((d, idx) => (
+              <button
+                key={d.key || d.title || idx}
+                role="tab"
+                aria-selected={idx === i}
+                aria-label={`${idx + 1}. öneri: ${d.title}`}
+                className={`hslide-dot${idx === i ? ' hslide-dot-on' : ''}`}
+                onClick={() => setI(idx)}
+              />
+            ))}
+          </div>
+
+          <button className="hslide-arrow" onClick={() => git(1)} aria-label="Sonraki öneri">
+            <ChevronRight size={18} aria-hidden="true" />
+          </button>
         </div>
       )}
 
