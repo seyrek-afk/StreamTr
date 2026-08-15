@@ -724,10 +724,22 @@ button, input, textarea { font: inherit; color: inherit; }
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   overflow: hidden;
-  aspect-ratio: 21 / 9;
+  /* 21/9 iken 1440px ekranda vitrin 597px oluyordu — sayfanın tamamını
+     yiyordu. 10/3 aynı genişlikte yüksekliği %30 düşürür (597 → 418).
+     Metin bloğu 253px istiyor, yani 165px nefes payı kalıyor.
+     Mobil oranı BİLEREK ayrı: orada 4/3 ile zaten 269px ve içerik 221px
+     istiyor — aynı oranda kısmak metni kırpardı. */
+  aspect-ratio: 10 / 3;
   background: var(--bg-card);
 }
-.hslide-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.hslide-img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover;
+  /* Kırpma çapası ORTADA DEĞİL yukarıda. Görseller 16:9, çerçeve 10:3 —
+     yani dikeyde yarıya yakını kırpılıyor. Ortadan kırpınca TMDB
+     görsellerindeki özne (genelde üst yarıda) başından kesiliyordu. */
+  object-position: 50% 28%;
+}
 .hslide-img-yok { background: linear-gradient(120deg, var(--bg-elevated), var(--bg-card)); }
 /* Perde: metnin oturduğu sol taraf okunur kalsın diye yatay karartma. Görsel
    ne kadar açık olursa olsun kontrast korunur — bu bir dekor değil, okunurluk
