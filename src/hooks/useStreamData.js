@@ -1,14 +1,15 @@
 import { useState, useRef, useCallback } from 'react'
 import { MOCK_DIZILER, MOCK_FILMLER, MOCK_TREND } from '../data/mockData.js'
 import { fetchTrPlatforms } from '../lib/tmdb.js'
+import { providerCache } from '../lib/platforms.js'
 import { tmdbToListCard, tmdbToTrendCard } from '../lib/cards.js'
 import { discoverUrl, listParams, poolMean, weightedScore } from '../lib/discover.js'
 
 const TMDB_BASE = 'https://api.themoviedb.org/3'
 const TMDB_KEY  = import.meta.env.VITE_TMDB_KEY
 
-// Modül düzeyi önbellek: "mediaType:id" → string[] (oturum boyunca korunur)
-const providerCache = new Map()
+// Platform önbelleği lib/platforms.js'te PAYLAŞILIR: aynı yapım hem burada
+// hem favorilerde/önerilerde görünebilir, ikinci kez çekilmesin.
 
 const PAGE_SIZE = 30
 const MAX_ITEMS = 250
