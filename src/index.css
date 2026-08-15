@@ -1323,6 +1323,40 @@ code { font-size: 0.92em; color: var(--accent-ink); }
   .acct-name { max-width: 0; }
 }
 
+/* ══ DOKUNMATİK ÖLÇEĞİ ═════════════════════════════════════════════════════
+   Ölçüt genişlik değil İŞARETÇİ: 32px'lik bir hedef fareyle sorun değil, ama
+   parmakla değil. Bu yüzden kural (pointer: coarse) altında yaşar — fare ve
+   trackpad'de iki bantlı başlığın sıkı yerleşimi olduğu gibi kalır (o yerleşim
+   dört banttan bilinçli olarak indirilmişti).
+
+   Ölçüldü (390px, dokunmatik): sekme 33px, mercek segmenti 32px, filtre
+   kontrolleri 40px — üçü de 44'ün altındaydı. */
+@media (pointer: coarse) {
+  /* Tek yükseklik tüm çubuğu hizalar; token'ı büyütmek arama, AI, filtre ve
+     hesap kontrollerini birlikte taşır. Tek tek büyütmek onları birbirinden
+     kopartırdı. */
+  :root { --ctl-h: 44px; }
+
+  .tab { min-height: 44px; }
+  /* Altçizgi kutunun değil METNİN altıdır. Kutu 44'e çıkınca içerik ortalandığı
+     için bottom:0 çizgiyi metinden ~14px aşağıda asılı bırakıyordu. */
+  .tab-active::after { bottom: 8px; }
+
+  /* Mercek segmenti çerçevenin İÇİNDE yaşar: çerçeve 44 olunca dolgu ve
+     kenarlık payı düşülüp segment 36'da kalıyor. Çerçeveyi 52'ye çıkarmak
+     onu yanındaki kontrollerle hizasız bırakırdı, o yüzden segment yalnız
+     DİKEYDE 44'e taşınır. Yatayda genişletmek komşu segmentin alanına girip
+     yanlış kapsam seçtirirdi — bu yüzden left/right sabitlenir. */
+  .lens-option, .lens .ctl { position: relative; }
+  .lens-option::after, .lens .ctl::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    top: 50%; height: 44px;
+    transform: translateY(-50%);
+  }
+}
+
 /* ══ AZALTILMIŞ HAREKET ════════════════════════════════════════════════════
    Hareket azaltılır, yok edilmez: anlam taşıyan renk/opaklık geçişleri kalır,
    yer değiştiren ve ölçeklenen her şey durur. */
