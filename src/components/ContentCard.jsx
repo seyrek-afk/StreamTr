@@ -381,10 +381,6 @@ export default function ContentCard({ item, isTrend, showKind = true }) {
           <div className="cc-poster">
             <PosterImg path={item.posterPath} title={item.title} />
 
-            <div className="cc-fav">
-              <SaveControls item={item} size={15} />
-            </div>
-
             {item.trendRank && (
               <div className={`cc-rank tnum${item.trendRank <= 3 ? ' cc-rank-top' : ''}`}>
                 {item.trendRank}
@@ -399,6 +395,7 @@ export default function ContentCard({ item, isTrend, showKind = true }) {
               <span className="cc-title" title={item.title}>{item.title}</span>
               <span className="cc-year tnum">{item.year}</span>
             </div>
+
 
             <ScoreLine imdb={item.imdbScore} rt={item.rottenTomatoesScore} lb={item.letterboxdScore} />
 
@@ -441,6 +438,14 @@ export default function ContentCard({ item, isTrend, showKind = true }) {
                 {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </span>
             </div>
+
+            {/* Kaydetme grubu bilgiden SONRA gelir: başlık → puan → tür →
+                platform sırası "bu ne" sorusunu yanıtlar, eylem en sonda durur.
+                Araya girdiğinde okuma akışını kesiyordu.
+
+                Poster üzerinde DEĞİL: ölçüldü, 3×44px hedef 132px ister ve kart
+                posteri masaüstünde 108px. Böylece poster sanatı da açıkta kalır. */}
+            <SaveControls item={item} size={16} />
           </div>
         </div>
 

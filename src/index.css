@@ -846,7 +846,6 @@ button, input, textarea { font: inherit; color: inherit; }
   border-radius: var(--r-md); overflow: hidden;
   cursor: pointer;
 }
-/* konumlandırma .save-stack'e taşındı */
 .hero-poster .poster-img,
 .hero-poster .poster-fallback { aspect-ratio: 2 / 3; width: 100%; height: auto; }
 
@@ -927,7 +926,6 @@ button, input, textarea { font: inherit; color: inherit; }
 .cc-head { display: flex; flex: 1; min-height: 162px; }
 
 .cc-poster { position: relative; width: 108px; flex: 0 0 108px; background: var(--bg); }
-/* konumlandırma .save-stack'e taşındı */
 .cc-rank {
   position: absolute; top: 6px; left: 6px; z-index: 2;
   min-width: 26px; padding: 1px 6px 0; border-radius: var(--r-sm);
@@ -1031,32 +1029,30 @@ button, input, textarea { font: inherit; color: inherit; }
 @media (hover: hover) and (pointer: fine) {
   .save-btn:hover { background: rgba(0,0,0,0.8); color: #fff; }
 }
-/* Beğeni — 1. kademe: vurgu rengi. */
-.like-btn-on {
-  background: rgba(var(--accent-rgb), 0.22);
+/* Seçili durum tek dilde: dolu simge + vurgu rengi. Üç simge birbirinden
+   ŞEKİLLE ayrışır (başparmak / kalp / ayraç), renkle değil — renk yalnız
+   "seçili mi" sorusunu yanıtlar. Üç ayrı renk kullanmak paleti şişirir ve
+   hangisinin işaretli olduğunu okumayı zorlaştırırdı. */
+.save-btn-on {
+  background: rgba(var(--accent-rgb), 0.20);
   border-color: var(--accent);
   color: var(--accent-ink);
 }
-/* 2. kademe (Bayıldım): aynı renk ailesi, daha dolu zemin + ince halka.
-   Yeni bir renk EKLEMEZ — kademe farkı yoğunlukla anlatılır, palet
-   kalabalıklaşmaz. */
-.like-btn-love {
-  background: rgba(var(--accent-rgb), 0.42);
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.28);
-}
-/* İzleme listesi — nötr mürekkep, vurgu DEĞİL: beğeniyle karışmasın. */
-.watch-btn-on {
-  background: rgba(255,255,255,0.92);
-  border-color: #fff;
-  color: #14140f;
-}
 
-/* İki kontrol dikey istifte; poster köşesinde yan yana 44px hedef sığmıyor. */
-.save-stack {
-  position: absolute; top: 6px; right: 6px; z-index: 2;
-  display: flex; flex-direction: column; gap: 6px;
+/* Üçlü grup — yatay, kartın bilgi alanında. Poster üzerinde değil: ölçüldü,
+   3 × 44px hedef 132px ister ve kart posteri masaüstünde 108px. */
+.save-group {
+  display: flex; align-items: center;
+  /* Boşluk 12px: disk 32px + 12px = 44px adım. Daha dar olsaydı komşu
+     düğmelerin 44px isabet alanları ÇAKIŞIR ve kenara basan parmak yanlış
+     kademeyi seçerdi (Beğendim yerine Bayıldım). Ölçüldü: 8px boşlukta
+     çakışma 4px'ti. */
+  gap: 12px;
+  margin-top: 10px;
 }
+/* Grup kart gövdesinde yaşadığı için düğmelerin arası açık: 44px isabet
+   alanları komşuyla çakışmasın, yanlış kademe seçilmesin. */
+.save-group .save-btn::after { width: 44px; height: 44px; }
 
 /* Yerli yapım etiketi — bayrak emoji yerine tipografik rozet. */
 .tr-tag {
@@ -1339,7 +1335,6 @@ code { font-size: 0.92em; color: var(--accent-ink); }
   background: var(--bg-card); border: 1px solid var(--border);
   transition: border-color var(--dur-2) var(--ease-out);
 }
-/* konumlandırma .save-stack'e taşındı */
 .rail-score {
   position: absolute; left: 5px; bottom: 5px; z-index: 2;
   display: inline-flex; align-items: center; gap: 4px;
@@ -1447,7 +1442,7 @@ code { font-size: 0.92em; color: var(--accent-ink); }
   .cc-poster { width: 124px; flex-basis: 124px; }
   .cc-head { min-height: 186px; }
   .cc-tags { margin-top: 12px; }
-  .rail-card { width: 132px; }
+  .rail-card { width: 148px; }
   .band { flex-direction: column; align-items: stretch; }
   .cc-lead { flex-direction: column; }
   .cc-lead-poster { width: 104px; height: 156px; }

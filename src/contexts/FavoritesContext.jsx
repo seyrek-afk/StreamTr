@@ -181,9 +181,11 @@ export function FavoritesProvider({ children }) {
   const likeLevel     = useCallback((item) => kayit(item)?.like ?? LIKE_NONE, [kayit])
   const isWatchlisted = useCallback((item) => Boolean(kayit(item)?.watchlist), [kayit])
 
-  // Döngü: yok → Beğendim → Bayıldım → yok
-  const cycleLike = useCallback((item) => {
-    guncelle(item, s => ({ ...s, like: (s.like + 1) % 3 }))
+  // Doğrudan seçim: hangi kademe isteniyorsa o yazılır. Döngü kaldırıldı —
+  // üç simge yan yana durduğu için aradaki durumlardan geçmeye gerek yok.
+  // Beğendim ile Bayıldım aynı eksenin iki değeri, bu yüzden birbirini dışlar.
+  const setLike = useCallback((item, seviye) => {
+    guncelle(item, s => ({ ...s, like: seviye }))
   }, [guncelle])
 
   const toggleWatchlist = useCallback((item) => {
@@ -198,7 +200,7 @@ export function FavoritesProvider({ children }) {
     <FavoritesContext.Provider
       value={{
         saved, liked, loved, watchlist,
-        likeLevel, isWatchlisted, cycleLike, toggleWatchlist,
+        likeLevel, isWatchlisted, setLike, toggleWatchlist,
         count: saved.length, syncing,
       }}
     >

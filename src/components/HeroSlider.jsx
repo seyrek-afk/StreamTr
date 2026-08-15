@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, Star } from 'lucide-react'
 import DetailOverlay from './DetailOverlay.jsx'
-import { LikeButton, WatchlistButton } from './SaveControls.jsx'
+import SaveControls from './SaveControls.jsx'
 
 const DONUS_MS = 7000
 
@@ -79,8 +79,7 @@ export default function HeroSlider({ items = [], count = 10 }) {
             <button className="btn" onClick={() => setAcik(item)} aria-label={`${item.title} detayına bak`}>
               Detaya bak
             </button>
-            <LikeButton item={item} size={17} />
-            <WatchlistButton item={item} size={17} />
+            <SaveControls item={item} size={17} />
             {item.imdbScore != null && (
               <span className="hslide-score tnum">
                 <Star size={14} aria-hidden="true" />

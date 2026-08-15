@@ -39,7 +39,6 @@ export default function HeroSpotlight({ item, kicker = 'Listenin zirvesinde' }) 
         >
           <PosterImg path={item.posterPath} title={item.title} />
         </button>
-        <span className="hero-fav"><SaveControls item={item} size={15} /></span>
       </div>
 
       <div className="hero-body">
@@ -60,6 +59,10 @@ export default function HeroSpotlight({ item, kicker = 'Listenin zirvesinde' }) 
           >
             Detaya bak
           </button>
+
+          {/* Kaydetme grubu eylem satırında: posterin altında tek başına
+              dururken diğer eylemlerden kopuk kalıyordu. */}
+          <SaveControls item={item} size={16} />
 
           {item.imdbScore != null && (
             <span className="hero-score tnum">

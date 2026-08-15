@@ -31,15 +31,6 @@ export default function RailCard({ item }) {
         <div className="rail-poster">
           <PosterImg path={item.posterPath} title={item.title} />
 
-          {/* Favori düğmesi poster üzerinde — kart tıklamasını tetiklemesin */}
-          <div
-            className="rail-fav"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-          >
-            <SaveControls item={item} size={13} />
-          </div>
-
           {score != null && (
             <span className="rail-score tnum">
               <Star size={11} fill="currentColor" aria-hidden="true" />
@@ -59,6 +50,9 @@ export default function RailCard({ item }) {
             {item.year || '—'}
             {item._voteCount ? ` · ${fmtCount(item._voteCount)} oy` : ''}
           </span>
+
+          {/* Grup poster üstünde değil meta alanında — kartla aynı gerekçe. */}
+          <SaveControls item={item} size={16} />
         </div>
       </div>
 
