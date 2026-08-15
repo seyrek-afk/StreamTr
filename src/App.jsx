@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
-  RefreshCw, ChevronDown, Loader, Sparkles, AlertTriangle,
-  Tv, Film, Flame, Star, SearchX,
+  RefreshCw, ChevronDown, ChevronLeft, Loader, Sparkles, AlertTriangle,
+  Tv, Film, Flame, Star, SearchX, Heart,
 } from 'lucide-react'
 import { PLATFORMS, TR_PLATFORMS, TABS } from './constants/index.js'
 import { COUNTRIES, countryLabel, countryContentTitle } from './constants/countries.js'
@@ -18,6 +18,7 @@ import FilterBar    from './components/FilterBar.jsx'
 import Dropdown     from './components/Dropdown.jsx'
 import RailRow      from './components/RailRow.jsx'
 import Segmented    from './components/Segmented.jsx'
+import HeroSlider   from './components/HeroSlider.jsx'
 import SkeletonGrid from './components/SkeletonGrid.jsx'
 import { SearchField, SearchResult } from './components/SearchBar.jsx'
 import AiSearchPanel from './components/AiSearchPanel.jsx'
@@ -76,9 +77,23 @@ export default function App() {
   const search = useSearch()
   const ai     = useAiSearch()
 
-  const { favorites } = useFavorites()
-  const { recommendations, loading: recLoading, error: recError } = useRecommendations(favorites)
+  const { saved, liked, loved, watchlist } = useFavorites()
   const isSanaOzel = tab === 'sanaozel'
+
+  // Öneri motoruna yalnız BEĞENİ kayıtları tohum olarak girer; Bayıldıklarım
+  // iki kat ağırlıkla. İzleyeceklerim girdi DEĞİL — henüz izlenmedi, beğeni
+  // sinyali sayılamaz — ama zaten listede olduğu için sonuçtan çıkarılır.
+  const oneriTohumu = [
+    ...loved.map(f => ({ ...f, _w: 2 })),
+    ...liked.map(f => ({ ...f, _w: 1 })),
+  ]
+  const kayitliAnahtarlar = saved.map(f => f.key)
+  const { recommendations, loading: recLoading, error: recError } =
+    useRecommendations(oneriTohumu, kayitliAnahtarlar)
+
+  // "Tümünü gör" ile açılan liste (null = raf görünümü)
+  const [acikListe, setAcikListe] = useState(null)
+  useEffect(() => { if (!isSanaOzel) setAcikListe(null) }, [isSanaOzel])
 
   // Veri (ülke, sekme) ikilisiyle anahtarlanır; her mercek kendi önbelleğini korur.
   const dk = dataKey(country, tab)
@@ -114,11 +129,50 @@ export default function App() {
 
   const mediaOk = (item) => mediaType === 'all' || !item.type || item.type === mediaType
 
-  // Favoriler localStorage/Supabase'den, öneriler ayrı bir uçtan gelir; ikisi de
+  // Kayıtlar localStorage/Supabase'den, öneriler ayrı bir uçtan gelir; ikisi de
   // useStreamData'nın zenginleştirme yolundan geçmediği için platform rozetleri
   // eksik kalıyordu. Aynı önbelleği paylaşan ayrı bir katman bunu kapatır.
-  const favoritesFiltered       = usePlatforms(favorites.filter(mediaOk))
-  const recommendationsFiltered = usePlatforms(recommendations.filter(mediaOk))
+  const lovedZengin     = usePlatforms(loved)
+  const likedZengin     = usePlatforms(liked)
+  const watchlistZengin = usePlatforms(watchlist)
+  const onerilerZengin  = usePlatforms(recommendations)
+
+  // ── Sana Özel filtreleri ───────────────────────────────────────────────────
+  // Platform çipleri genel bir listeden değil KULLANICININ KENDİ kayıtlarından
+  // türer: 20 platformluk menü açtırıp 6'sında sonuç bulmak yerine, yalnız
+  // gerçekten sahip olduğu platformlar sayısıyla gösterilir. Boş sonuç üretmesi
+  // bu yüzden imkânsız.
+  const platformSayaci = (() => {
+    const m = new Map()
+    ;[...lovedZengin, ...likedZengin, ...watchlistZengin].forEach(it => {
+      new Set(it.platforms || []).forEach(p => m.set(p, (m.get(p) || 0) + 1))
+    })
+    return [...m.entries()].sort((a, b) => b[1] - a[1])
+  })()
+  const [secilenPlatformlar, setSecilenPlatformlar] = useState([])
+  // Kayıtlardan düşen bir platform seçili kalırsa liste sessizce boşalır.
+  useEffect(() => {
+    const gecerli = new Set(platformSayaci.map(([p]) => p))
+    setSecilenPlatformlar(prev => {
+      const next = prev.filter(p => gecerli.has(p))
+      return next.length === prev.length ? prev : next
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [platformSayaci.map(([p]) => p).join('|')])
+
+  const soFiltrele = (list) => list.filter(it =>
+    mediaOk(it) &&
+    (!trOnly || (it.platforms || []).length > 0) &&
+    (secilenPlatformlar.length === 0 ||
+      (it.platforms || []).some(p => secilenPlatformlar.includes(p)))
+  )
+
+  const soListeler = {
+    oneriler:  { baslik: 'Sana özel öneriler', items: soFiltrele(onerilerZengin) },
+    loved:     { baslik: 'Bayıldıklarım',      items: soFiltrele(lovedZengin) },
+    liked:     { baslik: 'Beğendiklerim',      items: soFiltrele(likedZengin) },
+    watchlist: { baslik: 'İzleyeceklerim',     items: soFiltrele(watchlistZengin) },
+  }
 
   const filtered = [...(data[dk] || [])].filter(item => {
     const mOk = tab !== 'trend' || mediaOk(item)
@@ -319,6 +373,48 @@ export default function App() {
                   { value: 'film', label: 'Film' },
                 ]}
               />
+
+              {/* "Yayında" ayrı bir eksen (platformlarda var mı), platform çipleri
+                  ise hangi platformda — araya ayırıcı konur ki iki eksen tek bir
+                  liste gibi okunmasın. */}
+              <span className="filter-sep" aria-hidden="true" />
+
+              <button
+                className={`ctl ctl-compact${trOnly ? ' ctl-on' : ''}`}
+                onClick={() => setTrOnly(v => !v)}
+                aria-pressed={trOnly}
+                title="Yalnız bir platformda yayında olanlar"
+              >
+                Yayında
+              </button>
+
+              {platformSayaci.slice(0, 5).map(([p, n]) => {
+                const secili = secilenPlatformlar.includes(p)
+                return (
+                  <button
+                    key={p}
+                    className={`ctl ctl-compact${secili ? ' ctl-on' : ''}`}
+                    aria-pressed={secili}
+                    onClick={() => setSecilenPlatformlar(prev =>
+                      secili ? prev.filter(x => x !== p) : [...prev, p])}
+                  >
+                    {p} <span className="ctl-count tnum">{n}</span>
+                  </button>
+                )
+              })}
+              {platformSayaci.length > 5 && (
+                <Dropdown
+                  label={`+${platformSayaci.length - 5}`}
+                  multi
+                  value={secilenPlatformlar.filter(p => !platformSayaci.slice(0, 5).some(([t]) => t === p))}
+                  onChange={v => setSecilenPlatformlar(prev => [
+                    ...prev.filter(p => platformSayaci.slice(0, 5).some(([t]) => t === p)),
+                    ...v,
+                  ])}
+                  options={platformSayaci.slice(5).map(([p, n]) => ({ value: p, label: `${p} (${n})` }))}
+                  minWidth={120}
+                />
+              )}
             </div>
           ) : (
             <FilterBar
@@ -339,60 +435,68 @@ export default function App() {
 
        {isSanaOzel ? (
         <>
-          <h2 className="section-title">
-            Favorilerim
-            {favorites.length > 0 && (
-              <span className="section-count tnum">
-                {favoritesFiltered.length}{mediaType !== 'all' ? ` / ${favorites.length}` : ''}
-              </span>
-            )}
-          </h2>
+          {/* ── SANA ÖZEL ────────────────────────────────────────────────────
+              Izgara yığını yerine vitrin + dört raf: dördü de tek ekrana sığar
+              ve raflar uygulamada zaten var (ülke merceğindeki editoryal raflar),
+              yani yeni bir dil icat edilmiyor.
 
-          {favorites.length === 0 ? (
+              "Tümünü gör" bir listeyi ızgara olarak açar; açıkken raflar yerine
+              yalnız o liste görünür. */}
+          {saved.length === 0 && recommendations.length === 0 ? (
             <div className="empty-state">
-              <Star size={40} className="empty-icon" aria-hidden="true" />
-              <p className="empty-title">Henüz favorin yok</p>
+              <Heart size={40} className="empty-icon" aria-hidden="true" />
+              <p className="empty-title">Listelerin henüz boş</p>
               <p className="empty-sub">
-                Kartlardaki yıldıza dokun; beğendiklerin burada toplansın. Sana özel
-                öneriler de bu listeye bakarak çıkar.
+                Kartlardaki <b>kalbe</b> dokun — bir kez Beğendim, iki kez Bayıldım.
+                <b> Ayraç</b> ise izleyeceklerini biriktirir. Öneriler beğenilerine
+                bakarak çıkar.
               </p>
             </div>
-          ) : favoritesFiltered.length === 0 ? (
-            <p className="muted-note">Bu filtreye uygun favorin yok.</p>
-          ) : (
-            <div className="grid-cards enter">
-              {favoritesFiltered.map(item => (
-                <ContentCard key={`fav-${item.key}`} item={item} isTrend={false} />
-              ))}
-            </div>
-          )}
-
-          {favorites.length > 0 && (
+          ) : acikListe ? (
             <>
-              <h2 className="section-title section-title-gap">
-                Sana özel öneriler
-                {recLoading && <RefreshCw size={14} className="spin" aria-hidden="true" />}
-              </h2>
-
-              {recLoading && recommendations.length === 0 && <SkeletonGrid count={6} />}
-
-              {!recLoading && recommendations.length === 0 && (
-                <p className="muted-note">
-                  {recError || 'Favorilerine uygun yeni öneri bulunamadı. Birkaç yapım daha favorile.'}
-                </p>
-              )}
-
-              {recommendations.length > 0 && recommendationsFiltered.length === 0 && (
-                <p className="muted-note">Bu filtreye uygun öneri yok.</p>
-              )}
-
-              {recommendationsFiltered.length > 0 && (
+              <div className="grid-head">
+                <h2 className="grid-title">{soListeler[acikListe].baslik}</h2>
+                <button className="btn-text" onClick={() => setAcikListe(null)}>
+                  <ChevronLeft size={14} aria-hidden="true" /> Tüm listelere dön
+                </button>
+              </div>
+              {soListeler[acikListe].items.length === 0 ? (
+                <p className="muted-note">Bu filtreye uygun kayıt yok.</p>
+              ) : (
                 <div className="grid-cards enter">
-                  {recommendationsFiltered.map((item, i) => (
-                    <ContentCard key={`rec-${item._tmdbId || item.title}-${i}`} item={item} isTrend={false} />
+                  {soListeler[acikListe].items.map((item, i) => (
+                    <ContentCard key={`${acikListe}-${item.key || item._tmdbId || item.title}-${i}`} item={item} isTrend={false} />
                   ))}
                 </div>
               )}
+            </>
+          ) : (
+            <>
+              {/* Vitrin filtreden ETKİLENMEZ: öneri motorunun sesidir, kullanıcı
+                  filtresiyle susturulmaz. Filtre yalnız listeleri daraltır. */}
+              {onerilerZengin.length > 0 && <HeroSlider items={onerilerZengin} count={10} />}
+
+              {recLoading && recommendations.length === 0 && <SkeletonGrid count={6} />}
+
+              {!recLoading && recommendations.length === 0 && saved.length > 0 && (
+                <p className="muted-note">
+                  {recError || 'Beğenilerine uygun yeni öneri bulunamadı. Birkaç yapım daha beğen.'}
+                </p>
+              )}
+
+              {/* Boş raf çizilmez: sayfayı uzatır, bilgi vermez. */}
+              {['oneriler', 'loved', 'liked', 'watchlist'].map(anahtar => {
+                const { baslik, items } = soListeler[anahtar]
+                if (items.length === 0) return null
+                return (
+                  <RailRow
+                    key={anahtar}
+                    title={baslik}
+                    items={items}
+                    onShowAll={() => setAcikListe(anahtar)}
+                  />
+                )
+              })}
             </>
           )}
         </>

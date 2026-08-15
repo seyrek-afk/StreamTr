@@ -104,6 +104,8 @@ export function tmdbToTrendCard(item, rank) {
     genres:        (item.genre_ids || []).map(id => GENRE_MAP[id]).filter(Boolean),
     platforms:     [],
     posterPath:    item.poster_path,
+    // Vitrin (hero) geniş görsel ister; poster 2:3, backdrop 16:9.
+    backdropPath:  item.backdrop_path || null,
     description:   item.overview || '',
     cast:          [],
     reviews:       [],
@@ -172,6 +174,8 @@ export function tmdbToListCard(item, mediaType, country = null, poolC = null) {
     genres:        (item.genre_ids || []).map(id => GENRE_MAP[id]).filter(Boolean),
     platforms:     [],
     posterPath:    item.poster_path,
+    // Vitrin (hero) geniş görsel ister; poster 2:3, backdrop 16:9.
+    backdropPath:  item.backdrop_path || null,
     description:   item.overview || '',
     cast:          [],
     reviews:       [],

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Star } from 'lucide-react'
 import PosterImg from './PosterImg.jsx'
 import DetailOverlay from './DetailOverlay.jsx'
-import FavoriteButton from './FavoriteButton.jsx'
+import SaveControls from './SaveControls.jsx'
 import { fmtCount } from '../lib/cards.js'
 
 // Raf kartı — ContentCard'ın dar, poster öncelikli kardeşi.
@@ -37,7 +37,7 @@ export default function RailCard({ item }) {
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
-            <FavoriteButton item={item} />
+            <SaveControls item={item} size={13} />
           </div>
 
           {score != null && (
