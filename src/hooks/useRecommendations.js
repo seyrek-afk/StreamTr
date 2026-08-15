@@ -45,6 +45,7 @@ function tmdbToRecCard(r) {
     rottenTomatoesScore: estimateRT(voteAvg),
     letterboxdScore:     estimateLB(voteAvg),
     posterPath: r.poster_path,
+    backdropPath: r.backdrop_path || null,
     description: r.overview || '',
     // Diğer sekmelerle aynı kart şeması — ContentCard tüm zengin bölümleri açabilsin
     platforms:  [],
@@ -58,8 +59,8 @@ function tmdbToRecCard(r) {
 }
 
 // ── Yerel fallback: favorilerin tür frekansına göre ALL_CONTENT'i puanla ───────
-function localRecommendations(favorites) {
-  const favKeys = new Set(favorites.map(f => f.key))
+function localRecommendations(favorites, excludeKeys = []) {
+  const favKeys = new Set([...favorites.map(f => f.key), ...excludeKeys])
 
   // Favorilerin tür ağırlıkları
   const genreWeight = {}
@@ -83,15 +84,21 @@ function localRecommendations(favorites) {
 }
 
 // ── TMDB tabanlı öneriler: favorilerin "recommendations" sonuçlarını topla ─────
-async function tmdbRecommendations(favorites, signal) {
-  const favKeys = new Set(favorites.map(f => f.key))
+// seeds : öneri ÜRETEN kayıtlar (Beğendim/Bayıldım). Her biri `_w` ağırlığı
+//         taşır — Bayıldım daha güçlü bir sinyaldir.
+// excludeKeys : sonuçtan ÇIKARILACAK kayıtlar. Tohum kümesinden farklıdır:
+//         İzleyeceklerim öneri üretmez (henüz izlenmedi, beğeni sinyali değil)
+//         ama zaten listede olduğu için öneri olarak da gösterilmemeli.
+async function tmdbRecommendations(seeds, signal, excludeKeys = []) {
+  const favorites = seeds
+  const favKeys = new Set([...seeds.map(f => f.key), ...excludeKeys])
 
   // 1) Her favori için tmdbId/mediaType belirle (yoksa search/multi ile çöz)
   const resolved = await Promise.all(
     favorites.map(async (f) => {
       // Saklanan favoriden gelen tmdbId/mediaType doğrudan TMDB URL'sine girer →
       // path-injection'ı önlemek için katı doğrula. Geçersizse search/multi ile çöz.
-      if (isValidTmdbRef(f.tmdbId, f.mediaType)) return { id: f.tmdbId, mediaType: f.mediaType }
+      if (isValidTmdbRef(f.tmdbId, f.mediaType)) return { id: f.tmdbId, mediaType: f.mediaType, w: f._w || 1 }
       try {
         const res = await fetch(
           `${TMDB_BASE}/search/multi?query=${encodeURIComponent((f.title || '').slice(0, 200))}` +
@@ -101,7 +108,7 @@ async function tmdbRecommendations(favorites, signal) {
         if (!res.ok) return null
         const json = await res.json()
         const hit = (json.results || []).find(r => r.media_type === 'movie' || r.media_type === 'tv')
-        return hit ? { id: hit.id, mediaType: hit.media_type } : null
+        return hit ? { id: hit.id, mediaType: hit.media_type, w: f._w || 1 } : null
       } catch {
         return null
       }
@@ -111,7 +118,7 @@ async function tmdbRecommendations(favorites, signal) {
   // 2) Her favori için recommendations getir, frekansla birleştir
   const acc = new Map() // key → { card, freq }
   await Promise.all(
-    resolved.filter(Boolean).map(async ({ id, mediaType }) => {
+    resolved.filter(Boolean).map(async ({ id, mediaType, w }) => {
       try {
         const res = await fetch(
           `${TMDB_BASE}/${mediaType}/${id}/recommendations?language=tr-TR&page=1&api_key=${API_KEY}`,
@@ -123,9 +130,11 @@ async function tmdbRecommendations(favorites, signal) {
           const card = tmdbToRecCard(r)
           const k = favKey(card)
           if (favKeys.has(k)) return // zaten favori
+          // Ağırlık burada işler: Bayıldığın bir yapımdan gelen öneri,
+          // beğendiğinden gelenin iki katı sayılır.
           const prev = acc.get(k)
-          if (prev) prev.freq += 1
-          else acc.set(k, { card, freq: 1 })
+          if (prev) prev.freq += w
+          else acc.set(k, { card, freq: w })
         })
       } catch {
         /* tek favori başarısız olsa da diğerleri devam etsin */
@@ -140,13 +149,16 @@ async function tmdbRecommendations(favorites, signal) {
     .map(x => x.card)
 }
 
-export function useRecommendations(favorites) {
+export function useRecommendations(favorites, excludeKeys = []) {
   const [recommendations, setRecommendations] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // Yalnızca favori kümesi değişince yeniden hesapla
-  const favSignature = favorites.map(f => f.key).join('|')
+  // Yalnızca tohum kümesi (kayıt + ağırlık) veya hariç tutulanlar değişince
+  // yeniden hesapla. Ağırlık imzaya dahil: Beğendim'i Bayıldım'a yükseltmek
+  // öneri kümesini gerçekten değiştirmeli.
+  const favSignature = favorites.map(f => `${f.key}:${f._w || 1}`).join('|') +
+    '#' + [...excludeKeys].join('|')
 
   useEffect(() => {
     if (!favorites.length) {
@@ -158,7 +170,7 @@ export function useRecommendations(favorites) {
 
     // API anahtarı yoksa doğrudan yerel öneriler
     if (!API_KEY) {
-      setRecommendations(localRecommendations(favorites))
+      setRecommendations(localRecommendations(favorites, excludeKeys))
       setLoading(false)
       setError(null)
       return
@@ -170,16 +182,16 @@ export function useRecommendations(favorites) {
     setLoading(true)
     setError(null)
 
-    tmdbRecommendations(favorites, controller.signal)
+    tmdbRecommendations(favorites, controller.signal, excludeKeys)
       .then(recs => {
         if (cancelled) return
         // TMDB hiç sonuç vermezse yerel fallback
-        setRecommendations(recs.length ? recs : localRecommendations(favorites))
+        setRecommendations(recs.length ? recs : localRecommendations(favorites, excludeKeys))
       })
       .catch(e => {
         if (cancelled || e.name === 'AbortError') return
         setError('Öneriler yüklenemedi.')
-        setRecommendations(localRecommendations(favorites))
+        setRecommendations(localRecommendations(favorites, excludeKeys))
       })
       .finally(() => { if (!cancelled) setLoading(false) })
 

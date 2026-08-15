@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Star, ChevronDown, ChevronUp, User, Film } from 'lucide-react'
 import PosterImg from './PosterImg.jsx'
 import DetailOverlay from './DetailOverlay.jsx'
-import FavoriteButton from './FavoriteButton.jsx'
+import SaveControls from './SaveControls.jsx'
 import TrailerEmbed from './TrailerEmbed.jsx'
 import { ALL_PLATFORMS } from '../constants/index.js'
 import { isValidTmdbRef, isValidTmdbId, mapTrProviders } from '../lib/tmdb.js'
@@ -382,7 +382,7 @@ export default function ContentCard({ item, isTrend, showKind = true }) {
             <PosterImg path={item.posterPath} title={item.title} />
 
             <div className="cc-fav">
-              <FavoriteButton item={item} size={15} />
+              <SaveControls item={item} size={15} />
             </div>
 
             {item.trendRank && (

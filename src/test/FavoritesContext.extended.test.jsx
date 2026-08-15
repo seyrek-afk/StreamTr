@@ -10,6 +10,7 @@
  *   - toSnapshot'ın tüm alanları doğru kopyalaması
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { LIKE_NONE, LIKE_YES, LIKE_LOVE } from '../contexts/FavoritesContext.jsx'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import React from 'react'
 
@@ -74,10 +75,10 @@ describe('FavoritesContext — Supabase sync yolu', () => {
     const { result } = renderHook(() => useFavorites(), { wrapper })
 
     await waitFor(() => {
-      expect(result.current.favorites.length).toBeGreaterThan(0)
+      expect(result.current.saved.length).toBeGreaterThan(0)
     }, { timeout: 3000 })
 
-    expect(result.current.favorites[0].title).toBe('DB Film')
+    expect(result.current.saved[0].title).toBe('DB Film')
   })
 
   it('DB hatası olursa yerel localStorage favorilerine döner', async () => {
@@ -103,8 +104,8 @@ describe('FavoritesContext — Supabase sync yolu', () => {
     }, { timeout: 3000 })
 
     // Yerel favorilere düşmeli
-    expect(result.current.favorites.length).toBeGreaterThan(0)
-    expect(result.current.favorites[0].title).toBe('Yerel Film')
+    expect(result.current.saved.length).toBeGreaterThan(0)
+    expect(result.current.saved[0].title).toBe('Yerel Film')
   })
 
   it('kullanıcı çıkış yaptığında (user=null) yerel listeye döner', async () => {
@@ -118,17 +119,17 @@ describe('FavoritesContext — Supabase sync yolu', () => {
     const wrapper = ({ children }) => React.createElement(FavoritesProvider, null, children)
     const { result } = renderHook(() => useFavorites(), { wrapper })
 
-    expect(result.current.favorites[0].title).toBe('Çıkış Filmi')
+    expect(result.current.saved[0].title).toBe('Çıkış Filmi')
   })
 })
 
-describe('FavoritesContext — toggleFavorite Supabase yolları', () => {
+describe('FavoritesContext — cycleLike Supabase yolları', () => {
   beforeEach(() => {
     localStorage.clear()
     vi.resetModules()
   })
 
-  it('toggleFavorite — oturumlu kullanıcı için DB upsert çağrılır', async () => {
+  it('cycleLike — oturumlu kullanıcı için DB upsert çağrılır', async () => {
     const upsertFn = vi.fn().mockResolvedValue({ data: null, error: null })
     const deleteFn = vi.fn().mockResolvedValue({ data: null, error: null })
     const eqFn = vi.fn().mockReturnThis()
@@ -155,14 +156,14 @@ describe('FavoritesContext — toggleFavorite Supabase yolları', () => {
 
     const item = { title: 'Test', year: '2023', _tmdbId: 100, _mediaType: 'movie', genres: ['Dram'] }
 
-    act(() => { result.current.toggleFavorite(item) })
+    act(() => { result.current.cycleLike(item) })
 
     // İyimser güncelleme anında gerçekleşir
-    expect(result.current.isFavorite(item)).toBe(true)
+    expect(result.current.likeLevel(item)).toBe(LIKE_YES)
     expect(result.current.count).toBe(1)
   })
 
-  it('toggleFavorite iki kez → ekle sonra kaldır (Supabase yok)', async () => {
+  it('cycleLike üç kez → ekle, yükselt, kaldır (Supabase yok)', async () => {
     _mockSupabase = null
     _mockUser = null
 
@@ -172,15 +173,20 @@ describe('FavoritesContext — toggleFavorite Supabase yolları', () => {
 
     const item = { title: 'Çift Toggle', year: '2023', genres: ['Aksiyon'] }
 
-    act(() => { result.current.toggleFavorite(item) })
+    act(() => { result.current.cycleLike(item) })
     expect(result.current.count).toBe(1)
+    expect(result.current.likeLevel(item)).toBe(LIKE_YES)
 
-    act(() => { result.current.toggleFavorite(item) })
+    act(() => { result.current.cycleLike(item) })
+    expect(result.current.count).toBe(1)
+    expect(result.current.likeLevel(item)).toBe(LIKE_LOVE)
+
+    act(() => { result.current.cycleLike(item) })
     expect(result.current.count).toBe(0)
-    expect(result.current.isFavorite(item)).toBe(false)
+    expect(result.current.likeLevel(item)).toBe(LIKE_NONE)
   })
 
-  it('toggleFavorite boş key (null item) → sessizce yok sayılır', async () => {
+  it('cycleLike boş key (null item) → sessizce yok sayılır', async () => {
     _mockSupabase = null
     _mockUser = null
 
@@ -188,7 +194,7 @@ describe('FavoritesContext — toggleFavorite Supabase yolları', () => {
     const wrapper = ({ children }) => React.createElement(FavoritesProvider, null, children)
     const { result } = renderHook(() => useFavorites(), { wrapper })
 
-    act(() => { result.current.toggleFavorite({ title: '', year: '' }) })
+    act(() => { result.current.cycleLike({ title: '', year: '' }) })
     // key boş string → atlansın (favKey: 'title::')
     // Buradaki önemli nokta: uygulama çökmemeli
     expect(result.current.count).toBeGreaterThanOrEqual(0)
@@ -222,9 +228,9 @@ describe('FavoritesContext — toSnapshot alanları', () => {
       _mediaType: 'movie',
     }
 
-    act(() => { result.current.toggleFavorite(item) })
+    act(() => { result.current.cycleLike(item) })
 
-    const snap = result.current.favorites[0]
+    const snap = result.current.saved[0]
     expect(snap.key).toBe('tmdb:movie:777')
     expect(snap.title).toBe('Snapshot Test')
     expect(snap.originalTitle).toBe('Snapshot Test EN')
@@ -247,9 +253,9 @@ describe('FavoritesContext — toSnapshot alanları', () => {
     const { result } = renderHook(() => useFavorites(), { wrapper })
 
     const item = { title: 'Mock İçerik', year: 2020, genres: ['Dram'] }
-    act(() => { result.current.toggleFavorite(item) })
+    act(() => { result.current.cycleLike(item) })
 
-    const snap = result.current.favorites[0]
+    const snap = result.current.saved[0]
     expect(snap.key).toBe('title:Mock İçerik:2020')
     expect(snap.tmdbId).toBeNull()
     expect(snap.mediaType).toBeNull()
@@ -262,9 +268,9 @@ describe('FavoritesContext — toSnapshot alanları', () => {
 
     // Mini item: tmdbId/mediaType (search sonucu) kullanan format
     const miniItem = { title: 'Mini', year: '2022', tmdbId: 333, mediaType: 'tv', genres: [] }
-    act(() => { result.current.toggleFavorite(miniItem) })
+    act(() => { result.current.cycleLike(miniItem) })
 
-    const snap = result.current.favorites[0]
+    const snap = result.current.saved[0]
     expect(snap.key).toBe('tmdb:tv:333')
     expect(snap._tmdbId).toBe(333)
     expect(snap._mediaType).toBe('tv')

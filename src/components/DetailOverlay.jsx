@@ -4,7 +4,7 @@ import { Star, User, X, Film } from 'lucide-react'
 import { ALL_PLATFORMS } from '../constants/index.js'
 import { isValidTmdbRef, mapTrProviders } from '../lib/tmdb.js'
 import { badgeInk } from '../lib/cards.js'
-import FavoriteButton from './FavoriteButton.jsx'
+import { LikeButton, WatchlistButton } from './SaveControls.jsx'
 import TrailerEmbed from './TrailerEmbed.jsx'
 
 const TMDB_KEY = import.meta.env.VITE_TMDB_KEY
@@ -163,7 +163,8 @@ export default function DetailOverlay({ item, onClose }) {
 
                 <div className="cc-tags">
                   <TrailerEmbed trailerKey={trailerKey} compact />
-                  <FavoriteButton item={item} size={18} />
+                  <LikeButton item={item} size={18} />
+                  <WatchlistButton item={item} size={18} />
                 </div>
               </div>
             </div>

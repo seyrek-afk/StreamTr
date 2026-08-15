@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Star } from 'lucide-react'
 import PosterImg from './PosterImg.jsx'
-import FavoriteButton from './FavoriteButton.jsx'
+import SaveControls from './SaveControls.jsx'
 import DetailOverlay from './DetailOverlay.jsx'
 
 // Spot ışığı: bulunulan sekmenin listesinin başındaki yapım.
@@ -39,7 +39,7 @@ export default function HeroSpotlight({ item, kicker = 'Listenin zirvesinde' }) 
         >
           <PosterImg path={item.posterPath} title={item.title} />
         </button>
-        <span className="hero-fav"><FavoriteButton item={item} size={15} /></span>
+        <span className="hero-fav"><SaveControls item={item} size={15} /></span>
       </div>
 
       <div className="hero-body">

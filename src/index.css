@@ -213,6 +213,18 @@ button, input, textarea { font: inherit; color: inherit; }
 .ctl:disabled { opacity: 0.5; cursor: not-allowed; }
 .ctl:disabled:active { transform: none; }
 
+/* Kompakt kontrol — çip. Sana Özel'de platform ve "Yayında" filtreleri için;
+   tam boy kontrol yan yana beşi sığmıyor. */
+.ctl-compact { height: auto; padding: 6px 11px; font-size: var(--fs-meta); }
+.ctl-count { color: var(--text-faint); font-weight: 400; margin-left: 2px; }
+.ctl-on .ctl-count { color: inherit; opacity: 0.75; }
+/* İki filtre ekseni arasındaki ayırıcı: "Yayında" (var mı) ile platform
+   (hangisi) tek bir liste gibi okunmasın. */
+.filter-sep {
+  width: 1px; align-self: stretch; min-height: 20px;
+  background: var(--border-strong); margin: 0 3px;
+}
+
 /* Aktif filtre SESSİZ bir vurgu taşır: yazı + kenarlık renklenir, zemin dolmaz.
    Dolgu eylemlere ayrılmıştır; filtre geçicidir, kapsam anahtarını bastırmamalı. */
 .ctl-on {
@@ -702,6 +714,107 @@ button, input, textarea { font: inherit; color: inherit; }
 
 .muted-note { color: var(--text-faint); font-size: var(--fs-body); padding: 14px 0; line-height: 1.65; }
 
+/* ══ VİTRİN (HERO SLIDER) ══════════════════════════════════════════════════
+   Sana Özel'in tepesindeki kayan öneri vitrini. Spot ışığından (tek yapım,
+   poster yanında künye) ayrılır: burada geniş görsel sahneyi kaplar, metin
+   onun üstünde yaşar. İkisi aynı sayfada bulunmadığı için dil çakışmaz. */
+.hslider { margin-bottom: var(--section-gap); }
+.hslide {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  aspect-ratio: 21 / 9;
+  background: var(--bg-card);
+}
+.hslide-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.hslide-img-yok { background: linear-gradient(120deg, var(--bg-elevated), var(--bg-card)); }
+/* Perde: metnin oturduğu sol taraf okunur kalsın diye yatay karartma. Görsel
+   ne kadar açık olursa olsun kontrast korunur — bu bir dekor değil, okunurluk
+   şartı. */
+.hslide-scrim {
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg,
+    rgba(14,14,28,0.97) 0%, rgba(14,14,28,0.94) 38%,
+    rgba(14,14,28,0.72) 56%, rgba(14,14,28,0.16) 82%, rgba(14,14,28,0) 100%);
+}
+.hslide-body {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: min(58%, 640px);
+  /* Sol ok dikeyde ortada duruyor ve özet paragrafının üstüne biniyordu;
+     gövde soldan ok genişliği kadar açılır. */
+  padding: clamp(16px, 3vw, 30px);
+  padding-left: 66px;
+  display: flex; flex-direction: column; justify-content: center; gap: 9px;
+}
+.hslide-kick {
+  display: flex; align-items: center; gap: 10px;
+  font-size: var(--fs-micro); letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--accent-ink);
+}
+.hslide-kick span { color: var(--text-faint); letter-spacing: 0.04em; }
+.hslide-title {
+  font-family: 'Bebas Neue', system-ui, sans-serif;
+  font-size: clamp(26px, 3.4vw, 44px); line-height: 1.02; letter-spacing: 0.02em;
+  color: var(--text); text-wrap: balance;
+}
+.hslide-desc {
+  font-size: var(--fs-body); line-height: 1.55; color: var(--text-muted);
+  max-width: 52ch;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.hslide-row { display: flex; align-items: center; flex-wrap: wrap; gap: 9px 12px; margin-top: 4px; }
+.hslide-score {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: var(--r-sm);
+  border: 1px solid rgba(var(--accent-rgb), 0.38);
+  color: var(--accent-ink); font-size: var(--fs-meta); font-weight: 600;
+}
+.hslide-score svg { color: var(--accent); }
+.hslide-score-max { color: var(--text-faint); font-weight: 400; }
+.hslide-meta { font-size: var(--fs-meta); color: var(--text-faint); }
+
+.hslide-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(12,12,24,0.82); border: 1px solid var(--border-strong);
+  color: var(--text-muted); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+.hslide-arrow-l { left: 12px; }
+.hslide-arrow-r { right: 12px; }
+@media (hover: hover) and (pointer: fine) {
+  .hslide-arrow:hover { background: rgba(12,12,24,0.95); color: var(--text); }
+}
+
+.hslide-dots { display: flex; justify-content: center; gap: 7px; padding-top: 12px; }
+.hslide-dot {
+  width: 8px; height: 8px; border-radius: 50%; padding: 0;
+  border: none; background: var(--surface-hover); cursor: pointer;
+  position: relative;
+  transition: width var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out);
+}
+/* Nokta görsel olarak küçük ama parmak hedefi 44px — yıldızdaki teknik. */
+.hslide-dot::after {
+  content: ''; position: absolute; top: 50%; left: 50%;
+  width: 32px; height: 44px; transform: translate(-50%, -50%);
+}
+.hslide-dot-on { width: 22px; border-radius: 4px; background: var(--accent); }
+
+@media (max-width: 720px) {
+  /* Dar ekranda 21:9 bir şerit metne yer bırakmıyor; kare-ye yakın orana
+     geçilir ve perde yatay yerine DİKEY olur (metin altta yaşar). */
+  .hslide { aspect-ratio: 4 / 3; }
+  .hslide-scrim {
+    background: linear-gradient(0deg,
+      rgba(14,14,28,0.97) 0%, rgba(14,14,28,0.86) 46%, rgba(14,14,28,0.1) 100%);
+  }
+  .hslide-body { width: 100%; top: auto; justify-content: flex-end; padding-left: clamp(16px, 3vw, 30px); }
+  .hslide-desc { -webkit-line-clamp: 2; }
+  .hslide-arrow { display: none; }   /* dokunmatikte noktalar yeterli */
+}
+
 /* ══ SPOT IŞIĞI (HERO) ═════════════════════════════════════════════════════
    Izgara "hepsi eşit" der; bu blok "önce şuna bak" der. Trend listesinin
    tepesindeki yapımı taşır. Zemindeki eğim marka bloğunun rengiyle aynı
@@ -733,7 +846,7 @@ button, input, textarea { font: inherit; color: inherit; }
   border-radius: var(--r-md); overflow: hidden;
   cursor: pointer;
 }
-.hero-fav { position: absolute; top: 6px; right: 6px; z-index: 2; }
+/* konumlandırma .save-stack'e taşındı */
 .hero-poster .poster-img,
 .hero-poster .poster-fallback { aspect-ratio: 2 / 3; width: 100%; height: auto; }
 
@@ -814,7 +927,7 @@ button, input, textarea { font: inherit; color: inherit; }
 .cc-head { display: flex; flex: 1; min-height: 162px; }
 
 .cc-poster { position: relative; width: 108px; flex: 0 0 108px; background: var(--bg); }
-.cc-fav  { position: absolute; top: 6px; right: 6px; z-index: 2; }
+/* konumlandırma .save-stack'e taşındı */
 .cc-rank {
   position: absolute; top: 6px; left: 6px; z-index: 2;
   min-width: 26px; padding: 1px 6px 0; border-radius: var(--r-sm);
@@ -887,10 +1000,15 @@ button, input, textarea { font: inherit; color: inherit; }
 
 /* Dokunma hedefi görsel diskten BÜYÜKTÜR. Disk 31px kalır — büyütmek posterdeki
    yerleşimi ve rozetlerle hizasını bozardı — ama parmak için isabet alanı
-   44×44'e çıkar. Ölçüldü: mobilde yıldız en sık dokunulan ikincil eylem ve
-   31px, hem Apple'ın 44pt hem Google'ın 48dp önerisinin altındaydı.
-   ::after görünür hiçbir şey çizmez, yalnız isabet alanını taşır. */
-.fav-btn {
+   44×44'e çıkar. Ölçüldü: mobilde bu en sık dokunulan ikincil eylem ve 31px,
+   hem Apple'ın 44pt hem Google'ın 48dp önerisinin altındaydı.
+   ::after görünür hiçbir şey çizmez, yalnız isabet alanını taşır.
+
+   İki kontrol var (kalp + ayraç) ve ikisi de aynı disk dilini konuşur; ayrışma
+   yalnız DOLU durumun renginde: beğeni vurgu rengine, izleme listesi nötr
+   mürekkebe gider. İkisi de vurgu alsaydı kartta hangisinin işaretli olduğu
+   bir bakışta ayrılmazdı. */
+.save-btn {
   position: relative;
   display: inline-flex; align-items: center; justify-content: center;
   padding: 0; border-radius: 50%;
@@ -901,22 +1019,43 @@ button, input, textarea { font: inherit; color: inherit; }
               color var(--dur-1) var(--ease-out),
               transform var(--dur-1) var(--ease-out);
 }
-.fav-btn::after {
+.save-btn::after {
   content: '';
   position: absolute;
   top: 50%; left: 50%;
   width: 44px; height: 44px;
   transform: translate(-50%, -50%);
 }
-.fav-btn:active { transform: scale(0.92); }
-.fav-btn:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+.save-btn:active { transform: scale(0.92); }
+.save-btn:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
 @media (hover: hover) and (pointer: fine) {
-  .fav-btn:hover { background: rgba(0,0,0,0.8); color: #fff; }
+  .save-btn:hover { background: rgba(0,0,0,0.8); color: #fff; }
 }
-.fav-btn-on {
+/* Beğeni — 1. kademe: vurgu rengi. */
+.like-btn-on {
   background: rgba(var(--accent-rgb), 0.22);
   border-color: var(--accent);
   color: var(--accent-ink);
+}
+/* 2. kademe (Bayıldım): aynı renk ailesi, daha dolu zemin + ince halka.
+   Yeni bir renk EKLEMEZ — kademe farkı yoğunlukla anlatılır, palet
+   kalabalıklaşmaz. */
+.like-btn-love {
+  background: rgba(var(--accent-rgb), 0.42);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.28);
+}
+/* İzleme listesi — nötr mürekkep, vurgu DEĞİL: beğeniyle karışmasın. */
+.watch-btn-on {
+  background: rgba(255,255,255,0.92);
+  border-color: #fff;
+  color: #14140f;
+}
+
+/* İki kontrol dikey istifte; poster köşesinde yan yana 44px hedef sığmıyor. */
+.save-stack {
+  position: absolute; top: 6px; right: 6px; z-index: 2;
+  display: flex; flex-direction: column; gap: 6px;
 }
 
 /* Yerli yapım etiketi — bayrak emoji yerine tipografik rozet. */
@@ -1200,7 +1339,7 @@ code { font-size: 0.92em; color: var(--accent-ink); }
   background: var(--bg-card); border: 1px solid var(--border);
   transition: border-color var(--dur-2) var(--ease-out);
 }
-.rail-fav { position: absolute; top: 5px; right: 5px; z-index: 2; }
+/* konumlandırma .save-stack'e taşındı */
 .rail-score {
   position: absolute; left: 5px; bottom: 5px; z-index: 2;
   display: inline-flex; align-items: center; gap: 4px;
