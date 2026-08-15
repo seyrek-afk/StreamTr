@@ -10,12 +10,14 @@ import { useSearch }     from './hooks/useSearch.js'
 import { useRecommendations } from './hooks/useRecommendations.js'
 import { useCountryRails } from './hooks/useCountryRails.js'
 import { pickHeroItem } from './lib/hero.js'
+import { usePlatforms } from './hooks/usePlatforms.js'
 import { useAiSearch } from './hooks/useAiSearch.js'
 import { useFavorites } from './contexts/FavoritesContext.jsx'
 import ContentCard  from './components/ContentCard.jsx'
 import FilterBar    from './components/FilterBar.jsx'
 import Dropdown     from './components/Dropdown.jsx'
 import RailRow      from './components/RailRow.jsx'
+import Segmented    from './components/Segmented.jsx'
 import SkeletonGrid from './components/SkeletonGrid.jsx'
 import { SearchField, SearchResult } from './components/SearchBar.jsx'
 import AiSearchPanel from './components/AiSearchPanel.jsx'
@@ -112,8 +114,11 @@ export default function App() {
 
   const mediaOk = (item) => mediaType === 'all' || !item.type || item.type === mediaType
 
-  const favoritesFiltered       = favorites.filter(mediaOk)
-  const recommendationsFiltered = recommendations.filter(mediaOk)
+  // Favoriler localStorage/Supabase'den, öneriler ayrı bir uçtan gelir; ikisi de
+  // useStreamData'nın zenginleştirme yolundan geçmediği için platform rozetleri
+  // eksik kalıyordu. Aynı önbelleği paylaşan ayrı bir katman bunu kapatır.
+  const favoritesFiltered       = usePlatforms(favorites.filter(mediaOk))
+  const recommendationsFiltered = usePlatforms(recommendations.filter(mediaOk))
 
   const filtered = [...(data[dk] || [])].filter(item => {
     const mOk = tab !== 'trend' || mediaOk(item)
@@ -301,12 +306,18 @@ export default function App() {
           {/* Filtreler AI panelinde gizlenir: AI sonuçları filtrelenmiyor. */}
           {!aiOpen && (isSanaOzel ? (
             <div className="toolbar-filters toolbar-filters-lead">
-              <Dropdown
-                label="İçerik"
-                value={mediaType === 'all' ? null : mediaType}
-                onChange={v => setMediaType(v || 'all')}
-                options={[{ value: 'dizi', label: 'Dizi' }, { value: 'film', label: 'Film' }]}
-                minWidth={104}
+              {/* Üç seçenek açılır menüde saklanmaz: menü tek tıklık kararı iki
+                  adıma çıkarıyor ve mevcut seçimi görmek için açmayı gerektiriyordu.
+                  Bölmeli anahtar uygulamanın kendi kontrol dili (bkz. kapsam merceği). */}
+              <Segmented
+                label="İçerik türü"
+                value={mediaType}
+                onChange={setMediaType}
+                options={[
+                  { value: 'all',  label: 'Tümü' },
+                  { value: 'dizi', label: 'Dizi' },
+                  { value: 'film', label: 'Film' },
+                ]}
               />
             </div>
           ) : (
