@@ -878,7 +878,13 @@ button, input, textarea { font: inherit; color: inherit; }
 .cc-dur { color: var(--text-faint); font-size: var(--fs-meta); }
 .cc-chevron { margin-left: auto; color: var(--text-faint); display: flex; flex-shrink: 0; }
 
+/* Dokunma hedefi görsel diskten BÜYÜKTÜR. Disk 31px kalır — büyütmek posterdeki
+   yerleşimi ve rozetlerle hizasını bozardı — ama parmak için isabet alanı
+   44×44'e çıkar. Ölçüldü: mobilde yıldız en sık dokunulan ikincil eylem ve
+   31px, hem Apple'ın 44pt hem Google'ın 48dp önerisinin altındaydı.
+   ::after görünür hiçbir şey çizmez, yalnız isabet alanını taşır. */
 .fav-btn {
+  position: relative;
   display: inline-flex; align-items: center; justify-content: center;
   padding: 0; border-radius: 50%;
   background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.22);
@@ -887,6 +893,13 @@ button, input, textarea { font: inherit; color: inherit; }
               border-color var(--dur-1) var(--ease-out),
               color var(--dur-1) var(--ease-out),
               transform var(--dur-1) var(--ease-out);
+}
+.fav-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 44px; height: 44px;
+  transform: translate(-50%, -50%);
 }
 .fav-btn:active { transform: scale(0.92); }
 .fav-btn:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
