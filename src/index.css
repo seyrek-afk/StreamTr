@@ -715,49 +715,46 @@ button, input, textarea { font: inherit; color: inherit; }
 .muted-note { color: var(--text-faint); font-size: var(--fs-body); padding: 14px 0; line-height: 1.65; }
 
 /* ══ VİTRİN (HERO SLIDER) ══════════════════════════════════════════════════
-   Sana Özel'in tepesindeki kayan öneri vitrini. Spot ışığından (tek yapım,
-   poster yanında künye) ayrılır: burada geniş görsel sahneyi kaplar, metin
-   onun üstünde yaşar. İkisi aynı sayfada bulunmadığı için dil çakışmaz. */
+   Sana Özel'in tepesindeki kayan öneri vitrini.
+
+   TASARIM KARARI — neden bölünmüş düzen: görsel hem KIRPILMAYACAK hem de
+   %30 küçülecekti. Backdrop'lar 16:9; 418px yükseklik (597'nin %70'i) oranı
+   bozmadan ancak 743px genişliğe karşılık gelir, kap ise 1392px. Yani görsel
+   tam genişlikte kalamaz — ya kırpılır ya da kabın yarısını başka bir şey
+   doldurur. Metni görselin ÜSTÜNDEN alıp YANINA koymak ikinci yolu seçer.
+
+   Yan fayda: metin artık görselin üstünde durmadığı için okunurluk perdesi
+   (scrim) tümüyle kalktı, sol okun metne binme sorunu da öyle — oklar
+   noktalarla birlikte tek bir gezinme kümesine indi. */
 .hslider { margin-bottom: var(--section-gap); }
+
+/* Taban (dar ekran): yığılmış — görsel üstte, metin altında. Metin görselin
+   üstünde olmadığı için burada da perde gerekmiyor ve dar ekranda içeriğin
+   sabit yüksekliğe sığma zorunluluğu ortadan kalkıyor (önceki 4/3 kutuda
+   269px'lik alana 221px içerik sıkışıyordu). */
 .hslide {
-  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   overflow: hidden;
-  /* 21/9 iken 1440px ekranda vitrin 597px oluyordu — sayfanın tamamını
-     yiyordu. 10/3 aynı genişlikte yüksekliği %30 düşürür (597 → 418).
-     Metin bloğu 253px istiyor, yani 165px nefes payı kalıyor.
-     Mobil oranı BİLEREK ayrı: orada 4/3 ile zaten 269px ve içerik 221px
-     istiyor — aynı oranda kısmak metni kırpardı. */
-  aspect-ratio: 10 / 3;
-  background: var(--bg-card);
 }
-.hslide-img {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  object-fit: cover;
-  /* Kırpma çapası ORTADA DEĞİL yukarıda. Görseller 16:9, çerçeve 10:3 —
-     yani dikeyde yarıya yakını kırpılıyor. Ortadan kırpınca TMDB
-     görsellerindeki özne (genelde üst yarıda) başından kesiliyordu. */
-  object-position: 50% 28%;
+.hslide-media {
+  order: -1;                 /* yığılmış düzende görsel üstte */
+  position: relative;
+  aspect-ratio: 16 / 9;      /* kaynakla AYNI oran → kırpma yok */
+  background: var(--bg-elevated);
+  overflow: hidden;
 }
+.hslide-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .hslide-img-yok { background: linear-gradient(120deg, var(--bg-elevated), var(--bg-card)); }
-/* Perde: metnin oturduğu sol taraf okunur kalsın diye yatay karartma. Görsel
-   ne kadar açık olursa olsun kontrast korunur — bu bir dekor değil, okunurluk
-   şartı. */
-.hslide-scrim {
-  position: absolute; inset: 0;
-  background: linear-gradient(90deg,
-    rgba(14,14,28,0.97) 0%, rgba(14,14,28,0.94) 38%,
-    rgba(14,14,28,0.72) 56%, rgba(14,14,28,0.16) 82%, rgba(14,14,28,0) 100%);
-}
+
 .hslide-body {
-  position: absolute; left: 0; top: 0; bottom: 0;
-  width: min(58%, 640px);
-  /* Sol ok dikeyde ortada duruyor ve özet paragrafının üstüne biniyordu;
-     gövde soldan ok genişliği kadar açılır. */
-  padding: clamp(16px, 3vw, 30px);
-  padding-left: 66px;
   display: flex; flex-direction: column; justify-content: center; gap: 9px;
+  padding: 0 clamp(16px, 3vw, 26px) clamp(16px, 3vw, 26px);
+  min-width: 0;
 }
 .hslide-kick {
   display: flex; align-items: center; gap: 10px;
@@ -767,7 +764,7 @@ button, input, textarea { font: inherit; color: inherit; }
 .hslide-kick span { color: var(--text-faint); letter-spacing: 0.04em; }
 .hslide-title {
   font-family: 'Bebas Neue', system-ui, sans-serif;
-  font-size: clamp(26px, 3.4vw, 44px); line-height: 1.02; letter-spacing: 0.02em;
+  font-size: clamp(26px, 3vw, 40px); line-height: 1.02; letter-spacing: 0.02em;
   color: var(--text); text-wrap: balance;
 }
 .hslide-desc {
@@ -786,45 +783,64 @@ button, input, textarea { font: inherit; color: inherit; }
 .hslide-score-max { color: var(--text-faint); font-weight: 400; }
 .hslide-meta { font-size: var(--fs-meta); color: var(--text-faint); }
 
+/* Gezinme kümesi: oklar + noktalar tek satırda. Oklar artık görselin üstünde
+   yüzmüyor — hem metne binme sorunu bitti hem de görselin kompozisyonu
+   kapanmadı. */
+.hslide-nav {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  padding-top: 12px;
+}
 .hslide-arrow {
-  position: absolute; top: 50%; transform: translateY(-50%);
-  width: 40px; height: 40px; border-radius: 50%;
-  background: rgba(12,12,24,0.82); border: 1px solid var(--border-strong);
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  background: var(--surface); border: 1px solid var(--border-strong);
   color: var(--text-muted); cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
   transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
 }
-.hslide-arrow-l { left: 12px; }
-.hslide-arrow-r { right: 12px; }
 @media (hover: hover) and (pointer: fine) {
-  .hslide-arrow:hover { background: rgba(12,12,24,0.95); color: var(--text); }
+  .hslide-arrow:hover { background: var(--surface-hover); color: var(--text); }
 }
-
-.hslide-dots { display: flex; justify-content: center; gap: 7px; padding-top: 12px; }
+.hslide-dots { display: flex; align-items: center; gap: 7px; }
 .hslide-dot {
   width: 8px; height: 8px; border-radius: 50%; padding: 0;
   border: none; background: var(--surface-hover); cursor: pointer;
   position: relative;
   transition: width var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out);
 }
-/* Nokta görsel olarak küçük ama parmak hedefi 44px — yıldızdaki teknik. */
+/* Nokta görsel olarak küçük ama parmak hedefi 44px. */
 .hslide-dot::after {
   content: ''; position: absolute; top: 50%; left: 50%;
   width: 32px; height: 44px; transform: translate(-50%, -50%);
 }
 .hslide-dot-on { width: 22px; border-radius: 4px; background: var(--accent); }
 
-@media (max-width: 720px) {
-  /* Dar ekranda 21:9 bir şerit metne yer bırakmıyor; kare-ye yakın orana
-     geçilir ve perde yatay yerine DİKEY olur (metin altta yaşar). */
-  .hslide { aspect-ratio: 4 / 3; }
-  .hslide-scrim {
-    background: linear-gradient(0deg,
-      rgba(14,14,28,0.97) 0%, rgba(14,14,28,0.86) 46%, rgba(14,14,28,0.1) 100%);
-  }
-  .hslide-body { width: 100%; top: auto; justify-content: flex-end; padding-left: clamp(16px, 3vw, 30px); }
+/* Yığılmış düzende görsel ve metin üst üste eklendiği için blok, önceki
+   bindirmeli düzenden uzun. Özet iki satıra iner — üç satır burada blogu
+   gereksiz uzatıyor, kısaltma bilgi kaybı değil çünkü tam metin detayda. */
+@media (max-width: 899px) {
   .hslide-desc { -webkit-line-clamp: 2; }
-  .hslide-arrow { display: none; }   /* dokunmatikte noktalar yeterli */
+}
+
+/* Geniş ekran: metin solda, görsel sağda. Görsel kabın %54'ünü alır →
+   1392px'lik kapta 751×422, yani önceki 597px'e göre yükseklikte %29 düşüş,
+   kırpma sıfır.
+
+   Eşik 760px. Daha yüksek bir eşik (900px) yığılmayı erken devreye sokuyor ve
+   820-899px bandında blok 629-664px'e çıkıyordu — yani küçültmeden ÖNCEKİ
+   597px'den bile uzun. Metnin görselden uzun olması sorun değil: görsel
+   `align-self: start` olduğu için satır yüksekliğini metin belirler, görselin
+   altında boşluk kalır. Ölçüldü, o bantta blok ~300px'e iniyor. */
+@media (min-width: 640px) {
+  .hslide {
+    grid-template-columns: minmax(0, 1fr) 54%;
+    gap: 0;
+    align-items: stretch;
+  }
+  /* align-self: start ŞART — varsayılan stretch, görseli satır yüksekliğine
+     esnetip 16:9'u bozar ve kırpmayı geri getirirdi. Böyle kalınca satır
+     yüksekliğini görsel belirler, metin içinde ortalanır. */
+  .hslide-media { order: 0; align-self: start; }
+  .hslide-body { padding: clamp(20px, 2.4vw, 32px); }
 }
 
 /* ══ SPOT IŞIĞI (HERO) ═════════════════════════════════════════════════════
