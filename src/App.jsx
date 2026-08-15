@@ -9,6 +9,7 @@ import { useStreamData, dataKey } from './hooks/useStreamData.js'
 import { useSearch }     from './hooks/useSearch.js'
 import { useRecommendations } from './hooks/useRecommendations.js'
 import { useCountryRails } from './hooks/useCountryRails.js'
+import { pickHeroItem } from './lib/hero.js'
 import { useAiSearch } from './hooks/useAiSearch.js'
 import { useFavorites } from './contexts/FavoritesContext.jsx'
 import ContentCard  from './components/ContentCard.jsx'
@@ -18,6 +19,7 @@ import RailRow      from './components/RailRow.jsx'
 import SkeletonGrid from './components/SkeletonGrid.jsx'
 import { SearchField, SearchResult } from './components/SearchBar.jsx'
 import AiSearchPanel from './components/AiSearchPanel.jsx'
+import HeroSpotlight from './components/HeroSpotlight.jsx'
 import AccountButton from './components/auth/AccountButton.jsx'
 
 // Sekme ikonları lucide'dan gelir; TABS verisi yalnız anahtarı taşır (emoji yok).
@@ -169,6 +171,22 @@ export default function App() {
   const { rails, loading: railsLoading } = useCountryRails(tab, railsEligible ? country : null)
   const showRails = railsEligible && !hasActiveFilter && !searchActive && !loading[dk]
 
+  // ── Spot ışığı (hero) ─────────────────────────────────────────────────────
+  // Konu HER ZAMAN trend listesinin tepesidir; sekme değişince spot değişmez.
+  // Bu yüzden trend verisi aktif sekmeden bağımsız olarak istenir — fetchTab
+  // kendi `loaded` kapısıyla korunduğu için tekrar istek atmaz ve Trend
+  // sekmesinin önbelleğini de peşinen ısıtır.
+  const trendKey = dataKey(country, 'trend')
+  useEffect(() => { if (!isSanaOzel) fetchTab(trendKey) }, [trendKey, isSanaOzel])
+
+  // Sıralama ölçütü lib/hero.js'te; ızgarayla aynı ölçüdü kullanması şart
+  // olduğu için orada tek yerde ve testli duruyor.
+  const heroItem = isSanaOzel ? null : pickHeroItem(data[trendKey])
+
+  // Hero raflarla aynı kapıdan geçer: arama, filtre veya AI paneli aktifken
+  // kullanıcı belirli bir şey arıyordur — küratörlü blok o niyeti böler.
+  const showHero = Boolean(heroItem) && !isSanaOzel && !aiOpen && !searchActive && !hasActiveFilter
+
   // Izgaranın başlığı: raflar varken "geri kalanı" işaret eder, tek başınayken
   // sekmenin kısa adının taşımadığı iddiayı ("en iyi") üstlenir.
   const kindWord = tab === 'filmler' ? 'filmler' : 'diziler'
@@ -202,7 +220,7 @@ export default function App() {
           Önceki dört bant içeriği ekranın beşte birine kadar aşağı itiyordu. */}
       <header className="app-header">
         <div className="hdr-row">
-          <span className="brand">StreamTR</span>
+          <span className="brand">Stream<span className="brand-tr">TR</span></span>
 
           <nav className="tabs" aria-label="Bölümler">
             {TABS.map(t => {
@@ -362,6 +380,9 @@ export default function App() {
         {/* Arama sonucu ve sistem uyarıları içerik alanında yaşar; araç rayı
             yalnız kontrolleri taşır. */}
         <SearchResult search={search} />
+
+        {/* ── SPOT IŞIĞI ────────────────────────────────────────────────── */}
+        {showHero && <HeroSpotlight item={heroItem} />}
 
         {/* ── EDİTORYAL RAFLAR ──────────────────────────────────────────── */}
         {showRails && rails.length > 0 && (

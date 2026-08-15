@@ -94,6 +94,10 @@ export const THEMES = [
       '--text-faint':      'rgba(255,255,255,0.58)',
       '--tab-active':      '#F5C518',
       '--hover-border':    'rgba(245,197,24,0.42)',
+      // Marka bloğu: başlık bandındaki kütle. Zemin ASLA vurgu rengi olmaz —
+      // vurgu yalnız "TR" hecesinde ve kenarda kalır (tek altın odak kuralı).
+      '--brand-bg':        '#312E81',
+      '--brand-ink':       '#F5F4FA',
       '--trend-bar':       'linear-gradient(90deg,#F5C518,#E50914)',
       '--card-backdrop':   'none',
     }
@@ -125,6 +129,8 @@ export const THEMES = [
       '--text-faint':      'rgba(255,255,255,0.58)',
       '--tab-active':      '#E50914',
       '--hover-border':    'rgba(229,9,20,0.55)',
+      '--brand-bg':        '#40080C',
+      '--brand-ink':       '#FFFFFF',
       '--trend-bar':       'linear-gradient(90deg,#E50914,#e85f5f)',
       '--card-backdrop':   'none',
     }
@@ -156,6 +162,9 @@ export const THEMES = [
       '--text-faint':      'rgba(255,255,255,0.58)',
       '--tab-active':      '#b068cc',
       '--hover-border':    'rgba(176,104,204,0.55)',
+      // Cam temasında bile marka bloğu OPAK: bandın kimliği bulanıklaşmamalı.
+      '--brand-bg':        '#2E1A45',
+      '--brand-ink':       '#FFFFFF',
       '--trend-bar':       'linear-gradient(90deg,#8a4faa,#c04ee0)',
       '--card-backdrop':   'blur(12px)',
     }
@@ -185,6 +194,8 @@ export const THEMES = [
       '--text-faint':      'rgba(220,240,250,0.58)',
       '--tab-active':      '#009fd4',
       '--hover-border':    'rgba(0,159,212,0.55)',
+      '--brand-bg':        '#0A2A52',
+      '--brand-ink':       '#DDF0FA',
       '--trend-bar':       'linear-gradient(90deg,#009fd4,#00c89e)',
       '--card-backdrop':   'none',
     }
@@ -214,6 +225,8 @@ export const THEMES = [
       '--text-faint':      'rgba(224,250,224,0.58)',
       '--tab-active':      '#00dc8a',
       '--hover-border':    'rgba(0,220,138,0.55)',
+      '--brand-bg':        '#0B2A1E',
+      '--brand-ink':       '#E0FAE0',
       '--trend-bar':       'linear-gradient(90deg,#00dc8a,#00aee0)',
       '--card-backdrop':   'none',
     }
