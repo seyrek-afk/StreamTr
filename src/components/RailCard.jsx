@@ -11,7 +11,7 @@ import { fmtCount } from '../lib/cards.js'
 // (açılır bölümler, oyuncu şeridi, kriter rozetleri). Yatay bir rafa sokulursa
 // hem satır yüksekliği kontrolden çıkar hem de kaydırma sırasında açılır bölümler
 // düzeni kırar. Raf kartı bilinçli olarak tek işe hizmet eder: tanı ve tıkla.
-export default function RailCard({ item }) {
+export default function RailCard({ item, cikiyor }) {
   const [open, setOpen] = useState(false)
 
   const score = item.imdbScore
@@ -19,7 +19,7 @@ export default function RailCard({ item }) {
   return (
     <>
       <div
-        className="rail-card"
+        className={`rail-card${cikiyor ? ' cikiyor' : ''}`}
         role="button"
         tabIndex={0}
         onClick={() => setOpen(true)}

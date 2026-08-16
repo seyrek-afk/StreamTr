@@ -209,9 +209,15 @@ export function FavoritesProvider({ children }) {
 
   const durum = useCallback((item) => durumOf(kayit(item)), [kayit])
 
-  // TEK yazma kapısı. Dışlayıcılık burada, çağıranda değil: üç düğmenin her
-  // biri "diğerlerini de sıfırla" demeyi unutabilirdi, kural tek yerde durur.
-  const setDurum = useCallback((item, hedef) => {
+  // ── Geri alma ──────────────────────────────────────────────────────────────
+  // Durumlar dışlayıcı olduğu için HER dokunuş öncekini siler; yanlış basan
+  // kullanıcının önceki durumunu kurtaracak bir yol olmalı. Önceki durumu
+  // bilen tek yer burası, bu yüzden kayıt da burada tutulur — bileşenler
+  // "az önce ne vardı" sorusunu cevaplayamaz.
+  const [sonIslem, setSonIslem] = useState(null)
+  const temizle = useCallback(() => setSonIslem(null), [])
+
+  const yaz = useCallback((item, hedef) => {
     guncelle(item, () => ({
       like:      hedef === DURUM_BEGENI ? LIKE_YES
                : hedef === DURUM_BAYILMA ? LIKE_LOVE
@@ -219,6 +225,26 @@ export function FavoritesProvider({ children }) {
       watchlist: hedef === DURUM_IZLEME,
     }))
   }, [guncelle])
+
+  // TEK yazma kapısı. Dışlayıcılık burada, çağıranda değil: üç düğmenin her
+  // biri "diğerlerini de sıfırla" demeyi unutabilirdi, kural tek yerde durur.
+  const setDurum = useCallback((item, hedef) => {
+    const k = favKey(item)
+    if (!k) return
+    const onceki = durumOf(savedRef.current.find(f => f.key === k))
+    if (onceki === hedef) return
+    yaz(item, hedef)
+    setSonIslem({ key: k, item, onceki, yeni: hedef, at: Date.now() })
+  }, [yaz])
+
+  // Geri alma kaydın KENDİSİNİ geri yazar; yeni bir "son işlem" üretmez, yoksa
+  // bildirim kendi kendini doğurur ve kullanıcı döngüden çıkamaz.
+  const geriAl = useCallback(() => {
+    setSonIslem(prev => {
+      if (prev) yaz(prev.item, prev.onceki)
+      return null
+    })
+  }, [yaz])
 
   const liked     = saved.filter(f => f.like === LIKE_YES)
   const loved     = saved.filter(f => f.like === LIKE_LOVE)
@@ -228,7 +254,7 @@ export function FavoritesProvider({ children }) {
     <FavoritesContext.Provider
       value={{
         saved, liked, loved, watchlist,
-        durum, setDurum,
+        durum, setDurum, sonIslem, geriAl, sonIslemiTemizle: temizle,
         count: saved.length, syncing,
       }}
     >
