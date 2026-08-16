@@ -1,30 +1,41 @@
 import { ThumbsUp, Heart, Bookmark } from 'lucide-react'
-import { useFavorites, LIKE_NONE, LIKE_YES, LIKE_LOVE } from '../contexts/FavoritesContext.jsx'
+import {
+  useFavorites,
+  DURUM_YOK, DURUM_BEGENI, DURUM_BAYILMA, DURUM_IZLEME,
+} from '../contexts/FavoritesContext.jsx'
 
 // Kaydetme grubu — üç simge yan yana, her yerde aynı.
 //
-// Önceki tasarım tek kalpti ve üç durumu DÖNGÜYLE geziyordu. İki sorunu vardı:
-// bir sonraki durumu görmek için tıklamak gerekiyordu, ve "Beğendim" ile
-// "Bayıldım" aynı simgenin iki tonuydu — ayrıştırıcı değildi. Artık:
+//   👍 Beğendim     ♥ Bayıldım     🔖 İzleyeceğim
 //
-//   👍 Beğendim     — başparmak
-//   ♥  Bayıldım     — kalp
-//   🔖 İzleyeceğim  — ayraç
+// Üçü BİRBİRİNİ DIŞLAR: son seçim kazanır. Bir yapımın tek bir durumu olur.
+// Gerekçe ve bedeli FavoritesContext'te yazılı (özet: puan vermek "izledim"
+// demektir, kayıt izleme kuyruğundan düşmelidir).
 //
-// Üçü de DOĞRUDAN erişilir: hangi durumu istiyorsan ona basarsın, aradaki
-// durumlardan geçmen gerekmez. Beğendim ile Bayıldım aynı eksenin iki değeri
-// olduğu için birbirini dışlar (birine basmak diğerini bırakır); ayraç bağımsız.
-// Aynı düğmeye tekrar basmak o durumu kaldırır.
+// Aynı düğmeye tekrar basmak durumu kaldırır — yani üç düğme bir radyo grubu
+// gibi ama "hiçbiri" de geçerli bir durum.
 //
-// KONUM: grup posterin ÜSTÜNDE değil kartın bilgi alanında yaşar. Ölçüldü —
-// 3 × 44px hedef 132px ister, kart posteri ise masaüstünde 108px. Postere
-// sığdırmak ya hedefleri küçültmeyi ya da poster sanatının üçte ikisini
-// kapatmayı gerektirirdi; ikisi de "posterler kahraman" tezine aykırı.
+// KONUM: grup posterin üstünde değil kartın bilgi alanında. Ölçüldü — 3 × 44px
+// hedef 132px ister, kart posteri masaüstünde 108px.
+
+const SIMGELER = [
+  {
+    durum: DURUM_BEGENI, Icon: ThumbsUp, sinif: 'like1-btn',
+    ad: 'Beğendim olarak işaretle', adAcik: 'Beğenimi kaldır', baslik: 'Beğendim',
+  },
+  {
+    durum: DURUM_BAYILMA, Icon: Heart, sinif: 'like2-btn',
+    ad: 'Bayıldım olarak işaretle', adAcik: 'Bayıldım işaretini kaldır', baslik: 'Bayıldım',
+  },
+  {
+    durum: DURUM_IZLEME, Icon: Bookmark, sinif: 'watch-btn',
+    ad: 'İzleyeceklerime ekle', adAcik: 'İzleyeceklerimden çıkar', baslik: 'İzleyeceğim',
+  },
+]
 
 export default function SaveControls({ item, size = 16 }) {
-  const { likeLevel, isWatchlisted, setLike, toggleWatchlist } = useFavorites()
-  const seviye = likeLevel(item)
-  const izlenecek = isWatchlisted(item)
+  const { durum, setDurum } = useFavorites()
+  const mevcut = durum(item)
 
   const dur = (e) => { e.preventDefault(); e.stopPropagation() }
 
@@ -36,41 +47,23 @@ export default function SaveControls({ item, size = 16 }) {
       onClick={dur}
       onKeyDown={(e) => e.stopPropagation()}
     >
-      <button
-        type="button"
-        className={`save-btn like1-btn${seviye === LIKE_YES ? ' save-btn-on' : ''}`}
-        style={{ width: size + 16, height: size + 16 }}
-        aria-pressed={seviye === LIKE_YES}
-        title={seviye === LIKE_YES ? 'Beğendim — kaldır' : 'Beğendim'}
-        aria-label={seviye === LIKE_YES ? 'Beğenimi kaldır' : 'Beğendim olarak işaretle'}
-        onClick={(e) => { dur(e); setLike(item, seviye === LIKE_YES ? LIKE_NONE : LIKE_YES) }}
-      >
-        <ThumbsUp size={size} fill={seviye === LIKE_YES ? 'currentColor' : 'none'} aria-hidden="true" />
-      </button>
-
-      <button
-        type="button"
-        className={`save-btn like2-btn${seviye === LIKE_LOVE ? ' save-btn-on' : ''}`}
-        style={{ width: size + 16, height: size + 16 }}
-        aria-pressed={seviye === LIKE_LOVE}
-        title={seviye === LIKE_LOVE ? 'Bayıldım — kaldır' : 'Bayıldım'}
-        aria-label={seviye === LIKE_LOVE ? 'Bayıldım işaretini kaldır' : 'Bayıldım olarak işaretle'}
-        onClick={(e) => { dur(e); setLike(item, seviye === LIKE_LOVE ? LIKE_NONE : LIKE_LOVE) }}
-      >
-        <Heart size={size} fill={seviye === LIKE_LOVE ? 'currentColor' : 'none'} aria-hidden="true" />
-      </button>
-
-      <button
-        type="button"
-        className={`save-btn watch-btn${izlenecek ? ' save-btn-on' : ''}`}
-        style={{ width: size + 16, height: size + 16 }}
-        aria-pressed={izlenecek}
-        title={izlenecek ? 'İzleyeceklerimden çıkar' : 'İzleyeceğim'}
-        aria-label={izlenecek ? 'İzleyeceklerimden çıkar' : 'İzleyeceklerime ekle'}
-        onClick={(e) => { dur(e); toggleWatchlist(item) }}
-      >
-        <Bookmark size={size} fill={izlenecek ? 'currentColor' : 'none'} aria-hidden="true" />
-      </button>
+      {SIMGELER.map(({ durum: d, Icon, sinif, ad, adAcik, baslik }) => {
+        const acik = mevcut === d
+        return (
+          <button
+            key={d}
+            type="button"
+            className={`save-btn ${sinif}${acik ? ' save-btn-on' : ''}`}
+            style={{ width: size + 16, height: size + 16 }}
+            aria-pressed={acik}
+            title={acik ? `${baslik} — kaldır` : baslik}
+            aria-label={acik ? adAcik : ad}
+            onClick={(e) => { dur(e); setDurum(item, acik ? DURUM_YOK : d) }}
+          >
+            <Icon size={size} fill={acik ? 'currentColor' : 'none'} aria-hidden="true" />
+          </button>
+        )
+      })}
     </div>
   )
 }

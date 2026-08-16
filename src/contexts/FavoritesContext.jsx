@@ -9,15 +9,39 @@ const FavoritesContext = createContext(null)
 // görünmez kılardı.
 const STORAGE_KEY = 'streamtr-favorites'
 
-// ── İki eksen ────────────────────────────────────────────────────────────────
-// Eskiden tek "favori" bayrağı vardı ve iki ayrı niyeti taşıyordu: "bunu
-// sevdim" ile "bunu izlemek istiyorum". Artık ayrı:
-//   like      → 0 yok · 1 Beğendim · 2 Bayıldım
-//   watchlist → İzleyeceklerim (beğeniden BAĞIMSIZ; bir yapım hem bayıldığın
-//               hem yeniden izlemek istediğin olabilir)
+// ── Tek durum ────────────────────────────────────────────────────────────────
+// Bir yapımın kullanıcıya göre TEK bir durumu vardır ve üçü birbirini dışlar:
+//   Beğendim · Bayıldım · İzleyeceğim
+//
+// Neden dışlayıcı: puan vermek "izledim" demektir, dolayısıyla kayıt izleme
+// kuyruğundan düşmelidir. Aksi halde İzleyeceklerim zamanla çoktan izlenmiş
+// yapımlarla dolar ve işe yaramaz hale gelir — kimse elle temizlemez.
+// (Letterboxd/IMDb/Trakt de puanlamayı izleme listesinden otomatik düşürür.)
+//
+// Bedeli bilinerek kabul edildi: "izledim, bayıldım, tekrar izleyeceğim"
+// durumu ifade edilemez. StreamTR bir film günlüğü değil keşif uygulaması,
+// kuyruk/geçmiş ayrımının karşılığı burada zayıf.
+//
+// DEPOLAMA iki alanda kalır (like + watchlist): şema değişmesin, göç
+// gerekmesin. Değişmez kural: ikisi AYNI ANDA dolu olamaz — okuma anında
+// normalize edilir, yazma tek kapıdan geçer.
 export const LIKE_NONE = 0
 export const LIKE_YES  = 1
 export const LIKE_LOVE = 2
+
+// Tek durum kodları (okuma/yazma arayüzü)
+export const DURUM_YOK    = 0
+export const DURUM_BEGENI = 1
+export const DURUM_BAYILMA = 2
+export const DURUM_IZLEME = 3
+
+export const durumOf = (kayit) => {
+  if (!kayit) return DURUM_YOK
+  // Puan varsa o kazanır: puanlamak izlemeyi ima eder, tersi ima etmez.
+  if (kayit.like === LIKE_YES)  return DURUM_BEGENI
+  if (kayit.like === LIKE_LOVE) return DURUM_BAYILMA
+  return kayit.watchlist ? DURUM_IZLEME : DURUM_YOK
+}
 
 // ── Kararlı kimlik anahtarı ──────────────────────────────────────────────────
 // TMDB öğeleri _tmdbId/_mediaType (kart) veya tmdbId/mediaType (mini/arama) taşır.
@@ -65,9 +89,13 @@ function toSnapshot(item) {
 export function migrateSaved(list) {
   return (Array.isArray(list) ? list : [])
     .filter(Boolean)
-    .map(f => (typeof f.like === 'number'
-      ? f
-      : { ...f, like: LIKE_YES, watchlist: false }))
+    .map(f => {
+      const t = typeof f.like === 'number' ? f : { ...f, like: LIKE_YES, watchlist: false }
+      // Dışlayıcılık okuma anında da uygulanır: iki eksen bağımsızken kaydedilmiş
+      // kayıtlarda ikisi birden dolu olabilir. Puan kazanır, izleme işareti düşer
+      // — yoksa aynı yapım hem Bayıldıklarım hem İzleyeceklerim rafında görünürdü.
+      return (t.like > LIKE_NONE && t.watchlist) ? { ...t, watchlist: false } : t
+    })
 }
 
 // Kaydın var olma nedeni kalmadıysa (ne beğeni ne izleme listesi) silinir.
@@ -152,7 +180,8 @@ export function FavoritesProvider({ children }) {
 
     const mevcut = savedRef.current.find(f => f.key === k)
     const taban  = mevcut || toSnapshot(item)
-    const yeni   = donustur(taban)
+    // Dönüştürücü yalnız durum alanlarını döndürür; snapshot'ın geri kalanı korunur.
+    const yeni   = { ...taban, ...donustur(taban) }
 
     setSaved(prev => {
       const digerleri = prev.filter(f => f.key !== k)
@@ -178,18 +207,17 @@ export function FavoritesProvider({ children }) {
     [saved]
   )
 
-  const likeLevel     = useCallback((item) => kayit(item)?.like ?? LIKE_NONE, [kayit])
-  const isWatchlisted = useCallback((item) => Boolean(kayit(item)?.watchlist), [kayit])
+  const durum = useCallback((item) => durumOf(kayit(item)), [kayit])
 
-  // Doğrudan seçim: hangi kademe isteniyorsa o yazılır. Döngü kaldırıldı —
-  // üç simge yan yana durduğu için aradaki durumlardan geçmeye gerek yok.
-  // Beğendim ile Bayıldım aynı eksenin iki değeri, bu yüzden birbirini dışlar.
-  const setLike = useCallback((item, seviye) => {
-    guncelle(item, s => ({ ...s, like: seviye }))
-  }, [guncelle])
-
-  const toggleWatchlist = useCallback((item) => {
-    guncelle(item, s => ({ ...s, watchlist: !s.watchlist }))
+  // TEK yazma kapısı. Dışlayıcılık burada, çağıranda değil: üç düğmenin her
+  // biri "diğerlerini de sıfırla" demeyi unutabilirdi, kural tek yerde durur.
+  const setDurum = useCallback((item, hedef) => {
+    guncelle(item, () => ({
+      like:      hedef === DURUM_BEGENI ? LIKE_YES
+               : hedef === DURUM_BAYILMA ? LIKE_LOVE
+               : LIKE_NONE,
+      watchlist: hedef === DURUM_IZLEME,
+    }))
   }, [guncelle])
 
   const liked     = saved.filter(f => f.like === LIKE_YES)
@@ -200,7 +228,7 @@ export function FavoritesProvider({ children }) {
     <FavoritesContext.Provider
       value={{
         saved, liked, loved, watchlist,
-        likeLevel, isWatchlisted, setLike, toggleWatchlist,
+        durum, setDurum,
         count: saved.length, syncing,
       }}
     >
