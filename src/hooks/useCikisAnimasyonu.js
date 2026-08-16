@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 
 // Çıkış animasyonu süresi — CSS'teki .cikiyor animasyonuyla AYNI olmalı.
-export const CIKIS_MS = 420
+//
+// 420ms'ti; kartın kaybolduğunu görmek için kısa geldi. Süre uzatıldı ve
+// önüne BEKLEME kondu: kart ilk %35'te tam görünür kalır, sonra söner.
+// Yalnız süreyi uzatmak "yavaş solma" olurdu; bekleme "gördüm, sonra gitti"
+// hissi verir — göz değişimi yakalayacak zamanı ancak böyle buluyor.
+export const CIKIS_MS = 640
 
 // Listeden düşen öğeleri kısa bir süre daha çizmeye devam eder.
 //
