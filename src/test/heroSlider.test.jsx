@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react'
 import React from 'react'
 import HeroSlider from '../components/HeroSlider.jsx'
 import SaveControls from '../components/SaveControls.jsx'
+import UndoToast from '../components/UndoToast.jsx'
 import { FavoritesProvider } from '../contexts/FavoritesContext.jsx'
 
 const sar = (ui) => render(<FavoritesProvider>{ui}</FavoritesProvider>)
@@ -144,5 +145,53 @@ describe('SaveControls — üçlü grup', () => {
   it('grubun erişilebilir adı yapımı söyler', () => {
     sar(<SaveControls item={yapim(1)} />)
     expect(screen.getByRole('group', { name: 'Yapım 1 — kaydetme' })).toBeTruthy()
+  })
+})
+
+describe('UndoToast — geri al bildirimi', () => {
+  beforeEach(() => { localStorage.clear() })
+
+  const sarToast = (ui) => render(
+    <FavoritesProvider>{ui}<UndoToast /></FavoritesProvider>
+  )
+
+  it('durum değişince ne olduğunu SOMUT söyler ve geri al sunar', () => {
+    sarToast(<SaveControls item={yapim(1)} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Beğendim olarak işaretle' }))
+    expect(screen.getByText(/Beğendiklerime eklendi/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Geri al/ })).toBeTruthy()
+  })
+
+  // Dışlayıcı modelde en kritik bilgi ÖNCEKİ durumun silindiğidir; mesaj
+  // "kaydedildi" deyip geçerse kullanıcı ne kaybettiğini bilemez.
+  it('taşıma mesajı hem çıkılan hem girilen listeyi adlandırır', () => {
+    sarToast(<SaveControls item={yapim(1)} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Beğendim olarak işaretle' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Bayıldım olarak işaretle' }))
+    expect(screen.getByText(/Beğendiklerimden Bayıldıklarıma taşındı/)).toBeTruthy()
+  })
+
+  it('geri al önceki durumu gerçekten geri yükler', () => {
+    const { container } = sarToast(<SaveControls item={yapim(1)} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Beğendim olarak işaretle' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Bayıldım olarak işaretle' }))
+    fireEvent.click(screen.getByRole('button', { name: /Geri al/ }))
+    expect(screen.getByRole('button', { name: 'Beğenimi kaldır' }).getAttribute('aria-pressed')).toBe('true')
+    expect(container.querySelectorAll('.save-btn[aria-pressed="true"]')).toHaveLength(1)
+  })
+
+  // Geri alma yeni bir "son işlem" üretmemeli, yoksa bildirim kendi kendini
+  // doğurur ve kullanıcı döngüden çıkamaz.
+  it('geri aldıktan sonra bildirim kapanır', () => {
+    sarToast(<SaveControls item={yapim(1)} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Beğendim olarak işaretle' }))
+    fireEvent.click(screen.getByRole('button', { name: /Geri al/ }))
+    expect(screen.queryByRole('button', { name: /Geri al/ })).toBeNull()
+  })
+
+  it('odağı çalmaz — role=status ile duyurur', () => {
+    sarToast(<SaveControls item={yapim(1)} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Beğendim olarak işaretle' }))
+    expect(screen.getByRole('status')).toBeTruthy()
   })
 })

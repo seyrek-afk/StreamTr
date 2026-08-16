@@ -8,7 +8,7 @@ import RailCard from './RailCard.jsx'
 // zaten doğal kaydırma vardır, ok koymak ekranı boş yere kalabalıklaştırır.
 // Kenardayken ilgili ok gizlenir: tıklanamaz bir kontrol göstermek yerine hiç
 // göstermemek daha sakin bir arayüz verir.
-export default function RailRow({ title, items, onShowAll }) {
+export default function RailRow({ title, items, onShowAll, cikanlar }) {
   const scrollerRef = useRef(null)
   const [atStart, setAtStart] = useState(true)
   const [atEnd,   setAtEnd]   = useState(false)
@@ -68,7 +68,11 @@ export default function RailRow({ title, items, onShowAll }) {
 
         <div className="rail-scroller" ref={scrollerRef}>
           {items.map((item, i) => (
-            <RailCard key={`${item._mediaType}-${item._tmdbId || item.title}-${i}`} item={item} />
+            <RailCard
+              key={`${item._mediaType}-${item._tmdbId || item.title}-${i}`}
+              item={item}
+              cikiyor={cikanlar?.has(item.key)}
+            />
           ))}
         </div>
 

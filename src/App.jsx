@@ -10,6 +10,7 @@ import { useSearch }     from './hooks/useSearch.js'
 import { useRecommendations } from './hooks/useRecommendations.js'
 import { useCountryRails } from './hooks/useCountryRails.js'
 import { usePlatforms } from './hooks/usePlatforms.js'
+import { useCikisAnimasyonu } from './hooks/useCikisAnimasyonu.js'
 import { useAiSearch } from './hooks/useAiSearch.js'
 import { useFavorites } from './contexts/FavoritesContext.jsx'
 import ContentCard  from './components/ContentCard.jsx'
@@ -18,6 +19,7 @@ import Dropdown     from './components/Dropdown.jsx'
 import RailRow      from './components/RailRow.jsx'
 import Segmented    from './components/Segmented.jsx'
 import HeroSlider   from './components/HeroSlider.jsx'
+import UndoToast    from './components/UndoToast.jsx'
 import SkeletonGrid from './components/SkeletonGrid.jsx'
 import { SearchField, SearchResult } from './components/SearchBar.jsx'
 import AiSearchPanel from './components/AiSearchPanel.jsx'
@@ -53,6 +55,19 @@ function buildYearBuckets(years) {
 
 // Mercekte kısayol olarak sabitlenen ülke. Uygulamanın kimliği bu.
 const HOME_COUNTRY = 'TR'
+
+// Bana Özel rafı — çıkış animasyonu kanca gerektirdiği için ayrı bileşen:
+// kancalar döngü içinde çağrılamaz.
+//
+// Boş raf çizilmez ama ÇIKIŞ SIRASINDA çizilmeye devam eder: son öğe de
+// ayrılırken rafın aniden yok olması, kartın kaybolmasını görmeyi engellerdi.
+function SoRaf({ baslik, items, onShowAll }) {
+  const { gorunen, cikanAnahtarlar } = useCikisAnimasyonu(items)
+  if (gorunen.length === 0) return null
+  return (
+    <RailRow title={baslik} items={gorunen} onShowAll={onShowAll} cikanlar={cikanAnahtarlar} />
+  )
+}
 
 export default function App() {
   const [tab,             setTab]            = useState('diziler')
@@ -455,8 +470,11 @@ export default function App() {
             <>
               <div className="grid-head">
                 <h2 className="grid-title">{soListeler[acikListe].baslik}</h2>
-                <button className="btn-text" onClick={() => setAcikListe(null)}>
-                  <ChevronLeft size={14} aria-hidden="true" /> Tüm listelere dön
+                {/* Raflardaki "Tümü" ile aynı dil (.link-btn). Önceki sınıf
+                    (btn-text) CSS'te hiç tanımlı DEĞİLDİ; düğme tarayıcı
+                    varsayılanıyla çizilip okunmuyordu. */}
+                <button className="link-btn" onClick={() => setAcikListe(null)}>
+                  <ChevronLeft size={14} aria-hidden="true" /> Geri dön
                 </button>
               </div>
               {soListeler[acikListe].items.length === 0 ? (
@@ -484,18 +502,14 @@ export default function App() {
               )}
 
               {/* Boş raf çizilmez: sayfayı uzatır, bilgi vermez. */}
-              {['oneriler', 'loved', 'liked', 'watchlist'].map(anahtar => {
-                const { baslik, items } = soListeler[anahtar]
-                if (items.length === 0) return null
-                return (
-                  <RailRow
-                    key={anahtar}
-                    title={baslik}
-                    items={items}
-                    onShowAll={() => setAcikListe(anahtar)}
-                  />
-                )
-              })}
+              {['oneriler', 'loved', 'liked', 'watchlist'].map(anahtar => (
+                <SoRaf
+                  key={anahtar}
+                  baslik={soListeler[anahtar].baslik}
+                  items={soListeler[anahtar].items}
+                  onShowAll={() => setAcikListe(anahtar)}
+                />
+              ))}
             </>
           )}
         </>
@@ -621,6 +635,8 @@ export default function App() {
           Özgür Seyrek — <a href="mailto:seyrek@gmail.com">seyrek@gmail.com</a>
         </p>
       </footer>
+
+      <UndoToast />
     </div>
   )
 }
