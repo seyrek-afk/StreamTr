@@ -5,13 +5,16 @@ import SaveControls from './SaveControls.jsx'
 
 const DONUS_MS = 7000
 
-// Sana Özel vitrini — önerilerin ilk N'i, geniş görselle.
+// Vitrin — bir listenin ilk N'i, geniş görselle. HER SEKMEDE aynı bileşen:
+// Bana Özel'de öneriler, Diziler/Filmler'de listenin zirvesi, Trend'de
+// haftanın en çok konuşulanları. Tek yapımlık ayrı bir 'spot ışığı' bileşeni
+// vardı; aynı işi yaptığı için kaldırıldı.
 //
 // Otomatik dönüş üç durumda DURUR: fare üstündeyken, odak içerideyken ve
 // kullanıcı azaltılmış hareket istediğinde. Sonuncusu bir tercih değil kural:
 // kendi kendine hareket eden bir blok, vestibüler duyarlılığı olan kullanıcı
 // için en rahatsız edici öğedir.
-export default function HeroSlider({ items = [], count = 10 }) {
+export default function HeroSlider({ items = [], count = 10, kicker = 'Listenin zirvesinde' }) {
   const dilimler = items.slice(0, count)
   const [i, setI] = useState(0)
   const [acik, setAcik] = useState(null)
@@ -49,7 +52,7 @@ export default function HeroSlider({ items = [], count = 10 }) {
       className="hslider"
       ref={kokRef}
       aria-roledescription="carousel"
-      aria-label="Sana özel öneriler"
+      aria-label={kicker}
       onMouseEnter={() => setDurdur(true)}
       onMouseLeave={() => setDurdur(false)}
       onFocusCapture={() => setDurdur(true)}
@@ -65,7 +68,7 @@ export default function HeroSlider({ items = [], count = 10 }) {
       >
         <div className="hslide-body">
           <p className="hslide-kick">
-            Sana özel öneri
+            {kicker}
             <span className="tnum">{i + 1} / {n}</span>
           </p>
           <h2 className="hslide-title">{item.title}</h2>

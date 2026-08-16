@@ -59,6 +59,20 @@ describe('HeroSlider', () => {
     expect(screen.getByRole('tab', { name: '3. öneri: Yapım 3' }).getAttribute('aria-selected')).toBe('true')
   })
 
+  // Kicker çağırandan gelir: aynı bileşen Diziler'de "Listenin zirvesinde",
+  // Trend'de "Bu hafta perdede", Bana Özel'de "Bana özel öneri" der. Bileşenin
+  // hangi listeyi taşıdığını bilmesi gerekmez.
+  it('kicker metnini ve sıra sayacını çağırandan alır', () => {
+    sar(<HeroSlider items={uc} kicker="Bu hafta perdede" />)
+    expect(screen.getByText(/Bu hafta perdede/)).toBeTruthy()
+    expect(screen.getByText('1 / 3')).toBeTruthy()
+  })
+
+  it('kicker verilmezse güvenli bir metne düşer', () => {
+    sar(<HeroSlider items={uc} />)
+    expect(screen.getByText(/Listenin zirvesinde/)).toBeTruthy()
+  })
+
   it('tek yapım varsa ok ve nokta çizilmez — tıklanacak bir şey yok', () => {
     const { container } = sar(<HeroSlider items={[yapim(1)]} />)
     expect(screen.queryByRole('button', { name: 'Sonraki öneri' })).toBeNull()

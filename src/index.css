@@ -843,81 +843,6 @@ button, input, textarea { font: inherit; color: inherit; }
   .hslide-body { padding: clamp(20px, 2.4vw, 32px); }
 }
 
-/* ══ SPOT IŞIĞI (HERO) ═════════════════════════════════════════════════════
-   Izgara "hepsi eşit" der; bu blok "önce şuna bak" der. Trend listesinin
-   tepesindeki yapımı taşır. Zemindeki eğim marka bloğunun rengiyle aynı
-   kaynaktan gelir (--brand-bg): başlıktaki kütle burada bir kez daha, daha
-   yumuşak biçimde tekrar eder — sayfanın iki ucu aynı dili konuşur. */
-.hero {
-  display: grid;
-  grid-template-columns: 132px minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
-  padding: 18px;
-  margin-bottom: var(--section-gap);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--bg-card);
-}
-/* color-mix desteklenmiyorsa bu bildirim tümüyle düşer ve üstteki düz zemin
-   kalır — hero yine okunur, yalnız eğimsiz. */
-.hero {
-  background:
-    linear-gradient(100deg, color-mix(in srgb, var(--brand-bg) 62%, transparent), transparent 70%),
-    var(--bg-card);
-}
-
-.hero-poster { position: relative; width: 132px; }
-.hero-poster-hit {
-  display: block; width: 100%;
-  background: none; border: none; padding: 0;
-  border-radius: var(--r-md); overflow: hidden;
-  cursor: pointer;
-}
-.hero-poster .poster-img,
-.hero-poster .poster-fallback { aspect-ratio: 2 / 3; width: 100%; height: auto; }
-
-.hero-body { min-width: 0; }
-
-.hero-kicker {
-  font-size: var(--fs-micro);
-  letter-spacing: 0.16em; text-transform: uppercase;
-  color: var(--accent-ink);
-  margin-bottom: 8px;
-}
-
-.hero-title {
-  font-family: 'Bebas Neue', system-ui, sans-serif;
-  font-size: 34px; line-height: 1.04; letter-spacing: 0.02em;
-  color: var(--text);
-  text-wrap: balance;
-  margin-bottom: 8px;
-}
-
-/* Özet üç satırda kesilir: hero bir künye, bir makale değil. */
-.hero-desc {
-  font-size: var(--fs-body); line-height: 1.55;
-  color: var(--text-muted);
-  max-width: 62ch;
-  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
-  overflow: hidden;
-  margin-bottom: 14px;
-}
-
-.hero-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; }
-
-.hero-score {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 3px 9px; border-radius: var(--r-sm);
-  border: 1px solid rgba(var(--accent-rgb), 0.38);
-  color: var(--accent-ink);
-  font-size: var(--fs-meta); font-weight: 600;
-}
-.hero-score svg { color: var(--accent); }
-.hero-score-max { color: var(--text-faint); font-weight: 400; }
-
-.hero-meta { font-size: var(--fs-meta); color: var(--text-faint); }
-
 /* ══ İÇERİK KARTI ══════════════════════════════════════════════════════════
    Okuma sırası: poster → başlık+yıl → tek kahraman puan → tür → nerede izlenir.
    Önce her bilgi kendi çerçeveli rozetindeydi; on rozet aynı ağırlıkta
@@ -1483,14 +1408,6 @@ code { font-size: 0.92em; color: var(--accent-ink); }
   .cc-lead { flex-direction: column; }
   .cc-lead-poster { width: 104px; height: 156px; }
 
-  /* Hero dar ekranda da yan yana kalır: alt alta geçince poster ekranın
-     yarısını yiyor ve blok "kart" olmaktan çıkıp sayfaya dönüşüyor. */
-  .hero { grid-template-columns: 96px minmax(0, 1fr); gap: 14px; padding: 14px; }
-  .hero-poster { width: 96px; }
-  .hero-title { font-size: 26px; }
-  /* Künye kendi satırına iner. Aksi hâlde eylem satırı üçe bölünüyor ve favori
-     yıldızı en altta tek başına, öksüz kalıyordu. */
-  .hero-meta { flex-basis: 100%; order: 9; }
 }
 
 /* Çok dar ekranda başlık düğmeleri ikona iner; etiket yerine erişilebilir ad
