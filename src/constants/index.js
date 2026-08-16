@@ -54,7 +54,7 @@ export const TABS = [
   { id: "diziler",  icon: "tv",    label: "Diziler"    },
   { id: "filmler",  icon: "film",  label: "Filmler"    },
   { id: "trend",    icon: "flame", label: "Trend"      },
-  { id: "sanaozel", icon: "star",  label: "Sana Özel"  },
+  { id: "sanaozel", icon: "star",  label: "Bana Özel"  },
 ]
 
 // ── Tema Sistemi ──────────────────────────────────────────────────────────────

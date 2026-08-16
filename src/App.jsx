@@ -9,7 +9,6 @@ import { useStreamData, dataKey } from './hooks/useStreamData.js'
 import { useSearch }     from './hooks/useSearch.js'
 import { useRecommendations } from './hooks/useRecommendations.js'
 import { useCountryRails } from './hooks/useCountryRails.js'
-import { pickHeroItem } from './lib/hero.js'
 import { usePlatforms } from './hooks/usePlatforms.js'
 import { useAiSearch } from './hooks/useAiSearch.js'
 import { useFavorites } from './contexts/FavoritesContext.jsx'
@@ -22,7 +21,6 @@ import HeroSlider   from './components/HeroSlider.jsx'
 import SkeletonGrid from './components/SkeletonGrid.jsx'
 import { SearchField, SearchResult } from './components/SearchBar.jsx'
 import AiSearchPanel from './components/AiSearchPanel.jsx'
-import HeroSpotlight from './components/HeroSpotlight.jsx'
 import AccountButton from './components/auth/AccountButton.jsx'
 
 // Sekme ikonları lucide'dan gelir; TABS verisi yalnız anahtarı taşır (emoji yok).
@@ -168,7 +166,7 @@ export default function App() {
   )
 
   const soListeler = {
-    oneriler:  { baslik: 'Sana özel öneriler', items: soFiltrele(onerilerZengin) },
+    oneriler:  { baslik: 'Bana özel öneriler', items: soFiltrele(onerilerZengin) },
     loved:     { baslik: 'Bayıldıklarım',      items: soFiltrele(lovedZengin) },
     liked:     { baslik: 'Beğendiklerim',      items: soFiltrele(likedZengin) },
     watchlist: { baslik: 'İzleyeceklerim',     items: soFiltrele(watchlistZengin) },
@@ -230,30 +228,31 @@ export default function App() {
   const { rails, loading: railsLoading } = useCountryRails(tab, railsEligible ? country : null)
   const showRails = railsEligible && !hasActiveFilter && !searchActive && !loading[dk]
 
-  // ── Spot ışığı (hero) ─────────────────────────────────────────────────────
-  // Konu, BULUNULAN sekmenin listesinin başıdır: Diziler'de dizi, Filmler'de
-  // film, Trend'de haftanın en çok konuşulanı. Sekme değişince spot da değişir.
+  // ── Vitrin ────────────────────────────────────────────────────────────────
+  // Bana Özel'deki vitrinin aynısı diğer sekmelerde de: bulunulan listenin ilk
+  // 10'u. Tek yapımlık ayrı bir bileşen vardı (HeroSpotlight); aynı işi yaptığı
+  // için kaldırıldı, iki yerde iki farklı vitrin dili kalmasın.
   //
-  // Kaynak bilerek `filtered` — yani ızgaranın çizdiği sıralı listenin ta
-  // kendisi. Sıralama ölçütü sekmeye göre değiştiği için (sosyal etki /
-  // ağırlıklı puan / ham IMDB) ölçütü burada tekrarlamak ikisinin ayrışmasına
-  // davetiye olurdu; aynı diziyi paylaşmak uyuşmazlığı imkânsız kılar.
-  const heroItem = isSanaOzel ? null : pickHeroItem(filtered)
+  // Kaynak yine `filtered` — ızgaranın çizdiği sıralı dizinin ta kendisi.
+  // Sıralama ölçütü sekmeye göre değişiyor (sosyal etki / ağırlıklı puan / ham
+  // IMDB); ölçütü burada tekrarlamak ikisinin ayrışmasına davetiye olurdu.
+  const vitrinItems = isSanaOzel ? [] : filtered.slice(0, 10)
 
-  // Hero raflarla aynı kapıdan geçer: arama, filtre veya AI paneli aktifken
+  // Vitrin raflarla aynı kapıdan geçer: arama, filtre veya AI paneli aktifken
   // kullanıcı belirli bir şey arıyordur — küratörlü blok o niyeti böler.
-  const showHero = Boolean(heroItem) && !isSanaOzel && !aiOpen && !searchActive &&
-    !hasActiveFilter && !loading[dk]
+  const showHero = vitrinItems.length > 0 && !isSanaOzel && !aiOpen &&
+    !searchActive && !hasActiveFilter && !loading[dk]
 
   // Kicker ızgara başlığıyla aynı yerde durur: ikisi de "bu liste ne" sorusuna
   // cevap verir, ayrı yerlerde tanımlanırsa birbirinden habersiz kalırlar.
   const heroKicker = tab === 'trend' ? 'Bu hafta perdede' : 'Listenin zirvesinde'
 
-  // Hero ızgaranın 1. sırasını YUKARI ALIR, kopyalamaz. Aynı poster iki yüz
-  // piksel arayla iki kez görününce tasarım değil hata gibi okunuyor. Sayaçlar
-  // ("100 sonuç", "X / Y gösteriliyor") dokunulmadan doğru kalır: yapım hâlâ
-  // listenin bir üyesi ve hâlâ ekranda, yalnız yeri değişti.
-  const gridItems = showHero ? visibleFiltered.slice(1) : visibleFiltered
+  // Vitrin ızgaradan öğe ÇIKARMAZ. Tek yapımlık spot ışığında çıkarıyorduk —
+  // aynı poster iki yüz piksel arayla iki kez görününce hata gibi okunuyordu.
+  // Vitrin 10 yapım taşıyınca aynı mantık işlemez: ızgaradan 10 öğe silmek
+  // "100 sonuç" sayacını yalancı yapar ve içerik kaybolur. Dönen vitrin zaten
+  // listenin bir tanıtımı, listeden bir eksiltme değil.
+  const gridItems = visibleFiltered
 
   // Izgaranın başlığı: raflar varken "geri kalanı" işaret eder, tek başınayken
   // sekmenin kısa adının taşımadığı iddiayı ("en iyi") üstlenir.
@@ -474,7 +473,7 @@ export default function App() {
             <>
               {/* Vitrin filtreden ETKİLENMEZ: öneri motorunun sesidir, kullanıcı
                   filtresiyle susturulmaz. Filtre yalnız listeleri daraltır. */}
-              {onerilerZengin.length > 0 && <HeroSlider items={onerilerZengin} count={10} />}
+              {onerilerZengin.length > 0 && <HeroSlider items={onerilerZengin} count={10} kicker="Bana özel öneri" />}
 
               {recLoading && recommendations.length === 0 && <SkeletonGrid count={6} />}
 
@@ -509,7 +508,7 @@ export default function App() {
         <SearchResult search={search} />
 
         {/* ── SPOT IŞIĞI ────────────────────────────────────────────────── */}
-        {showHero && <HeroSpotlight item={heroItem} kicker={heroKicker} />}
+        {showHero && <HeroSlider items={vitrinItems} count={10} kicker={heroKicker} />}
 
         {/* ── EDİTORYAL RAFLAR ──────────────────────────────────────────── */}
         {showRails && rails.length > 0 && (
