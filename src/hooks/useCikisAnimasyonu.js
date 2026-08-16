@@ -27,12 +27,14 @@ export function useCikisAnimasyonu(items, anahtarla = (x) => x.key) {
 
   useEffect(() => {
     const simdi = new Map((items || []).map(i => [anahtarla(i), i]))
+    // Ayrılma anındaki sıra, kartın yerinde sönebilmesi için saklanır.
+    const sira = new Map([...oncekiRef.current.keys()].map((k, i) => [k, i]))
     const onceki = oncekiRef.current
 
     onceki.forEach((item, k) => {
       // Zaten çıkış animasyonundaysa yeniden başlatma.
       if (simdi.has(k) || zamanlayicilar.current.has(k)) return
-      setCikanlar(prev => new Map(prev).set(k, item))
+      setCikanlar(prev => new Map(prev).set(k, { item, index: sira.get(k) ?? prev.size }))
       const t = setTimeout(() => {
         setCikanlar(prev => { const n = new Map(prev); n.delete(k); return n })
         zamanlayicilar.current.delete(k)
@@ -59,10 +61,17 @@ export function useCikisAnimasyonu(items, anahtarla = (x) => x.key) {
     zamanlayicilar.current.clear()
   }, [])
 
-  // Çıkanlar listenin SONUNA eklenmez; kendi yerlerinde kalmaları için
-  // çağıran sırayı korur. Basitlik adına sona ekleniyor — raf yatay kaydığı
-  // için sıçrama görünmüyor, ızgarada ise son satırda kısa süre duruyor.
-  const gorunen = [...(items || []), ...[...cikanlar.values()]]
+  // Ayrılan öğe KENDİ YERİNDE söner. Önceden listenin sonuna ekleniyordu ve
+  // kart, solmaya başlamadan önce rafın sonuna sıçrıyordu — kullanıcı "önce
+  // taşındı, sonra kayboldu" görüyordu. Ayrılırken kaydedilen indeks geri
+  // yerleştirilir; birden fazla öğe ayrılırsa artan indeks sırasıyla eklenir,
+  // böylece her biri kendi yerine denk gelir.
+  const gorunen = [...(items || [])]
+  ;[...cikanlar.values()]
+    .sort((a, b) => a.index - b.index)
+    .forEach(({ item, index }) => {
+      gorunen.splice(Math.min(index, gorunen.length), 0, item)
+    })
   const cikanAnahtarlar = new Set(cikanlar.keys())
   return { gorunen, cikanAnahtarlar }
 }
