@@ -1,77 +1,84 @@
 import { useEffect, useRef, useState } from 'react'
 
 // Çıkış animasyonu süresi — CSS'teki .cikiyor animasyonuyla AYNI olmalı.
-//
-// 420ms'ti; kartın kaybolduğunu görmek için kısa geldi. Süre uzatıldı ve
-// önüne BEKLEME kondu: kart ilk %35'te tam görünür kalır, sonra söner.
-// Yalnız süreyi uzatmak "yavaş solma" olurdu; bekleme "gördüm, sonra gitti"
-// hissi verir — göz değişimi yakalayacak zamanı ancak böyle buluyor.
+// Biri değişirse kart ya animasyon bitmeden kaybolur ya da bittikten sonra
+// donuk bekler.
 export const CIKIS_MS = 640
 
 // Listeden düşen öğeleri kısa bir süre daha çizmeye devam eder.
 //
-// SORUN: Bana Özel'de bir kartın durumunu değiştirince kayıt anında başka bir
-// rafa geçiyordu; kart göz kırpar gibi kayboluyor, kullanıcı ne olduğunu
-// göremiyordu. React düğümü senkron kaldırdığı için saf CSS ile çıkış
-// animasyonu yapılamaz — ayrılan öğe bir süre daha listede TUTULMALI.
+// SORUN: kayıt başka bir listeye geçince kart göz kırpar gibi kayboluyordu.
 //
-// Bu kanca listeyi alır, ondan düşenleri `cikanlar` kümesine yazar ve süre
-// dolana kadar listede bırakır. Çağıran, kümedeki anahtarlara çıkış sınıfı
-// verir.
+// NEDEN RENDER SIRASINDA: ayrılma tespiti önce useEffect'teydi ve sıra şuydu —
+// React kartı ağaçtan çıkarır → tarayıcı O KAREYİ BOYAR (kart kaybolur) →
+// efekt çalışır → kart geri eklenir → animasyon başlar. Kullanıcı "kayboldu,
+// geri geldi, sonra soldu" görüyordu. Tespit render sırasında yapılınca kart
+// ağaçtan hiç çıkmaz; tek ve kesintisiz bir sönme kalır.
 //
-// Not: yalnız DÜŞEN öğeler için çalışır. Eklenenler zaten girişte animasyonlu.
+// Ayrılan öğe KENDİ YERİNDE söner: ayrılma anındaki indeks saklanır ve görünen
+// listede aynı yere geri konur.
 export function useCikisAnimasyonu(items, anahtarla = (x) => x.key) {
-  const [cikanlar, setCikanlar] = useState(() => new Map())
-  const oncekiRef = useRef(new Map())
+  // Süre dolunca listeyi tazelemek için; değeri değil, değişmesi önemli.
+  const [, tikla] = useState(0)
+
+  const oncekiRef = useRef([])           // son görünen sıra (anahtarlar)
+  const oncekiItemRef = useRef(new Map())// anahtar → öğe (ayrılanı çizebilmek için)
+  const cikanRef = useRef(new Map())     // anahtar → { item, index }
   const zamanlayicilar = useRef(new Map())
 
-  useEffect(() => {
-    const simdi = new Map((items || []).map(i => [anahtarla(i), i]))
-    // Ayrılma anındaki sıra, kartın yerinde sönebilmesi için saklanır.
-    const sira = new Map([...oncekiRef.current.keys()].map((k, i) => [k, i]))
-    const onceki = oncekiRef.current
+  const liste = items || []
+  const simdi = new Map(liste.map(i => [anahtarla(i), i]))
 
-    onceki.forEach((item, k) => {
-      // Zaten çıkış animasyonundaysa yeniden başlatma.
-      if (simdi.has(k) || zamanlayicilar.current.has(k)) return
-      setCikanlar(prev => new Map(prev).set(k, { item, index: sira.get(k) ?? prev.size }))
+  // ── Ayrılanları yakala (render sırasında) ───────────────────────────────────
+  oncekiRef.current.forEach((k, idx) => {
+    if (simdi.has(k) || cikanRef.current.has(k)) return
+    const item = oncekiItemRef.current.get(k)
+    if (item) cikanRef.current.set(k, { item, index: idx })
+  })
+
+  // ── Geri gelenler ───────────────────────────────────────────────────────────
+  // Öğe süre dolmadan geri dönerse (geri al) çıkış iptal edilir; yoksa hem
+  // listede hem çıkanlarda görünüp iki kez çizilirdi.
+  simdi.forEach((_, k) => {
+    if (!cikanRef.current.has(k)) return
+    cikanRef.current.delete(k)
+    const t = zamanlayicilar.current.get(k)
+    if (t) { clearTimeout(t); zamanlayicilar.current.delete(k) }
+  })
+
+  // ── Görünen liste ───────────────────────────────────────────────────────────
+  const gorunen = [...liste]
+  ;[...cikanRef.current.values()]
+    .sort((a, b) => a.index - b.index)
+    .forEach(({ item, index }) => {
+      gorunen.splice(Math.min(index, gorunen.length), 0, item)
+    })
+
+  // Karşılaştırma tabanı KAYNAK listedir, görünen liste DEĞİL. Görünen listeyi
+  // taban almak diriltme döngüsü yaratıyordu: süre dolup öğe bırakılınca bir
+  // sonraki render onu yine "ayrılmış" sayıp geri ekliyor, kart opaklık 0'da
+  // sonsuza dek ağaçta kalıyordu. Kaynak listede olmadığı için artık bir daha
+  // yakalanmaz. İndeks de zaten kaynak sıradaki yeridir.
+  oncekiRef.current = liste.map(anahtarla)
+  oncekiItemRef.current = simdi
+
+  // ── Süre dolunca bırak ──────────────────────────────────────────────────────
+  useEffect(() => {
+    cikanRef.current.forEach((_, k) => {
+      if (zamanlayicilar.current.has(k)) return
       const t = setTimeout(() => {
-        setCikanlar(prev => { const n = new Map(prev); n.delete(k); return n })
+        cikanRef.current.delete(k)
         zamanlayicilar.current.delete(k)
+        tikla(n => n + 1)
       }, CIKIS_MS)
       zamanlayicilar.current.set(k, t)
     })
-
-    // Geri alma: öğe süre dolmadan geri gelirse çıkış iptal edilir, aksi halde
-    // hem listede hem "çıkanlar"da görünüp iki kez çizilirdi.
-    simdi.forEach((_, k) => {
-      const t = zamanlayicilar.current.get(k)
-      if (t) {
-        clearTimeout(t)
-        zamanlayicilar.current.delete(k)
-        setCikanlar(prev => { const n = new Map(prev); n.delete(k); return n })
-      }
-    })
-
-    oncekiRef.current = simdi
-  }, [items, anahtarla])
+  })
 
   useEffect(() => () => {
     zamanlayicilar.current.forEach(clearTimeout)
     zamanlayicilar.current.clear()
   }, [])
 
-  // Ayrılan öğe KENDİ YERİNDE söner. Önceden listenin sonuna ekleniyordu ve
-  // kart, solmaya başlamadan önce rafın sonuna sıçrıyordu — kullanıcı "önce
-  // taşındı, sonra kayboldu" görüyordu. Ayrılırken kaydedilen indeks geri
-  // yerleştirilir; birden fazla öğe ayrılırsa artan indeks sırasıyla eklenir,
-  // böylece her biri kendi yerine denk gelir.
-  const gorunen = [...(items || [])]
-  ;[...cikanlar.values()]
-    .sort((a, b) => a.index - b.index)
-    .forEach(({ item, index }) => {
-      gorunen.splice(Math.min(index, gorunen.length), 0, item)
-    })
-  const cikanAnahtarlar = new Set(cikanlar.keys())
-  return { gorunen, cikanAnahtarlar }
+  return { gorunen, cikanAnahtarlar: new Set(cikanRef.current.keys()) }
 }
