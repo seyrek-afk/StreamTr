@@ -52,3 +52,15 @@ streamtr/
 - **Claude Sonnet API** (web_search dahil)
 - **Lucide React** ikonlar
 - **TMDB** poster görselleri
+
+## Bakım — Supabase keep-alive
+
+Supabase ücretsiz planı, **7 gün** istek almayan projeyi duraklatır; giriş ve favoriler
+çalışmaz olur. `.github/workflows/supabase-keepalive.yml` her gün projeye tek bir hafif
+istek atarak bunu engeller.
+
+```bash
+npm run keepalive     # aynı pingi elle at (.env değerlerini kullanır)
+```
+
+Kurulum (SQL fonksiyonu + GitHub secret'ları) için: [`supabase/SETUP.md`](supabase/SETUP.md) → **8) Projenin uyumasını engelle**.

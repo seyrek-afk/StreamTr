@@ -100,3 +100,58 @@ görünüyorsa uç çalışıyor demektir; bir uyarı satırı çıkıyorsa sebe
 Her arama tek bir kısa model çağrısıdır (düşük efor, ~2K token). Günlük tavan kişi
 başınadır; `AI_SEARCH_DAILY_QUOTA` ile değiştirilir. Kota **model çağrısından önce**
 tüketilir — tavanı aşan istek para harcamaz.
+
+---
+
+# 8) Projenin uyumasını engelle (keep-alive)
+
+**Sorun.** Supabase ücretsiz planında bir proje **7 gün** boyunca hiç istek almazsa
+duraklatılır ("paused"): giriş ve favoriler çalışmaz, DB erişimi kesilir ve projeyi
+panelden elle uyandırmak gerekir. Site az ziyaret aldığı dönemlerde bu kolayca olur.
+
+**Neden DB'nin içinden çözülemez.** Proje duraklayınca `pg_cron` da durur; kendi kendini
+uyandıramaz. Duraklatmayı yalnızca **dışarıdan** gelen bir istek engeller.
+
+**Çözüm.** Depodaki `.github/workflows/supabase-keepalive.yml` her gün
+`scripts/keepalive.mjs` dosyasını çalıştırır; script `public.keepalive_ping()`
+fonksiyonunu çağırır. Çağrı PostgREST üzerinden Postgres'e gider → proje aktif sayılır.
+Eşik 7 gün olduğu için günlük tempo, GitHub'ın zamanlanmış işleri geciktirdiği
+durumlara karşı geniş pay bırakır.
+
+### a) Fonksiyonu kur
+`supabase/schema.sql` dosyasını **SQL Editor**'da yeniden çalıştırın (dosyanın sonuna
+`keepalive` tablosu ve `keepalive_ping()` fonksiyonu eklendi; tüm ifadeler
+`if not exists` / `create or replace` olduğu için tekrar çalıştırmak güvenlidir).
+
+### b) GitHub secret'larını gir
+**GitHub → repo → Settings → Secrets and variables → Actions → New repository secret:**
+
+| Secret | Değer |
+| --- | --- |
+| `SUPABASE_URL` | `https://<proje-ref>.supabase.co` |
+| `SUPABASE_ANON_KEY` | **anon public** anahtarı |
+
+> `service_role` anahtarına **gerek yoktur**. `anon` anahtarı zaten publictir; keep-alive
+> tablosuna doğrudan erişimi yoktur, yalnızca `keepalive_ping()` fonksiyonunu çağırabilir.
+
+### c) Doğrula
+**Actions → Supabase keep-alive → Run workflow** ile elle tetikleyin. Günlüğe
+`OK — Supabase ayakta. Son heartbeat: ...` yazmalı. Yerelden de deneyebilirsiniz:
+
+```bash
+npm run keepalive     # .env içindeki VITE_SUPABASE_* değerlerini kullanır
+```
+
+`HTTP 404 / PGRST202` görüyorsanız (a) adımı atlanmıştır.
+
+### Tuzak: GitHub zamanlanmış işleri devre dışı bırakır
+GitHub, **60 gün** boyunca hiç commit almayan depolarda `schedule` tetikleyicilerini
+otomatik kapatır (öncesinde depo sahibine e-posta uyarısı gönderir). Uzun bir sessizlik
+bekleniyorsa Actions sekmesinden iş akışını yeniden etkinleştirin veya arada bir
+**Run workflow** deyin. Aksi hâlde keep-alive sessizce durur ve proje yine uyur.
+
+### Neden saatte bir yazıyor?
+`keepalive_ping()` heartbeat satırını en fazla **saatte bir** günceller. Uç `anon`
+anahtarıyla çağrılabildiği için sınırsız `UPDATE` ile tablo şişirilmesini istemiyoruz.
+Kısıt yalnızca yazmayı kısar; çağrının kendisi her hâlükârda DB'ye ulaştığından proje
+aktif sayılmaya devam eder.

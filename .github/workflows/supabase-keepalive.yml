@@ -1,0 +1,48 @@
+# StreamTR — Supabase keep-alive
+#
+# Ücretsiz planda 7 gün boyunca istek almayan proje duraklatılır ve DB erişimi
+# kesilir. Bu iş her gün projeye tek bir hafif istek atarak sayacı sıfırlar.
+#
+# GEREKLİ SECRET'LAR (GitHub → Settings → Secrets and variables → Actions):
+#   SUPABASE_URL       →  https://<proje-ref>.supabase.co
+#   SUPABASE_ANON_KEY  →  anon public anahtarı (gizli değildir, RLS korur)
+#
+# TUZAK: GitHub, 60 gün boyunca hiç commit almayan depolarda zamanlanmış
+# iş akışlarını otomatik devre dışı bırakır (öncesinde e-posta uyarısı gönderir).
+# Uzun süre commit atılmayacaksa Actions sekmesinden iş akışını yeniden
+# etkinleştirin ya da "Run workflow" ile elle tetikleyin.
+name: Supabase keep-alive
+
+on:
+  schedule:
+    # Her gün 06:17 UTC. Supabase'in eşiği 7 gün; günlük tempo, GitHub'ın yoğun
+    # saatlerde zamanlanmış işleri geciktirmesine/atlamasına karşı geniş pay bırakır.
+    - cron: '17 6 * * *'
+  workflow_dispatch: # elle tetikleme (Actions sekmesi → Run workflow)
+
+# Aynı anda tek çalışma yeter; birikirse eskisini iptal et.
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    # Fork'larda secret bulunmaz; boşuna çalışıp kırmızı görünmesin.
+    if: github.repository == 'seyrek-afk/StreamTr'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Bağımlılık yok: script yalnızca yerleşik fetch kullanır → npm install gerekmez.
+      - name: Ping Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: node scripts/keepalive.mjs
