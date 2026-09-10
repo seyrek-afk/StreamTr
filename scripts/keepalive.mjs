@@ -85,9 +85,21 @@ if (!parsedUrl.ok) {
 const url = parsedUrl.value
 const key = rawKey.trim()
 
+/**
+ * Host'u gunluge yazmadan once kisaltir.
+ * GitHub secret'lari yalnizca birebir esleserek maskeler; kucuk harfe cevrilmis
+ * ya da parcalanmis bir deger maskeden kacar. Bu yuzden ham host'u asla basmiyoruz.
+ */
+function safeHostHint(host) {
+  if (/^ey[0-9a-z_-]+\.[0-9a-z._-]+$/i.test(host)) {
+    return 'JWT benzeri bir deger — anon anahtari URL alanina yapistirilmis olabilir'
+  }
+  return host.length <= 30 ? host : host.slice(0, 10) + '…(' + host.length + ' karakter)'
+}
+
 // Yanlis secret eslesmesini erken yakala: hedef Supabase degilse ping anlamsiz.
 if (!/(^|\.)supabase\.(co|in|net)$/i.test(parsedUrl.host)) {
-  console.warn('UYARI: SUPABASE_URL bir supabase.co adresine benzemiyor (host: ' + parsedUrl.host + ').')
+  console.warn('UYARI: SUPABASE_URL bir supabase.co adresine benzemiyor → ' + safeHostHint(parsedUrl.host))
 }
 
 const ATTEMPTS = 3
