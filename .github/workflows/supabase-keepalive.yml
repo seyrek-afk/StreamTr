@@ -34,11 +34,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      # checkout@v5 ve setup-node@v5 runner'da Node 24 ile calisir; v4 surumleri
+      # Node 20 hedefledigi icin GitHub deprecation uyarisi uretiyordu.
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
 
       # Bağımlılık yok: script yalnızca yerleşik fetch kullanır → npm install gerekmez.
       - name: Ping Supabase

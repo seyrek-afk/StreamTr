@@ -31,16 +31,63 @@ try {
   // .env yok — CI'da normal.
 }
 
-const url = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\/+$/, '')
-const key = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || ''
+const rawUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || ''
+const rawKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || ''
 
-if (!url || !key) {
+const SECRETS_HELP =
+  'CI icin: GitHub -> repo -> Settings -> Secrets and variables -> Actions ->\n' +
+  '  "Repository secrets" bolumu (Environment secrets DEGIL) -> New repository secret.\n' +
+  'Yerel icin: .env dosyasindaki VITE_SUPABASE_* degerleri kullanilir.'
+
+/**
+ * Yapistirma kazalarina karsi toleransli URL normalizasyonu.
+ * GitHub secret degerlerini gunlukte maskeledigi icin hatali deger goze carpmaz;
+ * bu yuzden burada hem toparliyor hem de sizdirmayan bir teshis uretiyoruz.
+ */
+function normalizeUrl(raw) {
+  let v = raw.trim().replace(/^["']|["']$/g, '').trim()
+  if (!v) return { ok: false }
+  // Sema unutulmus olabilir: "proje-ref.supabase.co" -> "https://proje-ref.supabase.co"
+  if (!/^https?:\/\//i.test(v)) v = 'https://' + v
+  v = v.replace(/\/+$/, '')
+  try {
+    const parsed = new URL(v)
+    if (!parsed.host) return { ok: false }
+    return { ok: true, value: parsed.origin, host: parsed.host }
+  } catch {
+    return { ok: false }
+  }
+}
+
+if (!rawUrl.trim() || !rawKey.trim()) {
+  const eksik = [!rawUrl.trim() && 'SUPABASE_URL', !rawKey.trim() && 'SUPABASE_ANON_KEY']
+    .filter(Boolean)
+    .join(' ve ')
+  console.error('HATA: ' + eksik + ' tanimli degil (bos geldi).\n' + SECRETS_HELP)
+  process.exit(1)
+}
+
+const parsedUrl = normalizeUrl(rawUrl)
+if (!parsedUrl.ok) {
+  // Degerin kendisini yazdirmiyoruz; yalnizca yapisal ipucu.
   console.error(
-    'HATA: SUPABASE_URL ve SUPABASE_ANON_KEY tanımlı değil.\n' +
-      "CI için: GitHub -> Settings -> Secrets and variables -> Actions -> New repository secret.\n" +
-      'Yerel için: .env dosyasındaki VITE_SUPABASE_* değerleri kullanılabilir.'
+    'HATA: SUPABASE_URL bir adres olarak cozumlenemedi (uzunluk: ' +
+      rawUrl.trim().length +
+      ' karakter).\n' +
+      'Beklenen bicim: https://<proje-ref>.supabase.co\n' +
+      'Sik hatalar: anon anahtarinin yanlislikla URL alanina yapistirilmasi, satir sonu ya da\n' +
+      'bosluk kalmasi, adresin eksik kopyalanmasi.\n' +
+      SECRETS_HELP
   )
   process.exit(1)
+}
+
+const url = parsedUrl.value
+const key = rawKey.trim()
+
+// Yanlis secret eslesmesini erken yakala: hedef Supabase degilse ping anlamsiz.
+if (!/(^|\.)supabase\.(co|in|net)$/i.test(parsedUrl.host)) {
+  console.warn('UYARI: SUPABASE_URL bir supabase.co adresine benzemiyor (host: ' + parsedUrl.host + ').')
 }
 
 const ATTEMPTS = 3
