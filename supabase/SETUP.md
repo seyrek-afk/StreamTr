@@ -79,7 +79,7 @@ npx supabase link --project-ref <proje-ref>
 
 npx supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 # Opsiyonel ayarlar (varsayılanlar parantez içinde):
-npx supabase secrets set ANTHROPIC_MODEL=claude-opus-5          # (claude-opus-5)
+npx supabase secrets set ANTHROPIC_MODEL=claude-sonnet-5        # varsayılan: claude-sonnet-5
 npx supabase secrets set AI_SEARCH_DAILY_QUOTA=20               # (20) kişi/gün
 npx supabase secrets set AI_SEARCH_ALLOWED_ORIGINS=https://streamtr.onrender.com,http://localhost:3001
 ```
