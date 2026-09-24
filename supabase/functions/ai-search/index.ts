@@ -18,7 +18,11 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@^0.71.0'
 import { createClient } from 'npm:@supabase/supabase-js@^2.108.2'
 
-const MODEL       = Deno.env.get('ANTHROPIC_MODEL') ?? 'claude-opus-5'
+// 2026-09-24 maliyet düzenlemesi: Opus 5 → Sonnet 5. Bu uç, serbest cümleyi kısıtlı
+// bir "niyet" şemasına çeviriyor (output_config.format + effort: 'low') — yapılandırılmış
+// çıkarım işi, Opus'un ek muhakemesine ihtiyaç duymuyor. Birim fiyat 2.5× düşer
+// ($5/$25 → $2/$10 per MTok).
+const MODEL       = Deno.env.get('ANTHROPIC_MODEL') ?? 'claude-sonnet-5'
 const DAILY_QUOTA = Number(Deno.env.get('AI_SEARCH_DAILY_QUOTA') ?? '20')
 const ALLOWED_ORIGINS = (Deno.env.get('AI_SEARCH_ALLOWED_ORIGINS') ?? '')
   .split(',').map((s) => s.trim()).filter(Boolean)
@@ -260,12 +264,16 @@ Deno.serve(async (req) => {
 
     const msg = await client.messages.create({
       model: MODEL,
-      max_tokens: 2048,
+      // 2048 → 4096: düşünme token'ları bu bütçeyi PAYLAŞIR ve Sonnet 5'te `thinking`
+      // gönderilmese de adaptive çalışır. Dar bir tavan niyet JSON'unu ortasından
+      // keser → JSON.parse patlar → 'bad_model_output' 502. max_tokens yalnız
+      // TAVANdır; üretilmeyen token ücretlendirilmez.
+      max_tokens: 4096,
       system: `${SYSTEM}\n\nİçinde bulunduğumuz yıl: ${year}.`,
       output_config: {
         // Ayrıştırma işi derin akıl yürütme istemez; düşük efor gecikmeyi ve
-        // maliyeti düşürür. Düşünme AÇIK bırakılır — kapatmak bu modelde
-        // araç/etiket sızıntısı davranışlarını tetikliyor.
+        // maliyeti düşürür. Düşünme AÇIK bırakılır (adaptive) — açıkça kapatmak
+        // araç/etiket sızıntısı davranışlarını tetikleyebiliyor.
         effort: 'low',
         format: { type: 'json_schema', schema: INTENT_SCHEMA },
       },
