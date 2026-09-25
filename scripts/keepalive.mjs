@@ -143,6 +143,18 @@ for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     const lastPing = await ping()
     console.log('OK — Supabase ayakta. Son heartbeat: ' + lastPing)
 
+    // Gerçek uygulama trafiğine benzeyen ek okuma: PostgREST üzerinden asıl
+    // tabloya bir SELECT. Anon için RLS boş liste döndürür ama sorgu Postgres'te
+    // çalışır. Tek RPC çağrısı Supabase'in aktivite eşiğine yetmedi.
+    try {
+      const rest = await request('/rest/v1/favorites?select=*&limit=1', {
+        headers: { apikey: key, Authorization: 'Bearer ' + key },
+      })
+      if (!rest.ok) console.warn('UYARI: favorites okuması HTTP ' + rest.status)
+    } catch (err) {
+      console.warn('UYARI: favorites okuması yapılamadı — ' + err.message)
+    }
+
     // İkincil sinyal: Auth servisi de yanıt veriyor mu? Uygulamanın giriş akışı
     // buna bağlı. Başarısızlığını ölümcül saymıyoruz; DB pingi zaten geçti.
     try {
