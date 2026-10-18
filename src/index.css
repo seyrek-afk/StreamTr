@@ -1155,7 +1155,12 @@ button.actor { cursor: pointer; }
 /* Uzun içerikli detay üstten hizalanır; ortalanınca uzun kart taşıyordu. */
 .modal-scrim-top { align-items: flex-start; padding: 24px 16px; overflow-y: auto; }
 .modal-detail { position: relative; max-width: 560px; max-height: none; padding: 20px 0 0; }
-.modal-detail > .cc-lead { padding: 0 20px; }
+/* Overlay'de ilk bölüm kapat düğmesinden sonra gelir; :first-child sınırı
+   kaldırmadığı için burada açıkça kaldırılır. Son bölüm her zaman alt boşluk alır. */
+.modal-detail > .cc-lead { padding: 0 16px; border-top: none; }
+.modal-detail > .cc-sec:last-child { padding-bottom: 16px; }
+.modal-back { margin: 0 16px 12px; max-width: calc(100% - 80px); }
+.modal-back > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .modal-close { position: absolute; top: 10px; right: 10px; z-index: 2; }
 
 .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 18px; }

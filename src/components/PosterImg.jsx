@@ -6,7 +6,8 @@ import { POSTER_GRADIENTS } from '../constants/index.js'
 // Emoji KULLANILMAZ: her platformda farklı çizilir ve ikon setinin çizgisiyle
 // uyuşmaz. alt="" bilinçli: başlık zaten kartın kendi etiketinde okunuyor,
 // ekran okuyucuya iki kez söylemenin faydası yok.
-export default function PosterImg({ path, title }) {
+// size: TMDB görsel boyu. Varsayılan kart posteri için; büyük kutular w342 ister.
+export default function PosterImg({ path, title, size = 'w185' }) {
   const [err, setErr]       = useState(false)
   const [loaded, setLoaded] = useState(false)
 
@@ -25,7 +26,7 @@ export default function PosterImg({ path, title }) {
   return (
     <div className="poster-img" style={{ background: `linear-gradient(160deg,${c1},${c2})` }}>
       <img
-        src={`https://image.tmdb.org/t/p/w185${path}`}
+        src={`https://image.tmdb.org/t/p/${size}${path}`}
         alt=""
         loading="lazy"
         decoding="async"
