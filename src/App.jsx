@@ -305,7 +305,22 @@ export default function App() {
           Önceki dört bant içeriği ekranın beşte birine kadar aşağı itiyordu. */}
       <header className="app-header">
         <div className="hdr-row">
-          <span className="brand">Stream<span className="brand-tr">TR</span></span>
+          <span className="brand">
+            {/* Gradyan durakları tema tokenlarını CSS'ten okur (.brand-from/-to):
+                stop-color özniteliği var() kabul etmiyor. */}
+            <svg className="brand-mark" width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="brand-grad" x1="0" y1="0" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" className="brand-from" />
+                  <stop offset="1" className="brand-to" />
+                </linearGradient>
+              </defs>
+              <path d="M5 7.2v15.6a1.4 1.4 0 0 0 2.1 1.2l12.4-7.8a1.4 1.4 0 0 0 0-2.4L7.1 6A1.4 1.4 0 0 0 5 7.2z" fill="url(#brand-grad)" />
+              <path d="M23 10.5a6.5 6.5 0 0 1 0 9" stroke="url(#brand-grad)" strokeWidth="2.2" strokeLinecap="round" />
+              <path d="M26 7.5a10.5 10.5 0 0 1 0 15" stroke="url(#brand-grad)" strokeWidth="2.2" strokeLinecap="round" opacity="0.6" />
+            </svg>
+            <span>stream<span className="brand-tr">tr</span></span>
+          </span>
 
           <nav className="tabs" aria-label="Bölümler">
             {TABS.map(t => {
@@ -626,7 +641,7 @@ export default function App() {
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
       <footer className="app-footer">
         <div className="footer-top">
-          <span className="footer-brand">StreamTR</span>
+          <span className="footer-brand">streamtr</span>
           <span className="footer-src">Veriler: TMDB · IMDB · Rotten Tomatoes</span>
         </div>
         <p className="footer-legal">

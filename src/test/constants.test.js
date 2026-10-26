@@ -71,12 +71,16 @@ describe('THEMES', () => {
   //     koyu ucunda kontrast düşüyordu, tek katı renk hem daha güçlü hem AA).
   //     Token yalnız o gradyan için vardı; kullanımı bitince token da bitti.
   //   - --accent2 KALDIRILDI: hiçbir yerde okunmuyordu (ölü token).
+  //   + --brand-from / --brand-to: marka simgesinin gradyan uçları. Gradyan
+  //     metne değil simgeye döndü; --brand-bg / --brand-ink (eski lacivert
+  //     blok) bununla kaldırıldı.
   const REQUIRED_CSS_VARS = [
     '--bg', '--bg-card', '--bg-elevated', '--bg-header',
     '--surface', '--surface-hover',
     '--accent', '--accent-ink', '--accent-contrast', '--accent-rgb',
     '--border', '--border-strong', '--text', '--text-muted', '--text-faint',
     '--tab-active', '--hover-border', '--trend-bar',
+    '--brand-from', '--brand-to',
   ]
 
   it('should have 5 themes', () => {
