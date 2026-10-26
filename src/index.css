@@ -51,11 +51,10 @@
   --trend-bar:       linear-gradient(90deg,#F5C518,#E50914);
   --card-backdrop:   none;
 
-  /* Marka bloğu — başlık bandındaki kütle. Zemini vurgu rengi DEĞİL: bandda
-     tek altın odak kalsın diye vurgu yalnız "TR" hecesinde ve blok kenarında
-     yaşar. Beş tema da bu iki değeri doldurur. */
-  --brand-bg:        #312E81;
-  --brand-ink:       #F5F4FA;
+  /* Marka simgesinin gradyan uçları. Beş tema da bu iki değeri doldurur;
+     her temada --trend-bar ile aynı çifttir. */
+  --brand-from:      #F5C518;
+  --brand-to:        #E50914;
 
   /* Durum renkleri temadan bağımsızdır: "taze" her temada yeşil, "hata" her
      temada kırmızıdır. Bu yüzden bilinçli olarak yalnız :root'ta yaşarlar ve
@@ -67,7 +66,7 @@
 
   /* Tipografik ölçek — önceden 7.5px ile 14px arasına 13 farklı boy
      sıkışmıştı. Altı basamak kaldı; taban 11px. */
-  --fs-display: 26px;  /* marka */
+  --fs-display: 20px;  /* marka */
   --fs-h1:      20px;  /* bölüm ve raf başlıkları */
   --fs-h2:      15px;  /* kart başlığı, sekme */
   --fs-body:    13px;  /* gövde, kontrol etiketi, menü seçeneği */
@@ -304,28 +303,26 @@ button, input, textarea { font: inherit; color: inherit; }
   min-height: 56px;
 }
 
-/* Marka bir yazı değil, bandın SOL UCUNU tutan bir kütle. Düz metin hâlinde
-   logotip bandın içinde eriyordu; blok ona bir ağırlık merkezi veriyor.
-   Bloğun zemini bilinçli olarak vurgu rengi değil (bkz. --brand-bg): aktif
-   sekme zaten dolu vurgu taşıyor, iki dolu vurgu bandda birbiriyle yarışırdı.
-   Vurgu yalnız "TR" hecesinde ve sağ kenarda kalır. */
+/* Marka = "yayın sinyali" simgesi + küçük harfli yazı (varyant C, beş temada
+   karşılaştırılarak seçildi). Önceki lacivert blok + Bebas bir ürün etiketi
+   gibi duruyordu ve Bebas başka başlıklarda da kullanıldığı için ayırt edici
+   değildi; yazı artık yalnız markaya ait bir yüzde (Sora).
+   Gradyan bilinçli olarak YALNIZ simgede: yazıya konduğunda koyu ucunda
+   kontrast düşüyordu (eski --logo-grad). Simge metin dışı öğedir (3:1 yeter),
+   yazı her temada katı --text / --accent-ink olarak AA'yı korur. */
 .brand {
-  display: inline-flex; align-items: center; flex-shrink: 0;
-  align-self: stretch;
-  /* Kenara dayanır: satırın kendi payını geri alır. */
-  margin-left: calc(var(--gutter) * -1);
-  padding: 0 18px;
-  background: var(--brand-bg);
-  border-right: 2px solid var(--accent);
-  font-family: 'Bebas Neue', system-ui, sans-serif;
-  font-size: var(--fs-display); line-height: 1;
-  letter-spacing: 0.04em;
-  /* Gradyan metin bilinçli olarak kaldırıldı: dekoratifti, gradyanın koyu ucunda
-     kontrastı düşüyordu ve her temada farklı okunuyordu. Tek katı renk daha
-     güçlü duruyor. */
-  color: var(--brand-ink);
+  display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0;
+  /* Satır boşluğu sekmeler arası içindir; marka biraz daha nefes alır. */
+  margin-right: 14px;
+  font-family: 'Sora', system-ui, sans-serif;
+  font-size: var(--fs-display); font-weight: 600; line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--text);
 }
-.brand-tr { color: var(--accent-ink); }
+.brand-mark { flex-shrink: 0; }
+.brand-from { stop-color: var(--brand-from); }
+.brand-to   { stop-color: var(--brand-to); }
+.brand-tr { font-weight: 700; color: var(--accent-ink); }
 
 /* Gezinme — kutusuz. "Yer" bildirir, kontrol gibi görünmez. */
 .tabs { display: flex; align-items: center; gap: 2px; min-width: 0; }
@@ -1430,8 +1427,8 @@ code { font-size: 0.92em; color: var(--accent-ink); }
 }
 .footer-top { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
 .footer-brand {
-  font-family: 'Bebas Neue', system-ui, sans-serif;
-  font-size: var(--fs-h1); letter-spacing: 0.04em; color: var(--text-muted); line-height: 1;
+  font-family: 'Sora', system-ui, sans-serif;
+  font-size: var(--fs-h2); font-weight: 600; letter-spacing: -0.02em; color: var(--text-muted); line-height: 1;
 }
 .footer-src { color: var(--text-faint); font-size: var(--fs-meta); }
 .footer-legal {
@@ -1451,15 +1448,12 @@ code { font-size: 0.92em; color: var(--accent-ink); }
 }
 
 @media (max-width: 720px) {
-  :root { --gutter: 16px; --section-gap: 24px; --ctl-h: 40px; --fs-display: 24px; --fs-h1: 18px; }
+  :root { --gutter: 16px; --section-gap: 24px; --ctl-h: 40px; --fs-h1: 18px; }
 
   /* Marka + hesap üstte kalır, sekmeler kendi satırına iner ve yatay kayar.
      Kenardaki solma "devamı var" der. Önceden mercek de bu satırdaydı ve dar
      ekranda görünür alanın dışına taşarak ERİŞİLEMEZ oluyordu. */
   .hdr-row { flex-wrap: wrap; gap: 10px; min-height: 0; padding-top: 10px; padding-bottom: 4px; }
-  /* Blok dar ekranda da bandın köşesine dayanır: satırın dikey payını da geri
-     alır, yoksa üstünde 10px'lik bir şerit kalıp "yapıştırılmış" görünür. */
-  .brand { margin-top: -10px; margin-bottom: -4px; padding: 10px 14px; }
   .tabs {
     order: 3; width: 100%;
     overflow-x: auto; scrollbar-width: none; padding-bottom: 6px;
