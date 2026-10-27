@@ -8,6 +8,7 @@ import { COUNTRIES, countryLabel, countryContentTitle } from './constants/countr
 import { useStreamData, dataKey } from './hooks/useStreamData.js'
 import { useSearch }     from './hooks/useSearch.js'
 import { useRecommendations } from './hooks/useRecommendations.js'
+import { titleKeys } from './lib/recommend.js'
 import { useCountryRails } from './hooks/useCountryRails.js'
 import { usePlatforms } from './hooks/usePlatforms.js'
 import { useCikisAnimasyonu } from './hooks/useCikisAnimasyonu.js'
@@ -101,8 +102,11 @@ export default function App() {
     ...liked.map(f => ({ ...f, _w: 1 })),
   ]
   const kayitliAnahtarlar = saved.map(f => f.key)
+  // Başlıklar da geçer: mock'tan kaydedilen yapım başlıkla anahtarlanır, TMDB
+  // sürümü anahtarla yakalanamaz.
+  const kayitliBasliklar = saved.flatMap(titleKeys)
   const { recommendations, loading: recLoading, error: recError } =
-    useRecommendations(oneriTohumu, kayitliAnahtarlar)
+    useRecommendations(oneriTohumu, kayitliAnahtarlar, kayitliBasliklar)
 
   // "Tümünü gör" ile açılan liste (null = raf görünümü)
   const [acikListe, setAcikListe] = useState(null)

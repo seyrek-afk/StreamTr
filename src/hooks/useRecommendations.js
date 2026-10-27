@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react'
 import { ALL_CONTENT } from '../data/mockData.js'
 import { favKey } from '../contexts/FavoritesContext.jsx'
 import { isValidTmdbRef } from '../lib/tmdb.js'
+import { genreIdsFor } from '../lib/genres.js'
+import {
+  MAX_RESULTS, seedProfile, excludedGenres, topGenres, rankRecommendations, titleKeys,
+} from '../lib/recommend.js'
 
 const TMDB_BASE = 'https://api.themoviedb.org/3'
 const API_KEY   = import.meta.env.VITE_TMDB_KEY
-
-const MAX_RESULTS = 20
 
 // Skor tahmini — diğer hook'larla (useStreamData/useSearch) birebir aynı formül,
 // böylece öneriler de IMDB + Rotten Tomatoes + Letterboxd üçlüsünü gösterir.
@@ -55,6 +57,8 @@ function tmdbToRecCard(r) {
     _tmdbId:    r.id,
     _mediaType: mediaType,
     _voteAvg:   voteAvg,
+    // Kalite tabanı oy sayısına bakar (bkz. lib/recommend.js); yoksa taban uygulanmaz.
+    _voteCount: typeof r.vote_count === 'number' ? r.vote_count : undefined,
   }
 }
 
@@ -83,22 +87,28 @@ function localRecommendations(favorites, excludeKeys = []) {
     .map(x => x.item)
 }
 
-// ── TMDB tabanlı öneriler: favorilerin "recommendations" sonuçlarını topla ─────
+// ── TMDB tabanlı öneriler ─────────────────────────────────────────────────────
+// Getirme burada, karar src/lib/recommend.js'te (kümeleme, profil, kalite,
+// çeşitlilik — gerekçeleriyle birlikte orada).
 // seeds : öneri ÜRETEN kayıtlar (Beğendim/Bayıldım). Her biri `_w` ağırlığı
 //         taşır — Bayıldım daha güçlü bir sinyaldir.
 // excludeKeys : sonuçtan ÇIKARILACAK kayıtlar. Tohum kümesinden farklıdır:
 //         İzleyeceklerim öneri üretmez (henüz izlenmedi, beğeni sinyali değil)
 //         ama zaten listede olduğu için öneri olarak da gösterilmemeli.
-async function tmdbRecommendations(seeds, signal, excludeKeys = []) {
+// excludeTitles : aynı kayıtların başlık+yıl anahtarları (lib/recommend titleKeys).
+//         Mock veriden kaydedilen bir yapım başlıkla anahtarlanır (title:…);
+//         TMDB'den aynı film gelince anahtar tutmaz ama başlık tutar
+//         ("Dövüş Kulübü" ikinci kez önerilmesin).
+async function tmdbRecommendations(seeds, signal, excludeKeys = [], excludeTitles = []) {
   const favorites = seeds
-  const favKeys = new Set([...seeds.map(f => f.key), ...excludeKeys])
 
   // 1) Her favori için tmdbId/mediaType belirle (yoksa search/multi ile çöz)
-  const resolved = await Promise.all(
+  const resolvedRaw = await Promise.all(
     favorites.map(async (f) => {
       // Saklanan favoriden gelen tmdbId/mediaType doğrudan TMDB URL'sine girer →
       // path-injection'ı önlemek için katı doğrula. Geçersizse search/multi ile çöz.
-      if (isValidTmdbRef(f.tmdbId, f.mediaType)) return { id: f.tmdbId, mediaType: f.mediaType, w: f._w || 1 }
+      const base = { w: f._w || 1, title: f.title, genres: f.genres || [] }
+      if (isValidTmdbRef(f.tmdbId, f.mediaType)) return { ...base, id: f.tmdbId, mediaType: f.mediaType }
       try {
         const res = await fetch(
           `${TMDB_BASE}/search/multi?query=${encodeURIComponent((f.title || '').slice(0, 200))}` +
@@ -108,48 +118,104 @@ async function tmdbRecommendations(seeds, signal, excludeKeys = []) {
         if (!res.ok) return null
         const json = await res.json()
         const hit = (json.results || []).find(r => r.media_type === 'movie' || r.media_type === 'tv')
-        return hit ? { id: hit.id, mediaType: hit.media_type, w: f._w || 1 } : null
+        return hit ? { ...base, id: hit.id, mediaType: hit.media_type } : null
       } catch {
         return null
       }
     })
   )
 
-  // 2) Her favori için recommendations getir, frekansla birleştir
-  const acc = new Map() // key → { card, freq }
-  await Promise.all(
-    resolved.filter(Boolean).map(async ({ id, mediaType, w }) => {
+  // Aynı yapım listede iki kez olabilir (mock kaydı + TMDB kaydı; "Breaking
+  // Bad" iki kez). Çözümlenmiş kimlikte birleştir, güçlü ağırlık kalsın —
+  // yoksa çift kayıt sessizce çift oy olur.
+  const byId = new Map()
+  for (const r of resolvedRaw.filter(Boolean)) {
+    const k = `tmdb:${r.mediaType}:${r.id}`
+    const prev = byId.get(k)
+    if (!prev || r.w > prev.w) byId.set(k, { ...r, key: k })
+  }
+  const resolved = [...byId.values()]
+
+  // 2) Her tohum için recommendations getir
+  const cardsByKey = new Map()
+  const seedsWithRecs = await Promise.all(
+    resolved.map(async (s) => {
       try {
         const res = await fetch(
-          `${TMDB_BASE}/${mediaType}/${id}/recommendations?language=tr-TR&page=1&api_key=${API_KEY}`,
+          `${TMDB_BASE}/${s.mediaType}/${s.id}/recommendations?language=tr-TR&page=1&api_key=${API_KEY}`,
           { signal }
         )
-        if (!res.ok) return
+        if (!res.ok) return { ...s, recKeys: [] }
         const json = await res.json()
+        const recKeys = []
         ;(json.results || []).forEach(r => {
-          const card = tmdbToRecCard(r)
-          const k = favKey(card)
-          if (favKeys.has(k)) return // zaten favori
-          // Ağırlık burada işler: Bayıldığın bir yapımdan gelen öneri,
-          // beğendiğinden gelenin iki katı sayılır.
-          const prev = acc.get(k)
-          if (prev) prev.freq += w
-          else acc.set(k, { card, freq: w })
+          const card = withKey(tmdbToRecCard(r))
+          if (!cardsByKey.has(card.key)) cardsByKey.set(card.key, card)
+          recKeys.push(card.key)
         })
+        return { ...s, recKeys }
       } catch {
         /* tek favori başarısız olsa da diğerleri devam etsin */
+        return { ...s, recKeys: [] }
       }
     })
   )
 
-  // 3) Sıklık → puan sırala, ilk N
-  return [...acc.values()]
-    .sort((a, b) => b.freq - a.freq || (b.card._voteAvg || 0) - (a.card._voteAvg || 0))
-    .slice(0, MAX_RESULTS)
-    .map(x => x.card)
+  // 3) Keşif: profildeki en güçlü türlerde, yüksek oylu ve yüksek puanlı
+  //    yapımlar. Komşuluk grafiğinin göremediği iyi yapımları yakalar.
+  const profile = seedProfile(seedsWithRecs)
+  const discovered = await discoverByProfile(profile, signal)
+
+  return rankRecommendations({
+    seeds: seedsWithRecs,
+    cardsByKey,
+    discovered,
+    profile,
+    excludeKeys: new Set([...favorites.map(f => f.key), ...resolved.map(r => r.key), ...excludeKeys]),
+    excludeTitles: new Set([...favorites.flatMap(titleKeys), ...excludeTitles]),
+  })
 }
 
-export function useRecommendations(favorites, excludeKeys = []) {
+function withKey(card) {
+  return { ...card, key: favKey(card) }
+}
+
+// Keşif eşikleri: komşuluk sinyali olmadığı için tek güvence kalitedir.
+const DISCOVER_FLOOR = {
+  movie: { votes: 2000, avg: 7.4 },
+  tv:    { votes: 400,  avg: 7.6 },
+}
+
+async function discoverByProfile(profile, signal) {
+  const top = topGenres(profile, 2)
+  if (!top.length) return []
+  const without = [...excludedGenres(profile)]
+  const calls = []
+  for (const mediaType of ['movie', 'tv']) {
+    const withoutIds = genreIdsFor(without, mediaType)
+      .concat(without.includes('cocuk') && mediaType === 'tv' ? [10762] : [])
+    for (const g of top) {
+      const ids = genreIdsFor([g], mediaType)
+      if (!ids.length) continue // korku/gerilim gibi türlerin dizi karşılığı yok
+      const f = DISCOVER_FLOOR[mediaType]
+      calls.push(
+        fetch(
+          `${TMDB_BASE}/discover/${mediaType}?with_genres=${ids.join('|')}` +
+          (withoutIds.length ? `&without_genres=${withoutIds.join(',')}` : '') +
+          `&vote_count.gte=${f.votes}&vote_average.gte=${f.avg}` +
+          `&sort_by=popularity.desc&language=tr-TR&page=1&include_adult=false&api_key=${API_KEY}`,
+          { signal }
+        )
+          .then(res => (res && res.ok ? res.json() : null))
+          .then(json => (json?.results || []).map(r => withKey(tmdbToRecCard({ ...r, media_type: mediaType }))))
+          .catch(() => [])
+      )
+    }
+  }
+  return (await Promise.all(calls)).flat()
+}
+
+export function useRecommendations(favorites, excludeKeys = [], excludeTitles = []) {
   const [recommendations, setRecommendations] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -182,7 +248,7 @@ export function useRecommendations(favorites, excludeKeys = []) {
     setLoading(true)
     setError(null)
 
-    tmdbRecommendations(favorites, controller.signal, excludeKeys)
+    tmdbRecommendations(favorites, controller.signal, excludeKeys, excludeTitles)
       .then(recs => {
         if (cancelled) return
         // TMDB hiç sonuç vermezse yerel fallback
