@@ -68,7 +68,9 @@ export default function HeroSlider({ items = [], count = 10, kicker = 'Listenin 
       >
         <div className="hslide-body">
           <p className="hslide-kick">
-            {kicker}
+            {/* Öneri motoru gerekçe taşıyorsa ("Beğendiğin: Breaking Bad")
+                genel etiketin yerini o alır: öneriye güveni gerekçe kurar. */}
+            {item._reason || kicker}
             <span className="tnum">{i + 1} / {n}</span>
           </p>
           <h2 className="hslide-title">{item.title}</h2>
