@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import React from 'react'
 import { ThemeProvider, useTheme } from '../contexts/ThemeContext.jsx'
-import { THEMES, DEFAULT_THEME_ID } from '../constants/index.js'
+import { THEMES, DEFAULT_THEME_ID, DEFAULT_DESIGN_ID } from '../constants/index.js'
 
 // localStorage mock is provided by jsdom environment
 
@@ -22,9 +22,31 @@ describe('ThemeContext', () => {
   })
 
   it('restores theme from localStorage on mount', () => {
+    localStorage.setItem('streamtr-theme', 'ocean')
+    const { result } = renderHook(() => useTheme(), { wrapper })
+    expect(result.current.themeId).toBe('ocean')
+  })
+
+  // Eski "Netflix" teması "Kırmızı" oldu; kayıtlı seçim kaybolmamalı.
+  it('migrates the legacy netflix id to kirmizi', () => {
     localStorage.setItem('streamtr-theme', 'netflix')
     const { result } = renderHook(() => useTheme(), { wrapper })
-    expect(result.current.themeId).toBe('netflix')
+    expect(result.current.themeId).toBe('kirmizi')
+    expect(localStorage.getItem('streamtr-theme')).toBe('kirmizi')
+  })
+
+  it('defaults design to DEFAULT_DESIGN_ID and persists a new choice', () => {
+    const { result } = renderHook(() => useTheme(), { wrapper })
+    expect(result.current.designId).toBe(DEFAULT_DESIGN_ID)
+    act(() => { result.current.setDesignId('mercek') })
+    expect(result.current.designId).toBe('mercek')
+    expect(localStorage.getItem('streamtr-design')).toBe('mercek')
+  })
+
+  it('falls back to the first design for an unknown stored id', () => {
+    localStorage.setItem('streamtr-design', 'yok-boyle')
+    const { result } = renderHook(() => useTheme(), { wrapper })
+    expect(result.current.designId).toBe('katmanli')
   })
 
   it('exposes all themes via context', () => {
@@ -41,9 +63,9 @@ describe('ThemeContext', () => {
   it('setThemeId updates themeId', () => {
     const { result } = renderHook(() => useTheme(), { wrapper })
 
-    act(() => { result.current.setThemeId('netflix') })
+    act(() => { result.current.setThemeId('kirmizi') })
 
-    expect(result.current.themeId).toBe('netflix')
+    expect(result.current.themeId).toBe('kirmizi')
   })
 
   it('persists theme choice to localStorage', () => {

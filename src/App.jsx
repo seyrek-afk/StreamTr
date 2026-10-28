@@ -25,6 +25,8 @@ import SkeletonGrid from './components/SkeletonGrid.jsx'
 import { SearchField, SearchResult } from './components/SearchBar.jsx'
 import AiSearchPanel from './components/AiSearchPanel.jsx'
 import AccountButton from './components/auth/AccountButton.jsx'
+import BrandMark from './components/BrandMark.jsx'
+import { useTheme } from './contexts/ThemeContext.jsx'
 
 // Sekme ikonları lucide'dan gelir; TABS verisi yalnız anahtarı taşır (emoji yok).
 const TAB_ICON = { tv: Tv, film: Film, flame: Flame, star: Star }
@@ -92,6 +94,7 @@ export default function App() {
   const ai     = useAiSearch()
 
   const { saved, liked, loved, watchlist } = useFavorites()
+  const { designId } = useTheme()
   const isSanaOzel = tab === 'sanaozel'
 
   // Öneri motoruna yalnız BEĞENİ kayıtları tohum olarak girer; Bayıldıklarım
@@ -310,19 +313,9 @@ export default function App() {
       <header className="app-header">
         <div className="hdr-row">
           <span className="brand">
-            {/* Gradyan durakları tema tokenlarını CSS'ten okur (.brand-from/-to):
-                stop-color özniteliği var() kabul etmiyor. */}
-            <svg className="brand-mark" width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
-              <defs>
-                <linearGradient id="brand-grad" x1="0" y1="0" x2="30" y2="30" gradientUnits="userSpaceOnUse">
-                  <stop offset="0" className="brand-from" />
-                  <stop offset="1" className="brand-to" />
-                </linearGradient>
-              </defs>
-              <path d="M5 7.2v15.6a1.4 1.4 0 0 0 2.1 1.2l12.4-7.8a1.4 1.4 0 0 0 0-2.4L7.1 6A1.4 1.4 0 0 0 5 7.2z" fill="url(#brand-grad)" />
-              <path d="M23 10.5a6.5 6.5 0 0 1 0 9" stroke="url(#brand-grad)" strokeWidth="2.2" strokeLinecap="round" />
-              <path d="M26 7.5a10.5 10.5 0 0 1 0 15" stroke="url(#brand-grad)" strokeWidth="2.2" strokeLinecap="round" opacity="0.6" />
-            </svg>
+            {/* Simge kullanıcının seçtiği tasarımda çizilir; veri yüklenirken
+                dalgaları oynar (bkz. BrandMark). */}
+            <BrandMark design={designId} size={30} busy={Boolean(loading[dk] || (isSanaOzel && recLoading))} />
             <span>stream<span className="brand-tr">tr</span></span>
           </span>
 
@@ -376,9 +369,12 @@ export default function App() {
             </div>
           )}
 
+          {/* Arama her sekmede: Bana Özel'de de bir yapımı bulup listeye
+              eklemek ya da detayına bakmak isteniyor. AI araması ise katalog
+              sekmelerine ait — paneli Bana Özel'in raflarının yerini alamaz. */}
+          <SearchField search={search} />
           {!isSanaOzel && (
             <>
-              <SearchField search={search} />
               <button
                 className={`ctl${aiOpen ? ' ctl-on' : ''}`}
                 onClick={() => setAiOpen(o => !o)}
@@ -390,9 +386,10 @@ export default function App() {
             </>
           )}
 
-          {/* Filtreler AI panelinde gizlenir: AI sonuçları filtrelenmiyor. */}
-          {!aiOpen && (isSanaOzel ? (
-            <div className="toolbar-filters toolbar-filters-lead">
+          {/* Filtreler AI panelinde gizlenir: AI sonuçları filtrelenmiyor.
+              Bana Özel'de AI paneli çizilmez, o yüzden filtreler orada hep görünür. */}
+          {(!aiOpen || isSanaOzel) && (isSanaOzel ? (
+            <div className="toolbar-filters">
               {/* Üç seçenek açılır menüde saklanmaz: menü tek tıklık kararı iki
                   adıma çıkarıyor ve mevcut seçimi görmek için açmayı gerektiriyordu.
                   Bölmeli anahtar uygulamanın kendi kontrol dili (bkz. kapsam merceği). */}
@@ -468,6 +465,8 @@ export default function App() {
 
        {isSanaOzel ? (
         <>
+          <SearchResult search={search} />
+
           {/* ── SANA ÖZEL ────────────────────────────────────────────────────
               Izgara yığını yerine vitrin + dört raf: dördü de tek ekrana sığar
               ve raflar uygulamada zaten var (ülke merceğindeki editoryal raflar),

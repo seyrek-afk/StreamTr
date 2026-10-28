@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, within } from '@testing-library/react'
 import { ThemeProvider } from '../contexts/ThemeContext.jsx'
-import { THEMES } from '../constants/index.js'
+import { THEMES, DESIGNS } from '../constants/index.js'
 
 // Oturum durumu testten teste değişiyor; useAuth taklit edilir.
 let authState
@@ -32,7 +32,11 @@ describe('AccountButton — oturum açmamış ziyaretçi', () => {
   it('menüyü açar ve tema seçimini gösterir', () => {
     renderBtn()
     const menu = openMenu()
-    expect(within(menu).getByText('Tema')).toBeTruthy()
+    expect(within(menu).getByText('Renk')).toBeTruthy()
+    expect(within(menu).getByText('Tasarım')).toBeTruthy()
+    for (const d of DESIGNS) {
+      expect(within(menu).getByText(d.label), d.label).toBeTruthy()
+    }
     for (const t of THEMES) {
       expect(within(menu).getByText(t.label), t.label).toBeTruthy()
     }
@@ -72,7 +76,11 @@ describe('AccountButton — oturum açmış kullanıcı', () => {
     renderBtn()
     expect(screen.getByText('Ozgur Seyrek')).toBeTruthy()
     const menu = openMenu()
-    expect(within(menu).getByText('Tema')).toBeTruthy()
+    expect(within(menu).getByText('Renk')).toBeTruthy()
+    expect(within(menu).getByText('Tasarım')).toBeTruthy()
+    for (const d of DESIGNS) {
+      expect(within(menu).getByText(d.label), d.label).toBeTruthy()
+    }
     for (const t of THEMES) {
       expect(within(menu).getByText(t.label), t.label).toBeTruthy()
     }
@@ -98,10 +106,19 @@ describe('AccountButton — tema seçimi davranışı', () => {
   it('seçim temayı uygular ve işaretler', () => {
     renderBtn()
     const menu = openMenu()
-    fireEvent.click(within(menu).getByText('Netflix'))
-    const netflix = within(menu).getByText('Netflix').closest('[role="menuitemradio"]')
-    expect(netflix.getAttribute('aria-checked')).toBe('true')
-    expect(localStorage.getItem('streamtr-theme')).toBe('netflix')
+    fireEvent.click(within(menu).getByText('Kırmızı'))
+    const red = within(menu).getByText('Kırmızı').closest('[role="menuitemradio"]')
+    expect(red.getAttribute('aria-checked')).toBe('true')
+    expect(localStorage.getItem('streamtr-theme')).toBe('kirmizi')
+  })
+
+  it('tasarım seçimi işaretlenir, kaydedilir ve menüyü kapatmaz', () => {
+    renderBtn()
+    const menu = openMenu()
+    fireEvent.click(within(menu).getByText('Kabartma Metal'))
+    const metal = within(screen.getByRole('menu')).getByText('Kabartma Metal').closest('[role="menuitemradio"]')
+    expect(metal.getAttribute('aria-checked')).toBe('true')
+    expect(localStorage.getItem('streamtr-design')).toBe('metal')
   })
 
   // Tema DENENEREK seçilir; her denemede menüyü kapatmak seçimi işkenceye

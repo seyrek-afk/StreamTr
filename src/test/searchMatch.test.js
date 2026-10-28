@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  normalizeTitle, relevanceScore, mergeSearchResults,
+  normalizeTitle, relevanceScore, mergeSearchResults, suggestionOrigin, suggestionScore,
   rankSearchResults, typoVariants, shouldShowOriginal,
 } from '../lib/searchMatch.js'
 
@@ -160,5 +160,28 @@ describe('shouldShowOriginal', () => {
   it('orijinal ad yoksa gösterme', () => {
     expect(shouldShowOriginal('X', null)).toBe(false)
     expect(shouldShowOriginal('X', '')).toBe(false)
+  })
+})
+
+describe('suggestionOrigin', () => {
+  it('dizide origin_country ülke adına çevrilir', () => {
+    expect(suggestionOrigin({ origin_country: ['GB'], original_language: 'en' })).toBe('İngiltere')
+  })
+  it('ülke yoksa ya da listede değilse orijinal dile düşer', () => {
+    expect(suggestionOrigin({ original_language: 'ko' })).toBe('Korece')
+    expect(suggestionOrigin({ origin_country: ['PH'], original_language: 'en' })).toBe('İngilizce')
+  })
+  it('bilinmeyen dilde hiçbir şey göstermez', () => {
+    expect(suggestionOrigin({ original_language: 'xx' })).toBeNull()
+  })
+})
+
+describe('suggestionScore', () => {
+  it('yeterli oyda puanı bir ondalığa yuvarlar', () => {
+    expect(suggestionScore({ vote_average: 8.367, vote_count: 3000 })).toBe(8.4)
+  })
+  it('az oylu yapımda puan gizlenir', () => {
+    expect(suggestionScore({ vote_average: 10, vote_count: 3 })).toBeNull()
+    expect(suggestionScore({ vote_average: 0, vote_count: 500 })).toBeNull()
   })
 })

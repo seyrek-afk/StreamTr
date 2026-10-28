@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { GENRES, PLATFORMS, THEMES, TABS, POSTER_GRADIENTS, DEFAULT_THEME_ID } from '../constants/index.js'
+import {
+  GENRES, PLATFORMS, THEMES, TABS, POSTER_GRADIENTS, DEFAULT_THEME_ID,
+  LEGACY_THEME_IDS, DESIGNS, DEFAULT_DESIGN_ID,
+} from '../constants/index.js'
 
 describe('GENRES', () => {
   it('should have exactly 12 genres', () => {
@@ -62,7 +65,7 @@ describe('PLATFORMS', () => {
 describe('THEMES', () => {
   // Tema sözleşmesi — görsel dil v2 ile güncellendi:
   //   + --accent-ink / --accent-contrast: vurgu rengi metin olarak WCAG AA'yı
-  //     geçmeyebiliyor (Netflix kırmızısı koyu zeminde 2.95:1). Metin ve dolgu
+  //     geçmeyebiliyor (Kırmızı temanın vurgusu koyu zeminde AA altında). Metin ve dolgu
   //     üstü mürekkep artık ayrı tokenlar.
   //   + --surface / --surface-hover / --border-strong: tüm kontroller tek yüzey
   //     ve tek kenarlık tokenını paylaşır; her bileşen kendi beyaz-alfasını
@@ -126,10 +129,36 @@ describe('THEMES', () => {
     expect(cinema.css['--accent']).toBe('#F5C518')
   })
 
-  it('netflix theme should have red accent', () => {
-    const netflix = THEMES.find(t => t.id === 'netflix')
-    expect(netflix).toBeDefined()
-    expect(netflix.css['--accent']).toBe('#E50914')
+  // Marka adı ve birebir rengi taşıyan tema taklit gibi duruyordu.
+  it('no theme carries a streaming brand name', () => {
+    THEMES.forEach(t => expect(t.label).not.toMatch(/netflix/i))
+    expect(THEMES.find(t => t.id === 'netflix')).toBeUndefined()
+  })
+
+  it('kirmizi theme has a darker red accent and an AA text variant', () => {
+    const red = THEMES.find(t => t.id === 'kirmizi')
+    expect(red.label).toBe('Kırmızı')
+    expect(red.css['--accent']).toBe('#C8141E')
+    expect(red.css['--accent-ink']).not.toBe(red.css['--accent'])
+  })
+
+  it('legacy netflix id maps to kirmizi', () => {
+    expect(LEGACY_THEME_IDS.netflix).toBe('kirmizi')
+  })
+
+  it('default look is Neon Siber + Katmanlı Sinyal', () => {
+    expect(DEFAULT_THEME_ID).toBe('neon')
+    expect(DEFAULT_DESIGN_ID).toBe('katmanli')
+  })
+})
+
+describe('DESIGNS', () => {
+  it('lists the four brand designs in menu order', () => {
+    expect(DESIGNS.map(d => d.label)).toEqual(['Katmanlı Sinyal', 'Sade', 'Mercek', 'Kabartma Metal'])
+  })
+
+  it('DEFAULT_DESIGN_ID exists in DESIGNS', () => {
+    expect(DESIGNS.map(d => d.id)).toContain(DEFAULT_DESIGN_ID)
   })
 })
 
