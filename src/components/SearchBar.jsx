@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
-import { Search, X, Loader, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Search, X, Loader, AlertTriangle, RefreshCw, Star } from 'lucide-react'
 import ContentCard from './ContentCard.jsx'
+import PosterImg from './PosterImg.jsx'
 import { shouldShowOriginal } from '../lib/searchMatch.js'
 
 // Arama iki parçaya bölündü:
@@ -73,17 +74,32 @@ export function SearchField({ search }) {
               className="search-suggest-item"
               onClick={() => selectSuggestion(s)}
             >
-              <span className="search-suggest-main">
-                <span className="search-suggest-title">{s.title}</span>
-                {/* Orijinal ad — TMDB tr-TR'de "Inception"ı "Başlangıç" olarak
-                    döndürür; yalnız yerelleştirilmiş adı göstermek kullanıcının
-                    aradığı yapımı tanımasını engelliyordu. */}
-                {shouldShowOriginal(s.title, s.originalTitle) && (
-                  <span className="search-suggest-orig">{s.originalTitle}</span>
-                )}
+              {/* Küçük poster — aynı adlı yapımları metinden önce gözle ayırır.
+                  w92 TMDB'nin en küçük boyu; liste 8 satır, yük önemsiz. */}
+              <span className="search-suggest-thumb">
+                <PosterImg path={s.posterPath} title={s.title} size="w92" />
               </span>
-              <span className="search-suggest-year">
-                {s.mediaType === 'movie' ? 'Film' : 'Dizi'}{s.year ? ` · ${s.year}` : ''}
+              <span className="search-suggest-body">
+                <span className="search-suggest-main">
+                  <span className="search-suggest-title">{s.title}</span>
+                  {/* Orijinal ad — TMDB tr-TR'de "Inception"ı "Başlangıç" olarak
+                      döndürür; yalnız yerelleştirilmiş adı göstermek kullanıcının
+                      aradığı yapımı tanımasını engelliyordu. */}
+                  {shouldShowOriginal(s.title, s.originalTitle) && (
+                    <span className="search-suggest-orig">{s.originalTitle}</span>
+                  )}
+                </span>
+                <span className="search-suggest-meta">
+                  <span className={`search-suggest-type search-suggest-type-${s.mediaType}`}>
+                    {s.mediaType === 'movie' ? 'Film' : 'Dizi'}
+                  </span>
+                  {[s.year, s.origin].filter(Boolean).join(' · ')}
+                  {s.score != null && (
+                    <span className="search-suggest-score tnum">
+                      <Star size={11} aria-hidden="true" /> {s.score.toFixed(1)}
+                    </span>
+                  )}
+                </span>
               </span>
             </button>
           ))}

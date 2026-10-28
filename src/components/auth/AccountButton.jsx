@@ -3,6 +3,7 @@ import { LogIn, LogOut, Mail, UserRound, ChevronDown, Check } from 'lucide-react
 import { useAuth } from '../../contexts/AuthContext.jsx'
 import { useTheme } from '../../contexts/ThemeContext.jsx'
 import AuthModal from './AuthModal.jsx'
+import BrandMark from '../BrandMark.jsx'
 
 // Başlıktaki TEK hesap kontrolü — hem oturum hem görünüm ayarları burada.
 //
@@ -16,7 +17,7 @@ import AuthModal from './AuthModal.jsx'
 // ilk maddesi "Giriş yap" olur, böylece asıl eylem hâlâ en üstte.
 export default function AccountButton() {
   const { user, isAuthed, signOut } = useAuth()
-  const { themeId, setThemeId, themes } = useTheme()
+  const { themeId, setThemeId, themes, designId, setDesignId, designs } = useTheme()
   const [modalOpen, setModalOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const ref = useRef(null)
@@ -75,8 +76,32 @@ export default function AccountButton() {
             </button>
           )}
 
+          {/* Görünüm iki eksen: Tasarım simgenin işçiliğini, Renk temanın
+              paletini seçer. Ayrı tutuldular ki her tasarım her renkte denenebilsin. */}
           <div className="acct-sec">
-            <p className="acct-sec-title">Tema</p>
+            <p className="acct-sec-title">Tasarım</p>
+            {designs.map(d => {
+              const active = designId === d.id
+              return (
+                <button
+                  key={d.id}
+                  role="menuitemradio"
+                  aria-checked={active}
+                  className={`acct-theme${active ? ' acct-theme-on' : ''}`}
+                  onClick={() => setDesignId(d.id)}
+                >
+                  {/* Önizleme aktif rengin tokenlarıyla çizilir: burada seçilen
+                      şey biçim, renk değil. Menüde oynamaz (still). */}
+                  <BrandMark design={d.id} size={20} still />
+                  <span className="acct-theme-name">{d.label}</span>
+                  {active && <Check size={14} style={{ color: 'var(--accent-ink)' }} aria-hidden="true" />}
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="acct-sec">
+            <p className="acct-sec-title">Renk</p>
             {themes.map(t => {
               const active = themeId === t.id
               return (

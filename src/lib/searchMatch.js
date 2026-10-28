@@ -15,6 +15,8 @@
 // TMDB'nin kendi sıralaması popülerliğe dayalıdır ve tam eşleşmeyi gömebilir
 // ("interstelar" → önce "Interstellar Wars"). Bu yüzden istemcide yeniden sıralanır.
 
+import { countryLabel, isKnownCountry } from '../constants/countries.js'
+
 // Türkçe-duyarsız normalize: aksan, büyük/küçük ve noktalama farkını siler.
 // 'ı' NFD ile ayrışmadığından ayrıca eşlenir; 'ş/ğ/ç/ö/ü' NFD ile çözülür.
 export function normalizeTitle(s) {
@@ -63,6 +65,33 @@ export function relevanceScore(item, query) {
 // İki dilden gelen ham TMDB sonuçlarını tekilleştirip kart-önizleme biçimine çevirir.
 // Aynı yapım iki dilde de dönerse tr-TR kaydı gösterim adı olarak tercih edilir
 // (uygulamanın dili Türkçe), orijinal ad her hâlükârda korunur.
+// Aynı adlı yapımları ayırt eden ikinci ipucu: köken. Yeniden çevrimlerde
+// (The Office ABD/İngiltere, Shameless, Kore→Türk uyarlamaları) yıl bazen
+// yakındır ama ülke her zaman farklıdır. Dizilerde origin_country gelir;
+// filmlerde gelmeyebilir, o zaman orijinal dile düşülür. Listede olmayan ülke
+// için ham kod ("PH") yerine dile düşmek daha okunur.
+const LANGUAGE_LABELS = {
+  tr: 'Türkçe', en: 'İngilizce', ko: 'Korece', ja: 'Japonca', es: 'İspanyolca',
+  fr: 'Fransızca', de: 'Almanca', it: 'İtalyanca', hi: 'Hintçe', zh: 'Çince',
+  cn: 'Kantonca', pt: 'Portekizce', ru: 'Rusça', sv: 'İsveççe', da: 'Danca',
+  no: 'Norveççe', pl: 'Lehçe', nl: 'Felemenkçe', ar: 'Arapça', fa: 'Farsça',
+  th: 'Tayca', id: 'Endonezce', he: 'İbranice', fi: 'Fince', el: 'Yunanca',
+  hu: 'Macarca', uk: 'Ukraynaca', cs: 'Çekçe', ro: 'Rumence', tl: 'Filipince',
+}
+
+export function suggestionOrigin(r) {
+  const code = (r.origin_country || [])[0]
+  if (code && isKnownCountry(code)) return countryLabel(code)
+  return LANGUAGE_LABELS[r.original_language] || null
+}
+
+// Az oylu yapımda TMDB ortalaması gürültüdür (3 oyla 10.0); eşik altında
+// puan gösterilmez ki yanıltıcı bir "★ 10" ayırt edici ipucu sanılmasın.
+export function suggestionScore(r) {
+  if (!r.vote_average || (r.vote_count || 0) < 20) return null
+  return Number(r.vote_average.toFixed(1))
+}
+
 export function mergeSearchResults(trResults = [], enResults = []) {
   const byKey = new Map()
 
@@ -78,6 +107,8 @@ export function mergeSearchResults(trResults = [], enResults = []) {
       year: ((isMovie ? r.release_date : r.first_air_date) || '').slice(0, 4),
       posterPath: r.poster_path,
       popularity: r.popularity || 0,
+      score: suggestionScore(r),
+      origin: suggestionOrigin(r),
     }
     const prev = byKey.get(key)
     if (!prev) byKey.set(key, mapped)

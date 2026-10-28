@@ -12,49 +12,50 @@
 
 /* ── Tokenlar ───────────────────────────────────────────────────────────────
    Renk değerleri ThemeContext tarafından documentElement'e yazılır; buradaki
-   set "Sinema Karanlığı" varsayılanıdır. Renkler ASLA bileşende sabitlenmez —
+   set varsayılan tema "Neon Siber"in değerleridir (JS yüklenmeden önceki ilk
+   kare de doğru renkte çizilsin). Renkler ASLA bileşende sabitlenmez —
    beş tema da aynı sözleşmeyi doldurur (bkz. constants/index.js). */
 :root {
   /* Yüzeyler */
-  --bg:              #0e0e1c;
-  --bg-card:         #161624;
+  --bg:              #0a0a16;
+  --bg-card:         #0c0f0c;
   /* Yükseltilmiş yüzey (açılır menü, raf okları). Kartın aksine ARKASINI
      örtmesi gerektiği için her temada opak olmak ZORUNDA. */
-  --bg-elevated:     #1b1b30;
-  --bg-card-trend:   rgba(20,10,10,0.97);
+  --bg-elevated:     #141a16;
+  --bg-card-trend:   rgba(0,16,6,0.97);
   /* Başlık bandı opak: yapışkan başlık altından içerik geçerken bulanık cam
      yerine kararlı bir bant istiyoruz (hem daha net, hem bir kompozisyon
      katmanı daha az). */
-  --bg-header:       #0c0c18;
+  --bg-header:       #08080f;
   /* Kontrol yüzeyi — tüm etkileşimli kontroller tek zemini paylaşır. */
-  --surface:         rgba(255,255,255,0.055);
-  --surface-hover:   rgba(255,255,255,0.10);
+  --surface:         rgba(224,250,224,0.055);
+  --surface-hover:   rgba(224,250,224,0.11);
 
   /* Vurgu */
-  --accent:          #F5C518;   /* dolgu ve kenarlık */
-  --accent-ink:      #F5C518;   /* METİN olarak vurgu — AA garantili */
-  --accent-contrast: #14140f;   /* dolu vurgu üzerindeki mürekkep */
-  --accent-rgb:      245,197,24;
+  --accent:          #00dc8a;   /* dolgu ve kenarlık */
+  --accent-ink:      #00dc8a;   /* METİN olarak vurgu — AA garantili */
+  --accent-contrast: #04140c;   /* dolu vurgu üzerindeki mürekkep */
+  --accent-rgb:      0,220,138;
 
   /* Kenarlıklar: hairline ayırıcı vs. kontrol kenarı iki ayrı iş. */
-  --border:          rgba(255,255,255,0.08);
-  --border-strong:   rgba(255,255,255,0.16);
-  --border-trend:    rgba(245,100,0,0.15);
-  --hover-border:    rgba(245,197,24,0.30);
+  --border:          rgba(0,220,138,0.12);
+  --border-strong:   rgba(0,220,138,0.30);
+  --border-trend:    rgba(0,220,138,0.20);
+  --hover-border:    rgba(0,220,138,0.55);
 
   /* Mürekkep rampası — üç kademe, hepsi AA (bkz. tasarım raporu ölçümleri). */
-  --text:            #ffffff;
-  --text-muted:      rgba(255,255,255,0.74);
-  --text-faint:      rgba(255,255,255,0.58);
+  --text:            #e0fae0;
+  --text-muted:      rgba(224,250,224,0.74);
+  --text-faint:      rgba(224,250,224,0.58);
 
-  --tab-active:      #F5C518;
-  --trend-bar:       linear-gradient(90deg,#F5C518,#E50914);
+  --tab-active:      #00dc8a;
+  --trend-bar:       linear-gradient(90deg,#00dc8a,#00aee0);
   --card-backdrop:   none;
 
   /* Marka simgesinin gradyan uçları. Beş tema da bu iki değeri doldurur;
      her temada --trend-bar ile aynı çifttir. */
-  --brand-from:      #F5C518;
-  --brand-to:        #E50914;
+  --brand-from:      #00dc8a;
+  --brand-to:        #00aee0;
 
   /* Durum renkleri temadan bağımsızdır: "taze" her temada yeşil, "hata" her
      temada kırmızıdır. Bu yüzden bilinçli olarak yalnız :root'ta yaşarlar ve
@@ -319,9 +320,39 @@ button, input, textarea { font: inherit; color: inherit; }
   letter-spacing: -0.02em;
   color: var(--text);
 }
-.brand-mark { flex-shrink: 0; }
+.brand-mark { flex-shrink: 0; overflow: visible; }
 .brand-from { stop-color: var(--brand-from); }
 .brand-to   { stop-color: var(--brand-to); }
+
+/* Simge hareketi (BrandMark). Açılışta iki tur oynar ve durur; veri yüklenirken
+   (.bm-busy) ve fare markanın üzerindeyken sürekli oynar. Tur sayısı değişince
+   tarayıcı süreyi yeniden hesaplar: yükleme biter bitmez hareket de biter.
+   Durağan hal anahtar karelerin dışında tanımlıdır — hareket kapalıyken de
+   simge eksiksiz görünür. */
+.bm { --bm-n: 2; }
+.bm-busy, .brand:hover .bm { --bm-n: infinite; }
+.bm-still * { animation: none !important; }
+
+.bm-katmanli .bm-l1 { transform: translateX(-7px);   animation: bm-drift1 2.6s ease-in-out var(--bm-n); }
+.bm-katmanli .bm-l2 { transform: translateX(-3.5px); animation: bm-drift2 2.6s ease-in-out var(--bm-n); }
+.bm-katmanli .bm-a1 { opacity: 1;   animation: bm-ripple 2.6s ease-out var(--bm-n); }
+.bm-katmanli .bm-a2 { opacity: 0.6; animation: bm-ripple 2.6s ease-out 0.25s var(--bm-n); }
+.bm-katmanli .bm-a3 { opacity: 0;   animation: bm-ripple-out 2.6s ease-out 0.5s var(--bm-n); }
+@keyframes bm-drift1 { 0%, 100% { transform: translateX(-7px); } 50% { transform: translateX(-4.5px); } }
+@keyframes bm-drift2 { 0%, 100% { transform: translateX(-3.5px); } 50% { transform: translateX(-2.2px); } }
+@keyframes bm-ripple { 0% { opacity: 0.3; } 18% { opacity: 1; } 70%, 100% { opacity: 0.45; } }
+@keyframes bm-ripple-out { 0%, 10% { opacity: 0; } 30% { opacity: 0.55; } 70%, 100% { opacity: 0; } }
+
+.bm-mercek .bm-ring {
+  transform-box: view-box; transform-origin: 32px 32px;
+  animation: bm-spin 4s var(--ease-in-out) var(--bm-n);
+}
+.bm-mercek .bm-glow { opacity: 0.7; animation: bm-breathe 2s ease-in-out var(--bm-n); }
+@keyframes bm-spin { to { transform: rotate(360deg); } }
+@keyframes bm-breathe { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.95; } }
+
+.bm-metal .bm-sheen { transform: translateX(-46px); animation: bm-sheen 2.8s var(--ease-out) var(--bm-n); }
+@keyframes bm-sheen { 0%, 30% { transform: translateX(-46px); } 100% { transform: translateX(96px); } }
 .brand-tr { font-weight: 700; color: var(--accent-ink); }
 
 /* Gezinme — kutusuz. "Yer" bildirir, kontrol gibi görünmez. */
@@ -435,9 +466,6 @@ button, input, textarea { font: inherit; color: inherit; }
   display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
   margin-left: auto;
 }
-/* Sana Özel'de rayda başka kontrol yok; tek başına sağa yaslanmış bir menü
-   ortada asılı kalıyordu. */
-.toolbar-filters-lead { margin-left: 0; }
 
 /* Bölmeli anahtar — fiziksel bir anahtar gibi: tek çerçeve, bölmeli, dolu
    aktif segment. İki örneği var: kapsam merceği (.lens) ve içerik türü
@@ -575,23 +603,55 @@ button, input, textarea { font: inherit; color: inherit; }
 }
 .search-correction b { color: var(--text); font-weight: 700; }
 .search-suggest-item {
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  display: flex; align-items: center; gap: 10px;
   width: 100%; text-align: left;
   background: none; border: none; border-radius: var(--r-sm);
-  padding: 8px 10px; cursor: pointer; color: var(--text);
+  padding: 6px 8px; cursor: pointer; color: var(--text);
   transition: background var(--dur-1) var(--ease-out);
+}
+/* 2:3 küçük poster. Satır yüksekliğini o belirler (48px) — iki metin satırı
+   da tam bu yüksekliğe oturur. Fallback ikonu ve yazısı bu boyda gürültü. */
+.search-suggest-thumb {
+  flex: 0 0 32px; width: 32px; height: 48px;
+  border-radius: 4px; overflow: hidden;
+  box-shadow: 0 0 0 1px var(--border);
+}
+.search-suggest-thumb .poster-fallback { padding: 0; }
+.search-suggest-thumb .poster-fallback span { display: none; }
+.search-suggest-thumb .poster-fallback svg { width: 14px; height: 14px; }
+.search-suggest-body {
+  display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1;
+}
+.search-suggest-meta {
+  display: flex; align-items: center; gap: 6px; min-width: 0;
+  color: var(--text-faint); font-size: var(--fs-meta);
+  white-space: nowrap; overflow: hidden;
+}
+/* Tür etiketi metin değil rozet: listede göz önce "film mi dizi mi"yi tarar. */
+.search-suggest-type {
+  flex-shrink: 0;
+  font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.02em;
+  padding: 1px 6px; border-radius: 4px;
+  border: 1px solid var(--border-strong); color: var(--text-muted);
+}
+.search-suggest-score {
+  display: inline-flex; align-items: center; gap: 3px; margin-left: auto;
+  color: var(--accent-ink); font-weight: 600; flex-shrink: 0;
 }
 @media (hover: hover) and (pointer: fine) {
   .search-suggest-item:hover { background: var(--surface-hover); }
 }
 .search-suggest-main { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .search-suggest-title {
+  min-width: 0;
   font-size: var(--fs-body); font-weight: 500;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.search-suggest-orig, .search-suggest-year {
+.search-suggest-orig {
   color: var(--text-faint); font-size: var(--fs-meta);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+  /* Yer daralınca önce orijinal ad kısalır, yerelleştirilmiş ad değil. */
+  flex-shrink: 3;
 }
 
 /* ══ AI PANELİ ═════════════════════════════════════════════════════════════ */
@@ -1536,6 +1596,7 @@ code { font-size: 0.92em; color: var(--accent-ink); }
    Hareket azaltılır, yok edilmez: anlam taşıyan renk/opaklık geçişleri kalır,
    yer değiştiren ve ölçeklenen her şey durur. */
 @media (prefers-reduced-motion: reduce) {
+  .bm * { animation: none !important; }
   .ctl, .btn, .btn-quiet, .icon-btn, .link-btn, .tab, .lens-option,
   .dd-option, .dd-clear, .ai-example, .rail-card, .rail-arrow, .cc,
   .search-suggest-item, .rail-poster, .search-field {

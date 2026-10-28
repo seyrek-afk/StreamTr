@@ -64,8 +64,8 @@ export const TABS = [
 //   1. --bg-elevated ve --bg-header OPAK olmak zorundadır (menü ve yapışkan
 //      başlık arkalarındaki içeriği örtmeli).
 //   2. --accent dolgu/kenarlık rengidir; METİN olarak --accent-ink kullanılır.
-//      İkisi çoğu temada aynıdır ama Netflix kırmızısı koyu zeminde 3:1'in
-//      altında kaldığı için orada ayrışır (WCAG AA).
+//      İkisi çoğu temada aynıdır ama Kırmızı temanın vurgusu koyu zeminde
+//      3:1'in altında kaldığı için orada ayrışır (WCAG AA).
 //   3. --text/-muted/-faint üç kademeli mürekkep rampasıdır ve üçü de
 //      en açık yüzey (--bg-elevated) üzerinde ≥4.5:1 olmak zorundadır.
 export const THEMES = [
@@ -103,35 +103,40 @@ export const THEMES = [
     }
   },
   {
-    id: 'netflix',
-    label: 'Netflix',
-    desc: 'Kırmızı-siyah, streaming klasiği',
-    preview: ['#181818', '#E50914', '#e85f5f'],
+    // Eski adı "Netflix"ti: bir markanın adını ve birebir rengini taşımak taklit
+    // gibi duruyordu. Ad renge döndü, ton da bir tık koyulaştırıldı (#E50914 →
+    // #C8141E) ve zemine hafif kırmızı bir alt ton verildi; nötr siyah zemin +
+    // o kırmızı ikilisi tek başına o markayı çağrıştırıyordu.
+    id: 'kirmizi',
+    label: 'Kırmızı',
+    desc: 'Koyu kırmızı, siyaha yakın zemin',
+    preview: ['#161213', '#C8141E', '#E5484D'],
     css: {
-      '--bg':              '#181818',
-      '--bg-card':         '#222222',
-      '--bg-elevated':     '#2b2b2b',
+      '--bg':              '#161213',
+      '--bg-card':         '#201a1b',
+      '--bg-elevated':     '#2a2223',
       '--bg-card-trend':   'rgba(22,6,6,0.97)',
-      '--bg-header':       '#141414',
+      '--bg-header':       '#120f10',
       '--surface':         'rgba(255,255,255,0.06)',
       '--surface-hover':   'rgba(255,255,255,0.12)',
-      '--accent':          '#E50914',
-      // Netflix kırmızısı metin olarak koyu zeminde 2.95:1 — AA'yı geçmiyor.
-      // Metin için açılmış varyant kullanılır; dolgu rengi markanın kendisidir.
+      '--accent':          '#C8141E',
+      // Koyu kırmızı metin olarak koyu zeminde AA'yı geçmiyor. Metin için
+      // açılmış varyant kullanılır; dolgu rengi temanın kendisidir.
       '--accent-ink':      '#FF7A80',
+      // Beyaz / #C8141E = 5.9:1 (AA).
       '--accent-contrast': '#ffffff',
-      '--accent-rgb':      '229,9,20',
+      '--accent-rgb':      '200,20,30',
       '--border':          'rgba(255,255,255,0.09)',
       '--border-strong':   'rgba(255,255,255,0.18)',
-      '--border-trend':    'rgba(229,9,20,0.20)',
+      '--border-trend':    'rgba(200,20,30,0.22)',
       '--text':            '#ffffff',
       '--text-muted':      'rgba(255,255,255,0.74)',
       '--text-faint':      'rgba(255,255,255,0.58)',
-      '--tab-active':      '#E50914',
-      '--hover-border':    'rgba(229,9,20,0.55)',
-      '--brand-from':      '#E50914',
-      '--brand-to':        '#e85f5f',
-      '--trend-bar':       'linear-gradient(90deg,#E50914,#e85f5f)',
+      '--tab-active':      '#C8141E',
+      '--hover-border':    'rgba(200,20,30,0.60)',
+      '--brand-from':      '#B3121C',
+      '--brand-to':        '#E5484D',
+      '--trend-bar':       'linear-gradient(90deg,#B3121C,#E5484D)',
       '--card-backdrop':   'none',
     }
   },
@@ -232,7 +237,23 @@ export const THEMES = [
   },
 ]
 
-export const DEFAULT_THEME_ID = 'cinema'
+// Varsayılan görünüm: Neon Siber renk + Katmanlı Sinyal tasarım (2026-10).
+export const DEFAULT_THEME_ID = 'neon'
+
+// Eski kayıtlı tema kimlikleri → yenisi. localStorage'da "netflix" kalmış bir
+// cihaz Kırmızı'ya düşsün, sessizce varsayılana dönmesin.
+export const LEGACY_THEME_IDS = { netflix: 'kirmizi' }
+
+// ── Tasarım (marka simgesi) ─────────────────────────────────────────────────
+// Renk temasından bağımsız ikinci eksen: simgenin işçiliği. Çizim
+// components/BrandMark.jsx'te; buradaki liste menünün sırasıdır.
+export const DESIGNS = [
+  { id: 'katmanli', label: 'Katmanlı Sinyal' },
+  { id: 'sade',     label: 'Sade' },
+  { id: 'mercek',   label: 'Mercek' },
+  { id: 'metal',    label: 'Kabartma Metal' },
+]
+export const DEFAULT_DESIGN_ID = 'katmanli'
 
 // ── API Prompts (işlev tabanlı — dışlama desteği ile) ─────────────────────────
 const CAST_REVIEWS_SCHEMA = `"cast":[{"name":"string","character":"string","profilePath":"/path.jpg or null"}],"reviews":[{"source":"IMDB or Rotten Tomatoes","author":"string","quote":"Öne çıkan kısa yorum max 130 karakter"}]`
