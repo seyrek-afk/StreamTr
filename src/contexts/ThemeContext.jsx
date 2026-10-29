@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react'
 import {
   THEMES, DEFAULT_THEME_ID, LEGACY_THEME_IDS, DESIGNS, DEFAULT_DESIGN_ID,
 } from '../constants/index.js'
+import { applyFavicon } from '../lib/favicon.js'
 
 const ThemeContext = createContext(null)
 
@@ -33,6 +34,11 @@ export function ThemeProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('streamtr-design', designId)
   }, [designId])
+
+  // Sekme simgesi de seçili tasarım + rengi izler.
+  useEffect(() => {
+    applyFavicon(design.id, theme)
+  }, [design.id, theme])
 
   return (
     <ThemeContext.Provider value={{
