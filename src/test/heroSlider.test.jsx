@@ -1,10 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent, act, within } from '@testing-library/react'
 import React from 'react'
 import HeroSlider from '../components/HeroSlider.jsx'
+import { HeroSkeleton } from '../components/SkeletonGrid.jsx'
 import SaveControls from '../components/SaveControls.jsx'
 import UndoToast from '../components/UndoToast.jsx'
 import { FavoritesProvider } from '../contexts/FavoritesContext.jsx'
+
+// Vitrinin CANLI katmanı: ölçer (.hslide-olcu) tüm başlıkları görünmez taşır.
+const aktif = () => within(document.querySelector('.hslide-live'))
 
 const sar = (ui) => render(<FavoritesProvider>{ui}</FavoritesProvider>)
 
@@ -29,7 +33,7 @@ describe('HeroSlider', () => {
 
   it('ilk yapımı gösterir ve her yapım için bir nokta çizer', () => {
     const { container } = sar(<HeroSlider items={uc} />)
-    expect(screen.getByText('Yapım 1')).toBeTruthy()
+    expect(aktif().getByText('Yapım 1')).toBeTruthy()
     expect(container.querySelectorAll('.hslide-dot')).toHaveLength(3)
   })
 
@@ -57,22 +61,22 @@ describe('HeroSlider', () => {
   it('ok ileri gider ve sonda başa sarar', () => {
     sar(<HeroSlider items={uc} />)
     fireEvent.click(screen.getByRole('button', { name: 'Sonraki öneri' }))
-    expect(screen.getByText('Yapım 2')).toBeTruthy()
+    expect(aktif().getByText('Yapım 2')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Sonraki öneri' }))
     fireEvent.click(screen.getByRole('button', { name: 'Sonraki öneri' }))
-    expect(screen.getByText('Yapım 1')).toBeTruthy()
+    expect(aktif().getByText('Yapım 1')).toBeTruthy()
   })
 
   it('geri ok baştan sona sarar', () => {
     sar(<HeroSlider items={uc} />)
     fireEvent.click(screen.getByRole('button', { name: 'Önceki öneri' }))
-    expect(screen.getByText('Yapım 3')).toBeTruthy()
+    expect(aktif().getByText('Yapım 3')).toBeTruthy()
   })
 
   it('noktaya tıklamak doğrudan o yapıma gider ve seçili olanı bildirir', () => {
     sar(<HeroSlider items={uc} />)
     fireEvent.click(screen.getByRole('tab', { name: '3. öneri: Yapım 3' }))
-    expect(screen.getByText('Yapım 3')).toBeTruthy()
+    expect(aktif().getByText('Yapım 3')).toBeTruthy()
     expect(screen.getByRole('tab', { name: '3. öneri: Yapım 3' }).getAttribute('aria-selected')).toBe('true')
   })
 
@@ -81,13 +85,13 @@ describe('HeroSlider', () => {
   // hangi listeyi taşıdığını bilmesi gerekmez.
   it('kicker metnini ve sıra sayacını çağırandan alır', () => {
     sar(<HeroSlider items={uc} kicker="Bu hafta perdede" />)
-    expect(screen.getByText(/Bu hafta perdede/)).toBeTruthy()
-    expect(screen.getByText('1 / 3')).toBeTruthy()
+    expect(aktif().getByText(/Bu hafta perdede/)).toBeTruthy()
+    expect(aktif().getByText('1 / 3')).toBeTruthy()
   })
 
   it('kicker verilmezse güvenli bir metne düşer', () => {
     sar(<HeroSlider items={uc} />)
-    expect(screen.getByText(/Listenin zirvesinde/)).toBeTruthy()
+    expect(aktif().getByText(/Listenin zirvesinde/)).toBeTruthy()
   })
 
   it('tek yapım varsa ok ve nokta çizilmez — tıklanacak bir şey yok', () => {
@@ -104,7 +108,7 @@ describe('HeroSlider', () => {
     window.matchMedia = vi.fn().mockReturnValue({ matches: true, addListener() {}, removeListener() {} })
     sar(<HeroSlider items={uc} />)
     act(() => { vi.advanceTimersByTime(30000) })
-    expect(screen.getByText('Yapım 1')).toBeTruthy()
+    expect(aktif().getByText('Yapım 1')).toBeTruthy()
     vi.useRealTimers()
   })
 
@@ -112,7 +116,7 @@ describe('HeroSlider', () => {
     vi.useFakeTimers()
     sar(<HeroSlider items={uc} />)
     act(() => { vi.advanceTimersByTime(7100) })
-    expect(screen.getByText('Yapım 2')).toBeTruthy()
+    expect(aktif().getByText('Yapım 2')).toBeTruthy()
     vi.useRealTimers()
   })
 })
@@ -209,5 +213,17 @@ describe('UndoToast — geri al bildirimi', () => {
     sarToast(<SaveControls item={yapim(1)} />)
     fireEvent.click(screen.getByRole('button', { name: 'Beğendim olarak işaretle' }))
     expect(screen.getByRole('status')).toBeTruthy()
+  })
+})
+
+describe('HeroSkeleton', () => {
+  it('vitrinle aynı iskelet sınıflarını taşır ve ekran okuyucudan gizlidir', () => {
+    const { container } = render(<HeroSkeleton />)
+    const kok = container.querySelector('.hslider.hslide-skeleton')
+    expect(kok).toBeTruthy()
+    expect(kok.getAttribute('aria-hidden')).toBe('true')
+    expect(kok.querySelector('.hslide-media')).toBeTruthy()
+    expect(kok.querySelector('.hslide-body')).toBeTruthy()
+    expect(kok.querySelector('.hslide-nav')).toBeTruthy()
   })
 })
