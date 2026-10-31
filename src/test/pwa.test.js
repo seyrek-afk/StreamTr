@@ -10,7 +10,7 @@ const ROOT = path.resolve(__dirname, '../..')
 const pub = (f) => path.join(ROOT, 'public', f)
 
 describe('PWA — manifest ve ikonlar', () => {
-  const manifest = JSON.parse(fs.readFileSync(pub('manifest.webmanifest'), 'utf8'))
+  const manifest = JSON.parse(fs.readFileSync(pub('manifest.json'), 'utf8'))
 
   it('manifest zorunlu alanları taşır', () => {
     expect(manifest.name).toBeTruthy()
@@ -42,7 +42,7 @@ describe('PWA — manifest ve ikonlar', () => {
 
   it('index.html manifest, theme-color ve apple-touch-icon bağlar', () => {
     const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')
-    expect(html).toContain('rel="manifest" href="/manifest.webmanifest"')
+    expect(html).toContain('rel="manifest" href="/manifest.json"')
     expect(html).toContain('name="theme-color"')
     expect(html).toContain('rel="apple-touch-icon"')
     expect(html).toContain('viewport-fit=cover')
