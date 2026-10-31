@@ -6,6 +6,20 @@ import { useDevice } from '../contexts/DeviceContext.jsx'
 
 const DONUS_MS = 7000
 
+// Gerekçe satırı (Bana Özel): etiket + metin + sıra sayacı. Öneri motoru
+// başlık bulamadıysa (_reason yok) genel kicker'ı taşır, etiket çizilmez —
+// "Neden önerildi: Bana özel öneri" totoloji olurdu.
+function Gerekce({ reason, kicker, i, n }) {
+  return (
+    <p className="hslide-reason">
+      {reason
+        ? <><span className="hslide-reason-label">Neden önerildi</span><span className="hslide-reason-text">{reason}</span></>
+        : <span className="hslide-reason-text">{kicker}</span>}
+      <span className="tnum hslide-reason-n">{i} / {n}</span>
+    </p>
+  )
+}
+
 // Vitrin — bir listenin ilk N'i, geniş görselle. HER SEKMEDE aynı bileşen:
 // Bana Özel'de öneriler, Diziler/Filmler'de listenin zirvesi, Trend'de
 // haftanın en çok konuşulanları. Tek yapımlık ayrı bir 'spot ışığı' bileşeni
@@ -30,6 +44,11 @@ export default function HeroSlider({ items = [], count = 10, kicker = 'Listenin 
 
   const n = dilimler.length
   const git = useCallback((yon) => setI(p => (p + yon + n) % n), [n])
+
+  // Vitrin başına TEK karar: gerekçeli öneriler varsa (Bana Özel) üst eyebrow
+  // hiçbir slaytta çizilmez, gerekçe satırı her slaytta en altta durur. Slayt
+  // başına karar verilse gerekçesiz slaytta blok sıçrardı.
+  const gerekceli = dilimler.some(d => d._reason)
 
   // Liste kısalırsa (kayıt silindi) indeks aralık dışında kalmasın.
   useEffect(() => { if (i >= n && n > 0) setI(0) }, [n, i])
@@ -98,12 +117,16 @@ export default function HeroSlider({ items = [], count = 10, kicker = 'Listenin 
              slayta göre sabitlenir, slayt değişince altındaki ızgara zıplamaz.
              Ölçüldü: önce her dönüşte 50px kayma (CLS 0.026 × dönüş). */}
          <div className="hslide-live">
-          <p className="hslide-kick">
-            {/* Öneri motoru gerekçe taşıyorsa ("Beğendiğin: Breaking Bad")
-                genel etiketin yerini o alır: öneriye güveni gerekçe kurar. */}
-            {item._reason || kicker}
-            <span className="tnum">{i + 1} / {n}</span>
-          </p>
+          {/* Gerekçe ("Beğendiğin: Breaking Bad") eskiden başlığın ÜSTÜNDE
+              eyebrow olarak duruyordu; kullanıcı yapımın adını ilk okumak
+              istedi. Artık gerekçe en ALTTA, "Neden önerildi" etiketiyle
+              (bkz. Gerekce). Eyebrow yalnız gerekçesiz vitrinlerde kalır. */}
+          {!gerekceli && (
+            <p className="hslide-kick">
+              {kicker}
+              <span className="tnum">{i + 1} / {n}</span>
+            </p>
+          )}
           <h2 className="hslide-title">{item.title}</h2>
           {item.description && <p className="hslide-desc">{item.description}</p>}
           <div className="hslide-row">
@@ -121,6 +144,7 @@ export default function HeroSlider({ items = [], count = 10, kicker = 'Listenin 
             )}
             <span className="hslide-meta">{meta}</span>
           </div>
+          {gerekceli && <Gerekce reason={item._reason} kicker={kicker} i={i + 1} n={n} />}
          </div>
 
          {/* Yükseklik ölçeri — etkileşimsiz, erişilebilirlik ağacında yok.
@@ -129,7 +153,7 @@ export default function HeroSlider({ items = [], count = 10, kicker = 'Listenin 
            <div className="hslide-olcu" style={{ visibility: 'hidden' }} aria-hidden="true">
              {dilimler.map((d, idx) => (
                <div key={d.key || d.title || idx}>
-                 <p className="hslide-kick">{d._reason || kicker}<span className="tnum">{n} / {n}</span></p>
+                 {!gerekceli && <p className="hslide-kick">{kicker}<span className="tnum">{n} / {n}</span></p>}
                  <div className="hslide-title">{d.title}</div>
                  {d.description && <p className="hslide-desc">{d.description}</p>}
                  <div className="hslide-row">
@@ -146,6 +170,7 @@ export default function HeroSlider({ items = [], count = 10, kicker = 'Listenin 
                      {[d.type === 'film' ? 'Film' : 'Dizi', ...(d.genres || []).slice(0, 2), d.year].filter(Boolean).join(' · ')}
                    </span>
                  </div>
+                 {gerekceli && <Gerekce reason={d._reason} kicker={kicker} i={n} n={n} />}
                </div>
              ))}
            </div>
