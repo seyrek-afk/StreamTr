@@ -11,6 +11,8 @@ agent-workspace/
 *.jpg
 *.jpeg
 *.png
+# public/ içindeki PWA ikonları repoya GİRER (manifest onlara işaret eder)
+!public/*.png
 
 # Supabase CLI yerel durum dosyaları — repoya girmez
 supabase/.temp/

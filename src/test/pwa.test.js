@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
+import { execFileSync } from 'node:child_process'
 
 // PWA sözleşmesi dosya düzeyinde doğrulanır: manifest geçerli, ikonlar yerinde,
 // index.html manifest'e ve apple-touch-icon'a bağlı. Tarayıcı "ana ekrana ekle"
@@ -46,5 +47,24 @@ describe('PWA — manifest ve ikonlar', () => {
     expect(html).toContain('rel="apple-touch-icon"')
     expect(html).toContain('viewport-fit=cover')
     expect(fs.existsSync(pub('apple-touch-icon.png'))).toBe(true)
+  })
+
+  // Dosyanın diskte durması yetmez: .gitignore'daki `*.png` kuralı ikonları bir kez
+  // yuttu, yerelde test geçti, üretimde beş 404 vardı. İzlenmeyen ikon = eksik ikon.
+  const izlenen = (() => {
+    try {
+      return execFileSync('git', ['ls-files', '--', 'public'], { cwd: ROOT, encoding: 'utf8' })
+        .split(/\r?\n/).filter(Boolean)
+    } catch {
+      return null // git yok (zip'ten çalıştırma): kontrol atlanır
+    }
+  })()
+
+  it.skipIf(izlenen === null)('ikon dosyaları git tarafından izleniyor (.gitignore yutmamış)', () => {
+    const gerekli = [...manifest.icons.map(i => i.src), '/apple-touch-icon.png']
+    for (const src of gerekli) {
+      const rel = 'public/' + src.replace(/^\//, '')
+      expect(izlenen, `${rel} izlenmiyor`).toContain(rel)
+    }
   })
 })
