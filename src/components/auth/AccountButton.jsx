@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { LogIn, LogOut, Mail, UserRound, ChevronDown, Check } from 'lucide-react'
+import { LogIn, LogOut, Mail, UserRound, ChevronDown, Check, MonitorSmartphone, Smartphone, Monitor } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext.jsx'
 import { useTheme } from '../../contexts/ThemeContext.jsx'
+import { useDevice, FF_LABEL } from '../../contexts/DeviceContext.jsx'
 import AuthModal from './AuthModal.jsx'
 import BrandMark from '../BrandMark.jsx'
 
@@ -15,9 +16,19 @@ import BrandMark from '../BrandMark.jsx'
 // Menü giriş yapılmamışken de açılır: tema bir hesap ayarı değil, cihaz
 // tercihi — ziyaretçiden esirgemek için sebep yok. Oturumsuz durumda menünün
 // ilk maddesi "Giriş yap" olur, böylece asıl eylem hâlâ en üstte.
+// Görünüm tercihi — tarayıcıların "masaüstü sitesi iste"sinin karşılığı.
+// Otomatik seçeneği algılananı da yazar: karar görünür olsun ki kullanıcı
+// "neden böyle görünüyor" sorusunu kendi yanıtlayabilsin.
+const GORUNUMLER = [
+  { id: 'auto',    label: 'Otomatik', Icon: MonitorSmartphone },
+  { id: 'phone',   label: 'Telefon',  Icon: Smartphone },
+  { id: 'desktop', label: 'Masaüstü', Icon: Monitor },
+]
+
 export default function AccountButton() {
   const { user, isAuthed, signOut } = useAuth()
   const { themeId, setThemeId, themes, designId, setDesignId, designs } = useTheme()
+  const { override, setOverride, detectedFormFactor } = useDevice()
   const [modalOpen, setModalOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const ref = useRef(null)
@@ -121,6 +132,29 @@ export default function AccountButton() {
                     {t.preview.map((c, i) => <i key={i} style={{ background: c }} />)}
                   </span>
                   <span className="acct-theme-name">{t.label}</span>
+                  {active && <Check size={14} style={{ color: 'var(--accent-ink)' }} aria-hidden="true" />}
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="acct-sec">
+            <p className="acct-sec-title">Görünüm</p>
+            {GORUNUMLER.map(g => {
+              const active = override === g.id
+              return (
+                <button
+                  key={g.id}
+                  role="menuitemradio"
+                  aria-checked={active}
+                  className={`acct-theme${active ? ' acct-theme-on' : ''}`}
+                  onClick={() => setOverride(g.id)}
+                >
+                  <g.Icon size={16} aria-hidden="true" style={{ flexShrink: 0 }} />
+                  <span className="acct-theme-name">
+                    {g.label}
+                    {g.id === 'auto' && <span className="acct-theme-hint"> · {FF_LABEL[detectedFormFactor]}</span>}
+                  </span>
                   {active && <Check size={14} style={{ color: 'var(--accent-ink)' }} aria-hidden="true" />}
                 </button>
               )
