@@ -101,7 +101,7 @@ describe('Detay içeriği — kart ve overlay eşitliği', () => {
   it('açık kart da aynı bölümleri gösterir', async () => {
     const { FavoritesProvider, ContentCard } = await yukle()
     render(<FavoritesProvider><ContentCard item={vitrinOgesi} /></FavoritesProvider>)
-    fireEvent.click(screen.getByRole('button', { name: /Yapım — detayları aç/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Yapım/ }))
     await waitFor(() => expect(screen.getByText('Başka Dizi')).toBeTruthy())
     for (const metin of ortakBolumler) expect(screen.getByText(metin)).toBeTruthy()
   })

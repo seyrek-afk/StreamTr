@@ -21,7 +21,7 @@ import RailRow      from './components/RailRow.jsx'
 import Segmented    from './components/Segmented.jsx'
 import HeroSlider   from './components/HeroSlider.jsx'
 import UndoToast    from './components/UndoToast.jsx'
-import SkeletonGrid from './components/SkeletonGrid.jsx'
+import SkeletonGrid, { HeroSkeleton } from './components/SkeletonGrid.jsx'
 import { SearchField, SearchResult } from './components/SearchBar.jsx'
 import AiSearchPanel from './components/AiSearchPanel.jsx'
 import AccountButton from './components/auth/AccountButton.jsx'
@@ -649,6 +649,10 @@ export default function App() {
           </div>
         )}
 
+        {/* Vitrin görünecekse iskeleti de görünür: yükleme bitince ızgara
+            yerinde kalır. Koşul showHero ile aynı, yalnız veri bağımlı
+            parçalar (liste boş mu, yükleniyor mu) hariç. */}
+        {loading[dk] && !aiOpen && !searchActive && !hasActiveFilter && <HeroSkeleton />}
         {loading[dk] && <SkeletonGrid count={8} />}
 
         {/* Boş durum */}

@@ -102,7 +102,9 @@ export default function HeroSlider({ items = [], count = 10, kicker = 'Listenin 
           <h2 className="hslide-title">{item.title}</h2>
           {item.description && <p className="hslide-desc">{item.description}</p>}
           <div className="hslide-row">
-            <button className="btn" onClick={() => setAcik(item)} aria-label={`${item.title} detayına bak`}>
+            {/* Görünür metin erişilebilir adın BAŞINDA: sesli komut "Detaya bak'a
+                dokun" eşleşsin (WCAG 2.5.3); başlık sonda bağlam verir. */}
+            <button className="btn" onClick={() => setAcik(item)} aria-label={`Detaya bak: ${item.title}`}>
               Detaya bak
             </button>
             <SaveControls item={item} size={17} />
@@ -120,7 +122,7 @@ export default function HeroSlider({ items = [], count = 10, kicker = 'Listenin 
             Metin üstünde durmadığı için okunurluk perdesi de gerekmiyor. */}
         <div className="hslide-media">
           {gorsel
-            ? <img className="hslide-img" src={gorsel} srcSet={gorselSet} sizes={gorselSizes} alt="" loading="eager" decoding="async" />
+            ? <img className="hslide-img" src={gorsel} srcSet={gorselSet} sizes={gorselSizes} alt="" loading="eager" decoding="async" fetchpriority="high" />
             : <div className="hslide-img hslide-img-yok" />}
         </div>
       </div>

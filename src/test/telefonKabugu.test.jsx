@@ -239,7 +239,8 @@ describe('ContentCard — telefon', () => {
 
   it('dokunuş kartı yerinde açmaz, detay penceresini açar', async () => {
     telefonda(<ContentCard item={yapim} isTrend={false} />)
-    const kart = screen.getByRole('button', { name: 'Yapım — detayına bak' })
+    const kart = screen.getByRole('button', { name: /^Yapım/ })
+    expect(kart).not.toHaveAttribute('aria-label')
     expect(kart).not.toHaveAttribute('aria-expanded')
     expect(kart).toHaveAttribute('aria-haspopup', 'dialog')
     fireEvent.click(kart)
@@ -250,7 +251,7 @@ describe('ContentCard — telefon', () => {
 
   it('masaüstünde eski davranış: kart yerinde açılır', () => {
     render(<FavoritesProvider><ContentCard item={yapim} isTrend={false} /></FavoritesProvider>)
-    const kart = screen.getByRole('button', { name: 'Yapım — detayları aç' })
+    const kart = screen.getByRole('button', { name: /^Yapım/ })
     fireEvent.click(kart)
     expect(kart).toHaveAttribute('aria-expanded', 'true')
     expect(screen.queryByRole('dialog')).toBeNull()

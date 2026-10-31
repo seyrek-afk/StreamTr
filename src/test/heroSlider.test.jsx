@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import React from 'react'
 import HeroSlider from '../components/HeroSlider.jsx'
+import { HeroSkeleton } from '../components/SkeletonGrid.jsx'
 import SaveControls from '../components/SaveControls.jsx'
 import UndoToast from '../components/UndoToast.jsx'
 import { FavoritesProvider } from '../contexts/FavoritesContext.jsx'
@@ -209,5 +210,17 @@ describe('UndoToast — geri al bildirimi', () => {
     sarToast(<SaveControls item={yapim(1)} />)
     fireEvent.click(screen.getByRole('button', { name: 'Beğendim olarak işaretle' }))
     expect(screen.getByRole('status')).toBeTruthy()
+  })
+})
+
+describe('HeroSkeleton', () => {
+  it('vitrinle aynı iskelet sınıflarını taşır ve ekran okuyucudan gizlidir', () => {
+    const { container } = render(<HeroSkeleton />)
+    const kok = container.querySelector('.hslider.hslide-skeleton')
+    expect(kok).toBeTruthy()
+    expect(kok.getAttribute('aria-hidden')).toBe('true')
+    expect(kok.querySelector('.hslide-media')).toBeTruthy()
+    expect(kok.querySelector('.hslide-body')).toBeTruthy()
+    expect(kok.querySelector('.hslide-nav')).toBeTruthy()
   })
 })

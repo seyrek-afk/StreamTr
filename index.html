@@ -20,6 +20,8 @@
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
     <!-- Yazı tipleri burada yüklenir, bileşenin içinde @import ile DEĞİL:
          çalışma zamanında enjekte edilen @import ilk boyamayı geciktiriyordu. -->
+    <!-- Vitrin görseli (LCP) TMDB'den gelir; bağlantı JS yüklenmeden kurulsun. -->
+    <link rel="preconnect" href="https://image.tmdb.org" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
