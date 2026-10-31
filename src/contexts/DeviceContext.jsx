@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react'
+import { createContext, useContext, useLayoutEffect, useMemo, useState, useCallback } from 'react'
 import { useFormFactor, resolveFormFactor } from '../hooks/useFormFactor.js'
 
 // Cihaz bağlamı — tek karar, iki tüketici.
@@ -51,7 +51,10 @@ export function DeviceProvider({ children }) {
 
   const formFactor = resolveFormFactor(detected.formFactor, urlForce || override)
 
-  useEffect(() => {
+  // useLayoutEffect: öznitelik ilk boyamadan ÖNCE yazılır. useEffect ile ilk kare
+  // kararsız çiziliyor, ikinci karede [data-ff] kuralları devreye girip sayfayı
+  // birkaç piksel kaydırıyordu (CLS'e sayılır).
+  useLayoutEffect(() => {
     const root = document.documentElement
     root.dataset.ff = formFactor
     root.dataset.input = detected.input

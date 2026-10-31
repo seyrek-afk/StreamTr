@@ -259,6 +259,11 @@ export default function App() {
   const { rails, loading: railsLoading } = useCountryRails(tab, railsEligible ? country : null)
   const showRails = railsEligible && !hasActiveFilter && !searchActive && !loading[dk]
 
+  // Yükleniyor YA DA henüz hiç istenmedi (ilk kare, fetch effect'i çalışmadan):
+  // ikisi de iskelet gösterir. Ayrı tutulunca ilk kare "Yükleniyor…" metni, ikinci
+  // kare iskelet oluyor ve sayfa iki kez zıplıyordu (ölçüldü: CLS 0.27).
+  const bekliyor = loading[dk] || (!error[dk] && (data[dk] || []).length === 0)
+
   // ── Vitrin ────────────────────────────────────────────────────────────────
   // Bana Özel'deki vitrinin aynısı diğer sekmelerde de: bulunulan listenin ilk
   // 10'u. Tek yapımlık ayrı bir bileşen vardı (HeroSpotlight); aynı işi yaptığı
@@ -652,24 +657,18 @@ export default function App() {
         {/* Vitrin görünecekse iskeleti de görünür: yükleme bitince ızgara
             yerinde kalır. Koşul showHero ile aynı, yalnız veri bağımlı
             parçalar (liste boş mu, yükleniyor mu) hariç. */}
-        {loading[dk] && !aiOpen && !searchActive && !hasActiveFilter && <HeroSkeleton />}
-        {loading[dk] && <SkeletonGrid count={8} />}
+        {bekliyor && !aiOpen && !searchActive && !hasActiveFilter && <HeroSkeleton />}
+        {bekliyor && <SkeletonGrid count={8} />}
 
-        {/* Boş durum */}
-        {!loading[dk] && filtered.length === 0 && !error[dk] && (
+        {/* Boş durum — veri geldi ama filtre hiçbir şey bırakmadı */}
+        {!bekliyor && filtered.length === 0 && !error[dk] && (
           <div className="empty-state">
             <SearchX size={40} className="empty-icon" aria-hidden="true" />
-            {data[dk].length === 0 ? (
-              <p className="empty-title">Yükleniyor…</p>
-            ) : (
-              <>
-                <p className="empty-title">Bu filtrelerle eşleşen içerik yok</p>
-                <p className="empty-sub">
-                  Filtrelerden birini gevşetmeyi ya da hepsini temizleyip baştan başlamayı dene.
-                </p>
-                <button className="btn" onClick={clearFilters}>Filtreleri temizle</button>
-              </>
-            )}
+            <p className="empty-title">Bu filtrelerle eşleşen içerik yok</p>
+            <p className="empty-sub">
+              Filtrelerden birini gevşetmeyi ya da hepsini temizleyip baştan başlamayı dene.
+            </p>
+            <button className="btn" onClick={clearFilters}>Filtreleri temizle</button>
           </div>
         )}
 
