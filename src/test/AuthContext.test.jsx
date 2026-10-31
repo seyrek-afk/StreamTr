@@ -4,7 +4,7 @@ import React from 'react'
 
 // supabase katmanını "yapılandırılmamış" olarak sabitle — gerçek .env'den bağımsız,
 // deterministik test (ağ/timer yan etkisi olmadan giriş kapalı davranışı).
-vi.mock('../lib/supabase.js', () => ({ supabase: null, isSupabaseConfigured: false }))
+vi.mock('../lib/supabase.js', () => ({ getSupabase: async () => null, isSupabaseConfigured: false }))
 
 import { AuthProvider, useAuth } from '../contexts/AuthContext.jsx'
 

@@ -33,7 +33,7 @@ let _mockSupabase = null
 let _mockUser = null
 
 vi.mock('../lib/supabase.js', () => ({
-  get supabase() { return _mockSupabase },
+  getSupabase: async () => _mockSupabase,
   get isSupabaseConfigured() { return _mockSupabase !== null },
 }))
 

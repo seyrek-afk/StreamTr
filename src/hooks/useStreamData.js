@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback } from 'react'
-import { MOCK_DIZILER, MOCK_FILMLER, MOCK_TREND } from '../data/mockData.js'
 import { fetchTrPlatforms } from '../lib/tmdb.js'
 import { providerCache } from '../lib/platforms.js'
 import { tmdbToListCard, tmdbToTrendCard } from '../lib/cards.js'
@@ -113,7 +112,14 @@ async function loadListPage(key, page, poolC = null) {
     ? discoverUrl(mediaType, { country, page, apiKey: TMDB_KEY, ...listParams() })
     : `${TMDB_BASE}/${WORLD_PATH[tab]}?language=tr-TR&page=${page}&api_key=${TMDB_KEY}`
 
-  const res = await fetch(url, { signal: AbortSignal.timeout(10_000) })
+  // Erken başlatılmış istek varsa (bkz. src/erken.js: index.html'deki küçük
+  // betik ana paket inmeden varsayılan görünümün sayfalarını ister) onu
+  // kullan; yanıt çoktan yoldadır. Tek kullanımlık — havuzdan silinir ki
+  // ikinci yükleme (yenile) taze istek atsın.
+  const havuz = globalThis.__streamtrErken
+  const bekleyen = havuz?.get(url)
+  if (bekleyen) havuz.delete(url)
+  const res = await (bekleyen || fetch(url, { signal: AbortSignal.timeout(10_000) }))
   if (!res.ok) throw new Error(`TMDB ${res.status}`)
   const json = await res.json()
   const raw = json.results || []
@@ -140,10 +146,9 @@ function withDefault(obj, dflt) {
   })
 }
 
-const MOCK_SOURCE = {
-  diziler: MOCK_DIZILER,
-  filmler: MOCK_FILMLER,
-}
+// Mock veri (TMDB anahtarı yokken) tembel iner: 47 KB'lık dosya üretimde hiç
+// kullanılmaz, ana pakette taşınması ilk boyamayı geciktiriyordu.
+const mockVeri = () => import('../data/mockData.js')
 
 // İlk yüklemede diziler/filmler için kaç TMDB sayfası çekilsin (20 öğe/sayfa)
 // 5 sayfa ≈ 100 içerik paralel yüklenir; gerisi "Daha Çok Göster" ile 250'ye kadar.
@@ -287,7 +292,7 @@ export function useStreamData() {
         } else {
           // TMDB anahtarı yoksa mock veriye dön
           await new Promise(r => setTimeout(r, 400))
-          items = MOCK_TREND
+          items = (await mockVeri()).MOCK_TREND
         }
       } else if (isListKey(tab) && TMDB_KEY) {
         // diziler / filmler: ilk sayfaları PARALEL çek (hızlı, zengin ilk görünüm).
@@ -327,7 +332,8 @@ export function useStreamData() {
       } else {
         // TMDB anahtarı yoksa mock veriye dön
         await new Promise(r => setTimeout(r, 400))
-        items = MOCK_SOURCE[baseTab] || []
+        const mock = await mockVeri()
+        items = ({ diziler: mock.MOCK_DIZILER, filmler: mock.MOCK_FILMLER })[baseTab] || []
       }
 
       setData(p    => ({ ...p, [tab]: items }))

@@ -6,7 +6,7 @@ const mockAuth = { getSession: vi.fn() }
 const mockFunctions = { invoke: vi.fn() }
 
 vi.mock('../lib/supabase.js', () => ({
-  get supabase() { return globalThis.__sbMock },
+  getSupabase: async () => globalThis.__sbMock,
   isSupabaseConfigured: true,
 }))
 

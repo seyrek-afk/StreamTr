@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-import { supabase } from '../lib/supabase.js'
+import { getSupabase, isSupabaseConfigured } from '../lib/supabase.js'
 import { useAuth } from './AuthContext.jsx'
 
 const FavoritesContext = createContext(null)
@@ -122,14 +122,16 @@ export function FavoritesProvider({ children }) {
   // ── Oturum değiştikçe kaynak değiştir ───────────────────────────────────────
   // Supabase yapılandırılmamışsa bu efekt hiçbir şey yapmaz → eski davranış.
   useEffect(() => {
-    if (!supabase) return
+    if (!isSupabaseConfigured) return
     if (!user) { setSaved(readLocal()); return }  // çıkış → yerel listeye dön
 
     let alive = true
     setSyncing(true)
     ;(async () => {
       try {
-        const { data: rows, error } = await supabase
+        const sb = await getSupabase()
+        if (!sb) throw new Error('Supabase istemcisi yok')
+        const { data: rows, error } = await sb
           .from('favorites').select('key,item').eq('user_id', user.id)
         if (error) throw error
         const dbKeys = new Set((rows || []).map(r => r.key))
@@ -138,13 +140,13 @@ export function FavoritesProvider({ children }) {
         const local = readLocal()
         const toPush = local.filter(f => f.key && !dbKeys.has(f.key))
         if (toPush.length) {
-          await supabase.from('favorites').upsert(
+          await sb.from('favorites').upsert(
             toPush.map(f => ({ user_id: user.id, key: f.key, item: f })),
             { onConflict: 'user_id,key' }
           )
         }
 
-        const { data: merged } = await supabase
+        const { data: merged } = await sb
           .from('favorites').select('item').eq('user_id', user.id)
           .order('created_at', { ascending: false })
         // DB'deki eski kayıtlar da aynı göçten geçer; şema jsonb olduğu için
@@ -163,7 +165,7 @@ export function FavoritesProvider({ children }) {
   // ── Yerel kalıcılık ──────────────────────────────────────────────────────────
   // Giriş yapıldığında DB tek doğru kaynaktır; localStorage'ı ezme.
   useEffect(() => {
-    if (supabase && user) return
+    if (isSupabaseConfigured && user) return
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
     } catch {
@@ -193,12 +195,14 @@ export function FavoritesProvider({ children }) {
         : [yeni, ...digerleri]
     })
 
-    if (supabase && user) {
-      const op = bosMu(yeni)
-        ? supabase.from('favorites').delete().eq('user_id', user.id).eq('key', k)
-        : supabase.from('favorites').upsert(
-            { user_id: user.id, key: k, item: yeni }, { onConflict: 'user_id,key' })
-      Promise.resolve(op).catch(() => {})
+    if (isSupabaseConfigured && user) {
+      getSupabase().then(sb => {
+        if (!sb) return
+        return bosMu(yeni)
+          ? sb.from('favorites').delete().eq('user_id', user.id).eq('key', k)
+          : sb.from('favorites').upsert(
+              { user_id: user.id, key: k, item: yeni }, { onConflict: 'user_id,key' })
+      }).catch(() => {})
     }
   }, [user])
 
