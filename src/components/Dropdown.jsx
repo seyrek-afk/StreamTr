@@ -84,12 +84,12 @@ export default function Dropdown({
     const onEsc = (e) => { if (e.key === 'Escape') setOpen(false) }
     // Sayfa kayarsa menü tetikten kopmasın (capture: iç kaydırıcılar da yakalanır).
     const onScroll = () => place()
-    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('pointerdown', onDoc)
     document.addEventListener('keydown', onEsc)
     window.addEventListener('scroll', onScroll, true)
     window.addEventListener('resize', onScroll)
     return () => {
-      document.removeEventListener('mousedown', onDoc)
+      document.removeEventListener('pointerdown', onDoc)
       document.removeEventListener('keydown', onEsc)
       window.removeEventListener('scroll', onScroll, true)
       window.removeEventListener('resize', onScroll)

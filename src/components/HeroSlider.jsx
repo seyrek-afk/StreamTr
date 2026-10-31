@@ -36,13 +36,21 @@ export default function HeroSlider({ items = [], count = 10, kicker = 'Listenin 
 
   if (n === 0) return null
   const item = dilimler[i]
-  // Geniş görsel tam genişlikte gösteriliyor: w780 masaüstünde büyütülüp
-  // bulanıklaşıyordu. Poster yedeği dar olduğu için daha küçük boy yeterli.
+  // Geniş görsel masaüstünde kabın %54'ünü (≈750px) doldurur; w780 orada
+  // bulanıklaşıyordu, w1280 ise telefonda (≈360px) gereksiz ağırdı. srcset ile
+  // tarayıcı seçer: dar ekranda w780, geniş ekranda w1280. `sizes` yerleşimi
+  // birebir izler — 640px altında tek kolon (tam genişlik eksi oluk), üstünde
+  // %54'lük kolon. Poster yedeği dar olduğu için tek boy yeterli.
+  const TMDB_IMG = 'https://image.tmdb.org/t/p/'
   const gorsel = item.backdropPath
-    ? `https://image.tmdb.org/t/p/w1280${item.backdropPath}`
+    ? `${TMDB_IMG}w1280${item.backdropPath}`
     : item.posterPath
-      ? `https://image.tmdb.org/t/p/w780${item.posterPath}`
+      ? `${TMDB_IMG}w780${item.posterPath}`
       : null
+  const gorselSet = item.backdropPath
+    ? `${TMDB_IMG}w780${item.backdropPath} 780w, ${TMDB_IMG}w1280${item.backdropPath} 1280w`
+    : undefined
+  const gorselSizes = item.backdropPath ? '(max-width: 639px) calc(100vw - 32px), 54vw' : undefined
 
   const kindWord   = item.type === 'film' ? 'Film' : 'Dizi'
   const meta = [kindWord, ...(item.genres || []).slice(0, 2), item.year].filter(Boolean).join(' · ')
@@ -94,7 +102,7 @@ export default function HeroSlider({ items = [], count = 10, kicker = 'Listenin 
             Metin üstünde durmadığı için okunurluk perdesi de gerekmiyor. */}
         <div className="hslide-media">
           {gorsel
-            ? <img className="hslide-img" src={gorsel} alt="" loading="eager" decoding="async" />
+            ? <img className="hslide-img" src={gorsel} srcSet={gorselSet} sizes={gorselSizes} alt="" loading="eager" decoding="async" />
             : <div className="hslide-img hslide-img-yok" />}
         </div>
       </div>
