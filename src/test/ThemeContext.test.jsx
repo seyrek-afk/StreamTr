@@ -112,3 +112,17 @@ describe('ThemeContext', () => {
     expect(result.current.theme).toEqual(THEMES[0])
   })
 })
+
+describe('theme-color (PWA / tarayıcı çubuğu)', () => {
+  it('seçili temanın başlık rengini meta[name=theme-color] olarak yazar', async () => {
+    const { applyThemeColor } = await import('../contexts/ThemeContext.jsx')
+    document.querySelector('meta[name="theme-color"]')?.remove()
+    applyThemeColor('#123456')
+    expect(document.querySelector('meta[name="theme-color"]').content).toBe('#123456')
+    applyThemeColor('#abcdef')
+    expect(document.querySelectorAll('meta[name="theme-color"]')).toHaveLength(1)
+    expect(document.querySelector('meta[name="theme-color"]').content).toBe('#abcdef')
+    applyThemeColor(null)
+    expect(document.querySelector('meta[name="theme-color"]').content).toBe('#abcdef')
+  })
+})

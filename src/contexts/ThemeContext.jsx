@@ -6,6 +6,17 @@ import { applyFavicon } from '../lib/favicon.js'
 
 const ThemeContext = createContext(null)
 
+export function applyThemeColor(color) {
+  if (!color || typeof document === 'undefined') return
+  let meta = document.querySelector('meta[name="theme-color"]')
+  if (!meta) {
+    meta = document.createElement('meta')
+    meta.name = 'theme-color'
+    document.head.appendChild(meta)
+  }
+  meta.content = color
+}
+
 // Görünüm iki bağımsız eksen: renk (tema) ve tasarım (marka simgesinin
 // işçiliği). İkisi de cihaz tercihidir, hesaba bağlı değildir.
 function initialThemeId() {
@@ -29,6 +40,9 @@ export function ThemeProvider({ children }) {
     })
     document.body.style.background = theme.css['--bg']
     localStorage.setItem('streamtr-theme', themeId)
+    // Tarayıcı çubuğu / PWA durum çubuğu başlık bandının rengini alır:
+    // uygulama ile tarayıcı kromu arasında renk kesintisi olmaz.
+    applyThemeColor(theme.css['--bg-header'])
   }, [theme, themeId])
 
   useEffect(() => {
