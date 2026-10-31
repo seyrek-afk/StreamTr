@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, Star } from 'lucide-react'
 import DetailOverlay from './DetailOverlay.jsx'
 import SaveControls from './SaveControls.jsx'
+import { useDevice } from '../contexts/DeviceContext.jsx'
 
 const DONUS_MS = 7000
 
@@ -20,6 +21,12 @@ export default function HeroSlider({ items = [], count = 10, kicker = 'Listenin 
   const [acik, setAcik] = useState(null)
   const [durdur, setDurdur] = useState(false)
   const kokRef = useRef(null)
+  const dokunusX = useRef(null)
+
+  // Dokunmatikte otomatik dönüş YOK: "fare üstündeyken dur" kuralının telefonda
+  // karşılığı yoktur, kullanıcı okurken slayt değişiyordu. Parmakla kaydırma
+  // (swipe) gezinmeyi devralır; oklar ve noktalar yine durur.
+  const { isTouch } = useDevice()
 
   const n = dilimler.length
   const git = useCallback((yon) => setI(p => (p + yon + n) % n), [n])
@@ -28,11 +35,20 @@ export default function HeroSlider({ items = [], count = 10, kicker = 'Listenin 
   useEffect(() => { if (i >= n && n > 0) setI(0) }, [n, i])
 
   useEffect(() => {
-    if (n <= 1 || durdur) return
+    if (n <= 1 || durdur || isTouch) return
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
     const t = setInterval(() => git(1), DONUS_MS)
     return () => clearInterval(t)
-  }, [n, durdur, git])
+  }, [n, durdur, git, isTouch])
+
+  // 40px eşik: dikey kaydırma sırasında yatay sapma slayt değiştirmesin.
+  const dokunusBasla = (e) => { dokunusX.current = e.touches[0]?.clientX ?? null }
+  const dokunusBitir = (e) => {
+    if (dokunusX.current == null || n <= 1) return
+    const dx = (e.changedTouches[0]?.clientX ?? dokunusX.current) - dokunusX.current
+    dokunusX.current = null
+    if (Math.abs(dx) > 40) git(dx < 0 ? 1 : -1)
+  }
 
   if (n === 0) return null
   const item = dilimler[i]
@@ -73,6 +89,8 @@ export default function HeroSlider({ items = [], count = 10, kicker = 'Listenin 
         // Ekran okuyucuya "kaçıncı slayt" bilgisi; görsel karşılığı noktalar.
         aria-roledescription="slide"
         aria-label={`${i + 1} / ${n}: ${item.title}`}
+        onTouchStart={dokunusBasla}
+        onTouchEnd={dokunusBitir}
       >
         <div className="hslide-body">
           <p className="hslide-kick">

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import {
   RefreshCw, ChevronDown, ChevronLeft, Loader, Sparkles, AlertTriangle,
-  Tv, Film, Flame, Star, SearchX, Heart,
+  Tv, Film, Flame, Star, SearchX, Heart, Search, SlidersHorizontal, X,
 } from 'lucide-react'
-import { PLATFORMS, TR_PLATFORMS, TABS } from './constants/index.js'
+import { PLATFORMS, TR_PLATFORMS, TABS, GENRES } from './constants/index.js'
 import { COUNTRIES, countryLabel, countryContentTitle } from './constants/countries.js'
 import { useStreamData, dataKey } from './hooks/useStreamData.js'
 import { useSearch }     from './hooks/useSearch.js'
@@ -26,7 +26,11 @@ import { SearchField, SearchResult } from './components/SearchBar.jsx'
 import AiSearchPanel from './components/AiSearchPanel.jsx'
 import AccountButton from './components/auth/AccountButton.jsx'
 import BrandMark from './components/BrandMark.jsx'
+import BottomNav from './components/mobile/BottomNav.jsx'
+import FilterSheet, { FilterSection, ChipGroup } from './components/mobile/FilterSheet.jsx'
+import SearchOverlay from './components/mobile/SearchOverlay.jsx'
 import { useTheme } from './contexts/ThemeContext.jsx'
+import { useDevice } from './contexts/DeviceContext.jsx'
 
 // Sekme ikonları lucide'dan gelir; TABS verisi yalnız anahtarı taşır (emoji yok).
 const TAB_ICON = { tv: Tv, film: Film, flame: Flame, star: Star }
@@ -83,6 +87,11 @@ export default function App() {
   const [selectedYears,   setSelectedYears]  = useState([])
   const [mediaType,       setMediaType]      = useState('all')
   const [aiOpen,          setAiOpen]         = useState(false)
+
+  // Telefon kabuğu: filtreler alt sayfada, arama tam ekran katmanda.
+  const { isPhone } = useDevice()
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
 
   const {
     data, loading, loadingMore, error,
@@ -305,19 +314,82 @@ export default function App() {
   const isOtherCountry = Boolean(country) && country !== HOME_COUNTRY
   const platformChips  = country === HOME_COUNTRY ? TR_PLATFORMS : PLATFORMS
 
+  // Marka bloğu iki kabukta da aynı; bir kez kurulur.
+  const brand = (
+    <span className="brand">
+      {/* Simge kullanıcının seçtiği tasarımda çizilir; veri yüklenirken
+          dalgaları oynar (bkz. BrandMark). */}
+      <BrandMark design={designId} size={30} busy={Boolean(loading[dk] || (isSanaOzel && recLoading))} />
+      <span>stream<span className="brand-tr">tr</span></span>
+    </span>
+  )
+
+  // Telefonda "Filtrele" düğmesinin rozeti: kaç EKSEN aktif (kaç seçenek değil).
+  // Kapsam merceği sayılmaz — o bir filtre değil, hangi kataloğa bakıldığıdır.
+  const filtreSayisi = isSanaOzel
+    ? Number(mediaType !== 'all') + Number(trOnly) + Number(secilenPlatformlar.length > 0)
+    : Number(selectedGenres.length > 0) + Number(activeYearKeys.length > 0) +
+      Number(platform !== 'Tümü') + Number(sortBy !== 'default') + Number(trOnly) +
+      Number(tab === 'trend' && mediaType !== 'all')
+  const soTemizle = () => { setMediaType('all'); setTrOnly(false); setSecilenPlatformlar([]) }
+
+  const MEDYA_SECENEK = [
+    { value: 'all',  label: 'Tümü' },
+    { value: 'dizi', label: 'Dizi' },
+    { value: 'film', label: 'Film' },
+  ]
+
   return (
     <div className="app-shell">
       {/* ── BAŞLIK: iki bant ──────────────────────────────────────────────────
           Bant 1 kimlik + gezinme, bant 2 tek araç rayı (kapsam → arama → filtre).
           Önceki dört bant içeriği ekranın beşte birine kadar aşağı itiyordu. */}
       <header className="app-header">
+        {isPhone ? (
+          <>
+            {/* ── TELEFON: tek bant başlık + tek satır araç rayı ──────────────
+                Sekmeler alt çubukta (BottomNav), arama tam ekran katmanda,
+                filtreler alt sayfada. Başlık ~110px'e iner; önceden telefon
+                ekranının üçte biri yapışkan başlığa gidiyordu. */}
+            <div className="hdr-row">
+              {brand}
+              <div className="hdr-actions">
+                <button className="icon-btn" onClick={() => setSearchOpen(true)} aria-label="Ara" aria-haspopup="dialog">
+                  <Search size={20} aria-hidden="true" />
+                </button>
+                <AccountButton />
+              </div>
+            </div>
+            <div className="toolbar toolbar-phone">
+              <button
+                className={`ctl${filtreSayisi > 0 ? ' ctl-on' : ''}`}
+                onClick={() => setFilterOpen(true)}
+                aria-haspopup="dialog"
+              >
+                <SlidersHorizontal size={15} aria-hidden="true" /> Filtrele
+                {filtreSayisi > 0 && <span className="ctl-count tnum">{filtreSayisi}</span>}
+              </button>
+              {!isSanaOzel && (
+                <button className={`ctl${aiOpen ? ' ctl-on' : ''}`} onClick={() => setAiOpen(o => !o)} aria-pressed={aiOpen}>
+                  <Sparkles size={15} style={{ color: 'var(--accent-ink)' }} aria-hidden="true" />
+                  AI ile Ara
+                </button>
+              )}
+              {/* Aktif arama rayda bir çip: sonuç içerikte, "neyi arıyordum" ve
+                  "nasıl temizlerim" bir dokunuş uzakta. */}
+              {search.query && (
+                <button className="ctl ctl-on" onClick={search.clearSearch} aria-label={`Aramayı temizle: ${search.query}`}>
+                  <Search size={14} aria-hidden="true" />
+                  <span className="ctl-trunc">{search.query}</span>
+                  <X size={13} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
         <div className="hdr-row">
-          <span className="brand">
-            {/* Simge kullanıcının seçtiği tasarımda çizilir; veri yüklenirken
-                dalgaları oynar (bkz. BrandMark). */}
-            <BrandMark design={designId} size={30} busy={Boolean(loading[dk] || (isSanaOzel && recLoading))} />
-            <span>stream<span className="brand-tr">tr</span></span>
-          </span>
+          {brand}
 
           <nav className="tabs" aria-label="Bölümler">
             {TABS.map(t => {
@@ -458,6 +530,8 @@ export default function App() {
             />
           ))}
         </div>
+          </>
+        )}
       </header>
 
       {/* ── ANA İÇERİK ────────────────────────────────────────────────────── */}
@@ -653,6 +727,105 @@ export default function App() {
           Özgür Seyrek — <a href="mailto:seyrek@gmail.com">seyrek@gmail.com</a>
         </p>
       </footer>
+
+      {isPhone && (
+        <>
+          <BottomNav
+            tabs={TABS}
+            active={tab}
+            onChange={setTab}
+            iconFor={t => TAB_ICON[t.icon]}
+            busyFor={t => Boolean(loading[dataKey(country, t.id)])}
+          />
+
+          <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} search={search} />
+
+          <FilterSheet
+            open={filterOpen}
+            onClose={() => setFilterOpen(false)}
+            resultCount={isSanaOzel ? null : filtered.length}
+            hasActive={filtreSayisi > 0}
+            onClear={isSanaOzel ? soTemizle : clearFilters}
+          >
+            {isSanaOzel ? (
+              <>
+                <FilterSection title="İçerik türü">
+                  <ChipGroup label="İçerik türü" options={MEDYA_SECENEK} value={mediaType} onChange={setMediaType} />
+                </FilterSection>
+                <FilterSection title="Yayın">
+                  <ChipGroup
+                    label="Yayın" multi
+                    options={[{ value: 'yayinda', label: 'Yalnız bir platformda yayında olanlar' }]}
+                    value={trOnly ? ['yayinda'] : []}
+                    onChange={v => setTrOnly(v.length > 0)}
+                  />
+                </FilterSection>
+                {platformSayaci.length > 0 && (
+                  <FilterSection title="Platform">
+                    <ChipGroup
+                      label="Platform" multi
+                      options={platformSayaci.map(([p, n]) => ({ value: p, label: p, count: n }))}
+                      value={secilenPlatformlar}
+                      onChange={setSecilenPlatformlar}
+                    />
+                  </FilterSection>
+                )}
+              </>
+            ) : (
+              <>
+                <FilterSection title="Kapsam">
+                  <ChipGroup
+                    label="İçerik kapsamı"
+                    options={[{ value: 'dunya', label: 'Dünya' }, { value: HOME_COUNTRY, label: 'Yerli' }]}
+                    value={country ? country : 'dunya'}
+                    onChange={v => setCountry(v === 'dunya' ? null : v)}
+                  />
+                </FilterSection>
+                <FilterSection title="Ülke">
+                  <ChipGroup
+                    label="Ülke" allowClear
+                    options={otherCountries.map(c => ({ value: c.code, label: c.label }))}
+                    value={isOtherCountry ? country : null}
+                    onChange={v => setCountry(v)}
+                  />
+                </FilterSection>
+                {tab === 'trend' && (
+                  <FilterSection title="İçerik">
+                    <ChipGroup label="İçerik" options={MEDYA_SECENEK} value={mediaType} onChange={setMediaType} />
+                  </FilterSection>
+                )}
+                <FilterSection title="Tür">
+                  <ChipGroup label="Tür" multi options={GENRES.map(g => ({ value: g, label: g }))} value={selectedGenres} onChange={setSelectedGenres} />
+                </FilterSection>
+                {yearBuckets.length > 0 && (
+                  <FilterSection title="Yıl">
+                    <ChipGroup label="Yıl" multi options={yearBuckets.map(b => ({ value: b.key, label: b.label }))} value={activeYearKeys} onChange={setSelectedYears} />
+                  </FilterSection>
+                )}
+                <FilterSection title="Platform">
+                  <ChipGroup
+                    label="Platform"
+                    options={[{ value: 'Tümü', label: 'Tümü' }, ...platformChips.map(p => ({ value: p.id, label: p.label }))]}
+                    value={platform}
+                    onChange={setPlatform}
+                  />
+                </FilterSection>
+                <FilterSection title="Sırala">
+                  <ChipGroup label="Sırala" options={SORT_OPTIONS} value={sortBy} onChange={setSortBy} />
+                </FilterSection>
+                <FilterSection title="Yayın">
+                  <ChipGroup
+                    label="Yayın" multi
+                    options={[{ value: 'yayinda', label: "Yalnız Türkiye'de yayın bilgisi olanlar" }]}
+                    value={trOnly ? ['yayinda'] : []}
+                    onChange={v => setTrOnly(v.length > 0)}
+                  />
+                </FilterSection>
+              </>
+            )}
+          </FilterSheet>
+        </>
+      )}
 
       <UndoToast />
     </div>

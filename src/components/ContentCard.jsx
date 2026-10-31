@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, ChevronRight } from 'lucide-react'
 import PosterImg from './PosterImg.jsx'
 import DetailOverlay from './DetailOverlay.jsx'
 import DetailBody, { ScoreLine } from './DetailBody.jsx'
 import SaveControls from './SaveControls.jsx'
 import { ALL_PLATFORMS } from '../constants/index.js'
 import { badgeInk } from '../lib/cards.js'
+import { useDevice } from '../contexts/DeviceContext.jsx'
 
 // Rozet çözümlemesi küresel + yerli tüm sağlayıcıları kapsar; aksi halde
 // puhutv/TOD gibi yerli platformlar gri "PUH" fallback'ine düşerdi.
@@ -21,6 +22,13 @@ export default function ContentCard({ item, isTrend, showKind = true }) {
   // overlay'leri de aynısını gösterir.
   const [overlayItem, setOverlayItem] = useState(null)
 
+  // Telefonda kart İÇİNDE açılmaz, alt sayfaya gider: tek kolonda açılan kart
+  // ekranı 1500px aşağı itiyor ve kullanıcı "nerede kaldım"ı kaybediyordu.
+  // Alt sayfa kapanınca liste olduğu yerde durur. Masaüstünde yerinde açılma
+  // korunur — orada komşu kartlar bağlam verir.
+  const { isPhone } = useDevice()
+  const ac = () => { if (isPhone) setOverlayItem(item); else setOpen(o => !o) }
+
   // Tür + içerik tipi tek satırda düz metin: "Dizi · Dram · Suç". Önce her biri
   // ayrı çerçeveli etiketti; üç kutu bir cümlelik bilgiyi taşıyordu.
   // Tür sayısı 2 ile sınırlı: üçüncüsü satırı sarmalıyor ve kart ritmini bozuyordu.
@@ -33,12 +41,15 @@ export default function ContentCard({ item, isTrend, showKind = true }) {
         className={`cc${isTrend ? ' cc-trend' : ''}`}
         role="button"
         tabIndex={0}
-        aria-expanded={open}
-        aria-label={`${item.title} — detayları ${open ? 'kapat' : 'aç'}`}
-        onClick={() => setOpen(o => !o)}
+        aria-expanded={isPhone ? undefined : open}
+        aria-haspopup={isPhone ? 'dialog' : undefined}
+        aria-label={isPhone
+          ? `${item.title} — detayına bak`
+          : `${item.title} — detayları ${open ? 'kapat' : 'aç'}`}
+        onClick={ac}
         onKeyDown={e => {
           if (e.target !== e.currentTarget) return
-          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(o => !o) }
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ac() }
         }}
       >
         {isTrend && <div className="cc-trendbar" />}
@@ -101,7 +112,7 @@ export default function ContentCard({ item, isTrend, showKind = true }) {
               })}
               {item.duration && <span className="cc-dur tnum">{item.duration} dk</span>}
               <span className="cc-chevron" aria-hidden="true">
-                {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                {isPhone ? <ChevronRight size={16} /> : open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </span>
             </div>
 
@@ -116,7 +127,7 @@ export default function ContentCard({ item, isTrend, showKind = true }) {
         </div>
 
         {/* ── Genişletilmiş Detay ──────────────────────────────────────────── */}
-        <DetailBody item={item} open={open} onMiniClick={setOverlayItem} />
+        {!isPhone && <DetailBody item={item} open={open} onMiniClick={setOverlayItem} />}
       </div>
 
       {/* Detail Overlay (portal) */}
