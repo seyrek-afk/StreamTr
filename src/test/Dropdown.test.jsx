@@ -62,14 +62,14 @@ describe('Dropdown', () => {
     render(<Dropdown label="Ülke" value={null} options={OPTIONS} onChange={() => {}} />)
     fireEvent.click(screen.getByRole('button', { name: /Ülke/ }))
     expect(document.body.querySelector('.dd-menu')).toBeTruthy()
-    fireEvent.mouseDown(document.body)
+    fireEvent.pointerDown(document.body)
     expect(document.body.querySelector('.dd-menu')).toBeNull()
   })
 
   it('menü içine tıklamak kapatmaz', () => {
     render(<Dropdown label="Tür" multi value={[]} options={OPTIONS} onChange={() => {}} />)
     fireEvent.click(screen.getByRole('button', { name: /Tür/ }))
-    fireEvent.mouseDown(document.body.querySelector('.dd-menu'))
+    fireEvent.pointerDown(document.body.querySelector('.dd-menu'))
     expect(document.body.querySelector('.dd-menu')).toBeTruthy()
   })
 })

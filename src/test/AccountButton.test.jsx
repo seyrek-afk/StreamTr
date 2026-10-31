@@ -135,7 +135,7 @@ describe('AccountButton — tema seçimi davranışı', () => {
   it('dışarı tıklayınca menü kapanır', () => {
     renderBtn()
     openMenu()
-    fireEvent.mouseDown(document.body)
+    fireEvent.pointerDown(document.body)
     expect(screen.queryByRole('menu')).toBeNull()
   })
 })

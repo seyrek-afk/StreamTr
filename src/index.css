@@ -294,6 +294,9 @@ button, input, textarea { font: inherit; color: inherit; }
    ve tek bir araç rayı. Hiçbir yetenek gizlenmedi, yalnız aynı satıra alındı. */
 .app-header {
   position: sticky; top: 0; z-index: var(--z-header);
+  /* Ana ekrana eklenmiş (standalone) uygulamada durum çubuğu başlığın üstüne
+     biner; tarayıcı sekmesinde bu değer sıfırdır. */
+  padding-top: env(safe-area-inset-top);
   background: var(--bg-header);
   border-bottom: 1px solid var(--border);
 }
@@ -736,7 +739,15 @@ button, input, textarea { font: inherit; color: inherit; }
 /* ══ ANA İÇERİK ════════════════════════════════════════════════════════════ */
 /* İçerik kısa olduğunda (AI paneli, boş durum, hata) footer sayfanın ortasında
    asılı kalıyordu. Kabuk dikey flex: main boşluğu yutar, footer hep dipte. */
-.app-shell { min-height: 100vh; display: flex; flex-direction: column; }
+/* 100dvh: telefonda adres çubuğu gizlenip açılırken 100vh değişmez ve sayfanın
+   altı çubuğun arkasında kalırdı; dvh gerçek görünür yüksekliği izler (vh eski
+   tarayıcı için yedek). Yan safe-area: çentikli telefonda yatay tutuşta içerik
+   çentiğin altına girmesin. */
+.app-shell {
+  min-height: 100vh; min-height: 100dvh;
+  display: flex; flex-direction: column;
+  padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
+}
 .app-main { flex: 1; padding: 20px var(--gutter) 72px; }
 
 /* Izgaranın kendi başlığı var: hem "neye bakıyorum" der hem sayacı taşır.
@@ -1200,7 +1211,7 @@ button.actor { cursor: pointer; }
   animation: fadeIn var(--dur-2) var(--ease-out) both;
 }
 .modal {
-  width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto;
+  width: 100%; max-width: 560px; max-height: 88vh; max-height: 88dvh; overflow-y: auto;
   background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
   border-radius: var(--r-lg);
@@ -1282,7 +1293,7 @@ code { font-size: 0.92em; color: var(--accent-ink); }
 .player-close:active { transform: scale(0.94); }
 .player-close:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
 .player-frame {
-  width: 100%; aspect-ratio: 16 / 9; max-height: 86vh;
+  width: 100%; aspect-ratio: 16 / 9; max-height: 86vh; max-height: 86dvh;
   background: #000; border-radius: var(--r-lg); overflow: hidden;
   border: 1px solid var(--border-strong);
   box-shadow: 0 24px 80px rgba(0,0,0,0.75);
@@ -1402,7 +1413,8 @@ code { font-size: 0.92em; color: var(--accent-ink); }
    kartların üstünde durup içeriği örtmesin. */
 .undo-toast {
   position: fixed;
-  left: 50%; bottom: 24px;
+  /* Alt safe-area: iPhone ana ekran çubuğunun üstünde durur, altında değil. */
+  left: 50%; bottom: calc(24px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: var(--z-modal);
   display: flex; align-items: center; gap: 12px;
@@ -1449,7 +1461,7 @@ code { font-size: 0.92em; color: var(--accent-ink); }
 
 @media (max-width: 720px) {
   /* Telefonda kenarlara yapışır ve mesaj iki satıra kadar sarabilir. */
-  .undo-toast { left: 12px; right: 12px; bottom: 12px; transform: none; max-width: none; }
+  .undo-toast { left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); transform: none; max-width: none; }
   @keyframes undo-gir { from { opacity: 0; transform: translateY(10px); } }
   .undo-toast-msg { white-space: normal; }
 }
@@ -1481,7 +1493,7 @@ code { font-size: 0.92em; color: var(--accent-ink); }
 /* ══ FOOTER ════════════════════════════════════════════════════════════════ */
 .app-footer {
   border-top: 1px solid var(--border);
-  padding: 26px var(--gutter) 34px;
+  padding: 26px var(--gutter) calc(34px + env(safe-area-inset-bottom));
   display: flex; flex-direction: column; gap: 16px;
   background: var(--bg-header);
 }
@@ -1571,6 +1583,12 @@ code { font-size: 0.92em; color: var(--accent-ink); }
      hesap kontrollerini birlikte taşır. Tek tek büyütmek onları birbirinden
      kopartırdı. */
   :root { --ctl-h: 44px; }
+
+  /* iOS Safari 16px'ten küçük yazılı bir girdiye odaklanınca sayfayı
+     yakınlaştırır ve odak çıkınca geri almaz; kullanıcı kaymış bir sayfada
+     kalır. Girdi yazısı dokunmatikte 16px'e çıkar — kontrol 44px olduğu için
+     yer var. Yalnız girdiler: etiket ve menü metni ölçeğinde kalır. */
+  .search-input, .field { font-size: 16px; }
 
   .tab { min-height: 44px; }
   /* Altçizgi kutunun değil METNİN altıdır. Kutu 44'e çıkınca içerik ortalandığı
