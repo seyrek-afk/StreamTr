@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { X, ChevronLeft } from 'lucide-react'
 import DetailBody from './DetailBody.jsx'
+import { useDevice } from '../contexts/DeviceContext.jsx'
+import { useHistoryLayer } from '../hooks/useHistoryLayer.js'
 
 // Yapım detayı penceresi — vitrin ("Detaya bak"), raf kartı ve kart içindeki
 // mini kartlar açar. İçerik açık kartla birebir aynıdır (DetailBody).
@@ -14,6 +16,12 @@ export default function DetailOverlay({ item, onClose }) {
   const kaydirmaRef = useRef(null)
   const guncel = yigin[yigin.length - 1]
   const onceki = yigin.length > 1 ? yigin[yigin.length - 2] : null
+
+  // Telefonda pencere alt sayfa olarak çizilir (CSS: [data-ff="phone"]) ve geri
+  // tuşu onu kapatır. İç yığın (benzer yapıma geçiş) "Geri" düğmesinde kalır;
+  // geri tuşu her zaman pencerenin tamamını kapatır — öngörülebilir tek kural.
+  const { isPhone } = useDevice()
+  useHistoryLayer(isPhone, onClose)
 
   // Body scroll kilidi — önceki değere döner (fragman oynatıcısıyla aynı desen)
   useEffect(() => {

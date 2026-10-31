@@ -12,7 +12,9 @@ import { shouldShowOriginal } from '../lib/searchMatch.js'
 // açmak zorundaydı. Kontrolü rayla, sonucu içerikle birleştirince başlıktan bir
 // bant tamamen kalktı ve her parça ait olduğu katmana yerleşti.
 
-export function SearchField({ search }) {
+// showMenu=false → kutu öneri menüsünü ÇİZMEZ ve dış tıklamayı dinlemez;
+// listeyi başka bir kap (telefonun tam ekran arama katmanı) çizer.
+export function SearchField({ search, autoFocus = false, showMenu = true }) {
   const {
     query, suggestions, suggesting, correctedFrom,
     selectedItem, detailLoading,
@@ -22,14 +24,15 @@ export function SearchField({ search }) {
   const wrapRef = useRef(null)
 
   useEffect(() => {
+    if (!showMenu) return
     const handler = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) clearSuggestions()
     }
     document.addEventListener('pointerdown', handler)
     return () => document.removeEventListener('pointerdown', handler)
-  }, [clearSuggestions])
+  }, [clearSuggestions, showMenu])
 
-  const showSuggestions = suggestions.length > 0 && !detailLoading && !selectedItem
+  const showSuggestions = showMenu && suggestions.length > 0 && !detailLoading && !selectedItem
   const busy = suggesting || detailLoading
 
   return (
@@ -48,6 +51,8 @@ export function SearchField({ search }) {
         aria-label="Film veya dizi ara"
         onChange={e => handleQueryChange(e.target.value)}
         placeholder="Film veya dizi ara…"
+        autoFocus={autoFocus}
+        enterKeyHint="search"
       />
 
       {query && (
@@ -58,6 +63,23 @@ export function SearchField({ search }) {
 
       {showSuggestions && (
         <div className="search-menu" role="listbox">
+          <SuggestionList
+            suggestions={suggestions}
+            correctedFrom={correctedFrom}
+            query={query}
+            onSelect={selectSuggestion}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Öneri satırları — araç rayındaki menü ve telefonun tam ekran katmanı aynı
+// listeyi çizer; satır biçimi tek yerde yaşar.
+export function SuggestionList({ suggestions, correctedFrom, query, onSelect }) {
+  return (
+    <>
           {/* Yazım hatası kurtarma: sessizce başka bir şey aramak yerine ne
               yaptığımızı söyler. Kutunun altında ayrı bir satır değil, listenin
               başlığı — araç rayının yüksekliğini bozmasın. */}
@@ -72,7 +94,7 @@ export function SearchField({ search }) {
               role="option"
               aria-selected={false}
               className="search-suggest-item"
-              onClick={() => selectSuggestion(s)}
+              onClick={() => onSelect(s)}
             >
               {/* Küçük poster — aynı adlı yapımları metinden önce gözle ayırır.
                   w92 TMDB'nin en küçük boyu; liste 8 satır, yük önemsiz. */}
@@ -103,9 +125,7 @@ export function SearchField({ search }) {
               </span>
             </button>
           ))}
-        </div>
-      )}
-    </div>
+    </>
   )
 }
 

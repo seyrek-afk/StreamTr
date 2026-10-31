@@ -144,6 +144,7 @@ button, input, textarea { font: inherit; color: inherit; }
 /* Azaltılmış harekette de aynı bekleme: yer değiştirme yok, yalnız opaklık. */
 @keyframes cikisSade { 0%, 35% { opacity: 1 } 100% { opacity: 0 } }
 @keyframes popIn    { from { opacity: 0; transform: scale(0.96) } to { opacity: 1; transform: scale(1) } }
+@keyframes sheetGir { from { opacity: 0; transform: translateY(28px) } to { opacity: 1; transform: none } }
 
 .spin { animation: spin 0.7s linear infinite; }
 
@@ -1625,7 +1626,8 @@ code { font-size: 0.92em; color: var(--accent-ink); }
   }
   .ctl:active, .btn:active, .icon-btn:active, .ai-example:active,
   .rail-card:active, .cc:hover, .rail-card:hover { transform: none; }
-  .dd-menu, .search-menu, .enter { animation: fadeIn var(--dur-1) linear both; }
+  .dd-menu, .search-menu, .enter, .sheet, .sov,
+  [data-ff="phone"] .modal-detail { animation: fadeIn var(--dur-1) linear both; }
   .skeleton-animate { animation: none; }
   .rail-scroller { scroll-behavior: auto; }
   /* Çıkış ve bildirim: yalnız SÖNÜMLENİR, kaymaz/ölçeklenmez. Animasyonu
@@ -1636,3 +1638,140 @@ code { font-size: 0.92em; color: var(--accent-ink); }
   .undo-toast-kapaniyor { animation: fadeOut var(--dur-1) linear forwards; }
   .spin { animation-duration: 1.4s; }
 }
+
+/* ══ TELEFON KABUĞU ════════════════════════════════════════════════════════
+   Ölçüt genişlik DEĞİL, karar: DeviceContext <html data-ff="phone"> yazar
+   (bkz. useFormFactor). Buradaki kurallar yalnız o karar altında yaşar; ortam
+   sorgusunu bir de burada tekrar etmek iki mekanizmayı birbirinden koparırdı.
+   Yapısal farklar (alt çubuk, alt sayfa, tam ekran arama) React'te koşullu
+   çizilir; burada yalnız onların biçimi ve masaüstü kurallarının telefon
+   düzeltmeleri vardır. */
+:root { --bnav-h: 56px; }
+
+[data-ff="phone"] .hdr-row {
+  flex-wrap: nowrap; gap: 10px;
+  min-height: 52px; padding-top: 4px; padding-bottom: 4px;
+}
+[data-ff="phone"] .brand { margin-right: 0; }
+/* Tek satır araç rayı: sarmaz, yatay kayar; çipler kısalmaz. */
+.toolbar-phone {
+  flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+  padding-top: 4px; padding-bottom: 10px;
+}
+.toolbar-phone::-webkit-scrollbar { display: none; }
+.toolbar-phone > .ctl { flex-shrink: 0; }
+.ctl-trunc { max-width: 38vw; overflow: hidden; text-overflow: ellipsis; }
+
+/* İçerik alt çubuğun arkasına girmez; bildirim çubuğun üstünde durur. */
+[data-ff="phone"] .app-main   { padding-bottom: calc(40px + var(--bnav-h) + env(safe-area-inset-bottom)); }
+[data-ff="phone"] .app-footer { padding-bottom: calc(24px + var(--bnav-h) + env(safe-area-inset-bottom)); }
+[data-ff="phone"] .undo-toast { bottom: calc(12px + var(--bnav-h) + env(safe-area-inset-bottom)); }
+
+/* ── Alt sekme çubuğu ───────────────────────────────────────────────────── */
+.bnav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-header);
+  display: flex; align-items: stretch;
+  background: var(--bg-header);
+  border-top: 1px solid var(--border);
+  padding: 4px max(6px, env(safe-area-inset-left)) calc(4px + env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-right));
+}
+.bnav-item {
+  flex: 1; min-width: 0; min-height: var(--bnav-h);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  background: none; border: none; border-radius: var(--r-md);
+  color: var(--text-faint);
+  font-size: var(--fs-micro); font-weight: 600; letter-spacing: 0.01em;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: color var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out);
+}
+.bnav-item svg { opacity: 0.8; }
+.bnav-item span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bnav-item:active { background: var(--surface); }
+.bnav-item:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: -2px; }
+/* Aktif sekme: metin tam mürekkep, simge vurgu — üst sekmelerle aynı dil. */
+.bnav-item-on { color: var(--text); font-weight: 700; }
+.bnav-item-on svg { color: var(--accent-ink); opacity: 1; }
+
+/* ── Alt sayfa (sheet) ──────────────────────────────────────────────────── */
+.sheet-scrim {
+  position: fixed; inset: 0; z-index: var(--z-modal);
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: fadeIn var(--dur-2) var(--ease-out) both;
+  touch-action: none;
+}
+.sheet {
+  width: 100%; max-width: 640px;
+  max-height: calc(100dvh - 24px);
+  display: flex; flex-direction: column;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong); border-bottom: none;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  box-shadow: 0 -12px 40px rgba(0,0,0,0.5);
+  padding-bottom: env(safe-area-inset-bottom);
+  animation: sheetGir var(--dur-2) var(--ease-out) both;
+  touch-action: auto;
+}
+.sheet-full { height: calc(100dvh - 24px); }
+.sheet-grip { width: 36px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 8px auto 0; flex-shrink: 0; }
+.sheet-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 6px 10px 8px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.sheet-title { font-size: var(--fs-h1); font-weight: 700; color: var(--text); letter-spacing: -0.01em; margin: 0; }
+.sheet-body {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 16px 8px;
+}
+.sheet-foot {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px 12px; border-top: 1px solid var(--border); flex-shrink: 0;
+  background: var(--bg-elevated);
+}
+.sheet-foot .btn { flex: 1; }
+.sheet-foot .btn-quiet { flex: 0 0 auto; }
+.sheet-count { opacity: 0.8; font-weight: 600; }
+
+/* Filtre bölümleri — çipler kontrol dilini (.ctl) konuşur, ek sınıf yok. */
+.fsec { margin-bottom: 20px; }
+.fsec-title {
+  color: var(--text-faint); font-size: var(--fs-micro); font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase; margin: 0 0 8px;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips .ctl { justify-content: center; }
+
+/* ── Detay penceresi telefonda alt sayfa ────────────────────────────────── */
+[data-ff="phone"] .modal-scrim-top { padding: 24px 0 0; align-items: flex-end; }
+[data-ff="phone"] .modal-detail {
+  max-width: none; min-height: calc(100dvh - 24px);
+  border-radius: var(--r-lg) var(--r-lg) 0 0; border-bottom: none;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  animation: sheetGir var(--dur-2) var(--ease-out) both;
+}
+[data-ff="phone"] .modal-detail > .cc-sec:last-child { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+/* Kapat düğmesi içerikle birlikte kaymaz: uzun detayda hep köşede. */
+[data-ff="phone"] .modal-close {
+  position: sticky; top: 8px; float: right; margin: 0 8px -44px 0;
+  background: var(--bg-elevated); border: 1px solid var(--border-strong);
+}
+
+/* ── Tam ekran arama ────────────────────────────────────────────────────── */
+.sov {
+  position: fixed; inset: 0; z-index: var(--z-modal);
+  display: flex; flex-direction: column;
+  background: var(--bg);
+  padding-top: env(safe-area-inset-top);
+  animation: fadeIn var(--dur-1) var(--ease-out) both;
+}
+.sov-head {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px var(--gutter); border-bottom: 1px solid var(--border);
+  background: var(--bg-header); flex-shrink: 0;
+}
+.sov-head .search-field { flex: 1 1 auto; min-width: 0; }
+.sov-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 8px var(--gutter) calc(16px + env(safe-area-inset-bottom)); }
+.sov-list { display: flex; flex-direction: column; gap: 2px; }
+.sov-list .search-suggest-item { padding-top: 10px; padding-bottom: 10px; }
+.sov-hint { color: var(--text-faint); font-size: var(--fs-body); line-height: 1.65; text-align: center; padding: 32px 12px; }
