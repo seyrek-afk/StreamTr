@@ -825,11 +825,21 @@ button, input, textarea { font: inherit; color: inherit; }
 .hslide-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .hslide-img-yok { background: linear-gradient(120deg, var(--bg-elevated), var(--bg-card)); }
 
+/* Gövde bir grid: canlı slayt ve görünmez ölçer AYNI hücrede durur, hücre
+   en uzun slayt kadar yüksek. Böylece slayt değişince yükseklik değişmez.
+   gap yalnız iskeletin satırları için (bkz. HeroSkeleton). */
 .hslide-body {
-  display: flex; flex-direction: column; justify-content: center; gap: 9px;
+  display: grid; align-content: center; gap: 9px;
   padding: 0 clamp(16px, 3vw, 26px) clamp(16px, 3vw, 26px);
   min-width: 0;
 }
+.hslide-live, .hslide-olcu { grid-area: 1 / 1; min-width: 0; }
+/* Canlı slayt hücrede ÜSTTEN hizalı: ortalansaydı kısa slayt hücre içinde
+   aşağı kayar, her dönüşte metin bloğu yer değiştirirdi. Hücrenin kendisi
+   zaten görselin ortasına hizalı (align-content). */
+.hslide-live { display: flex; flex-direction: column; gap: 9px; align-self: start; }
+.hslide-olcu { display: grid; pointer-events: none; }
+.hslide-olcu > div { grid-area: 1 / 1; display: flex; flex-direction: column; gap: 9px; min-width: 0; }
 .hslide-kick {
   display: flex; align-items: center; gap: 10px;
   font-size: var(--fs-micro); letter-spacing: 0.16em; text-transform: uppercase;
@@ -837,6 +847,7 @@ button, input, textarea { font: inherit; color: inherit; }
 }
 .hslide-kick span { color: var(--text-faint); letter-spacing: 0.04em; }
 .hslide-title {
+  margin: 0;
   font-family: 'Bebas Neue', system-ui, sans-serif;
   font-size: clamp(26px, 3vw, 40px); line-height: 1.02; letter-spacing: 0.02em;
   color: var(--text); text-wrap: balance;

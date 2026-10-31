@@ -93,6 +93,11 @@ export default function HeroSlider({ items = [], count = 10, kicker = 'Listenin 
         onTouchEnd={dokunusBitir}
       >
         <div className="hslide-body">
+         {/* Canlı slayt. Kardeşi .hslide-olcu aynı grid hücresinde TÜM
+             slaytların gövdesini görünmez çizer: hücre yüksekliği en uzun
+             slayta göre sabitlenir, slayt değişince altındaki ızgara zıplamaz.
+             Ölçüldü: önce her dönüşte 50px kayma (CLS 0.026 × dönüş). */}
+         <div className="hslide-live">
           <p className="hslide-kick">
             {/* Öneri motoru gerekçe taşıyorsa ("Beğendiğin: Breaking Bad")
                 genel etiketin yerini o alır: öneriye güveni gerekçe kurar. */}
@@ -116,6 +121,35 @@ export default function HeroSlider({ items = [], count = 10, kicker = 'Listenin 
             )}
             <span className="hslide-meta">{meta}</span>
           </div>
+         </div>
+
+         {/* Yükseklik ölçeri — etkileşimsiz, erişilebilirlik ağacında yok.
+             visibility satır içi: testlerde (css yüklenmez) de gizli sayılsın. */}
+         {n > 1 && (
+           <div className="hslide-olcu" style={{ visibility: 'hidden' }} aria-hidden="true">
+             {dilimler.map((d, idx) => (
+               <div key={d.key || d.title || idx}>
+                 <p className="hslide-kick">{d._reason || kicker}<span className="tnum">{n} / {n}</span></p>
+                 <div className="hslide-title">{d.title}</div>
+                 {d.description && <p className="hslide-desc">{d.description}</p>}
+                 <div className="hslide-row">
+                   <span className="btn">Detaya bak</span>
+                   <SaveControls item={d} size={17} />
+                   {/* Yıldız dahil: ikon olmadan satır 18px dar kalıp canlıdan farklı sarılıyordu. */}
+                   {d.imdbScore != null && (
+                     <span className="hslide-score tnum">
+                       <Star size={14} aria-hidden="true" />
+                       {d.imdbScore}<span className="hslide-score-max">/10</span>
+                     </span>
+                   )}
+                   <span className="hslide-meta">
+                     {[d.type === 'film' ? 'Film' : 'Dizi', ...(d.genres || []).slice(0, 2), d.year].filter(Boolean).join(' · ')}
+                   </span>
+                 </div>
+               </div>
+             ))}
+           </div>
+         )}
         </div>
 
         {/* Görsel kendi kolonunda ve kaynakla aynı oranda (16:9) — kırpma yok.
