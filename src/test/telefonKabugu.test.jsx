@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, renderHook, screen, fireEvent, act, waitFor } from '@testing-library/react'
+import { render, renderHook, screen, fireEvent, act, waitFor, within } from '@testing-library/react'
 import React from 'react'
 import { useHistoryLayer } from '../hooks/useHistoryLayer.js'
 import Sheet from '../components/mobile/Sheet.jsx'
@@ -11,6 +11,9 @@ import HeroSlider from '../components/HeroSlider.jsx'
 import { DeviceProvider } from '../contexts/DeviceContext.jsx'
 import { FavoritesProvider } from '../contexts/FavoritesContext.jsx'
 import { TABS } from '../constants/index.js'
+
+// Vitrinin CANLI katmanı: ölçer (.hslide-olcu) tüm başlıkları görünmez taşır.
+const aktif = () => within(document.querySelector('.hslide-live'))
 
 // Telefon kararını zorla: DeviceProvider saklı tercihi okur.
 const telefonda = (ui) => {
@@ -239,7 +242,8 @@ describe('ContentCard — telefon', () => {
 
   it('dokunuş kartı yerinde açmaz, detay penceresini açar', async () => {
     telefonda(<ContentCard item={yapim} isTrend={false} />)
-    const kart = screen.getByRole('button', { name: 'Yapım — detayına bak' })
+    const kart = screen.getByRole('button', { name: /^Yapım/ })
+    expect(kart).not.toHaveAttribute('aria-label')
     expect(kart).not.toHaveAttribute('aria-expanded')
     expect(kart).toHaveAttribute('aria-haspopup', 'dialog')
     fireEvent.click(kart)
@@ -250,7 +254,7 @@ describe('ContentCard — telefon', () => {
 
   it('masaüstünde eski davranış: kart yerinde açılır', () => {
     render(<FavoritesProvider><ContentCard item={yapim} isTrend={false} /></FavoritesProvider>)
-    const kart = screen.getByRole('button', { name: 'Yapım — detayları aç' })
+    const kart = screen.getByRole('button', { name: /^Yapım/ })
     fireEvent.click(kart)
     expect(kart).toHaveAttribute('aria-expanded', 'true')
     expect(screen.queryByRole('dialog')).toBeNull()
@@ -267,7 +271,7 @@ describe('HeroSlider — dokunmatik', () => {
     dokunmatikOrtam(true)
     render(<DeviceProvider><FavoritesProvider><HeroSlider items={uc} /></FavoritesProvider></DeviceProvider>)
     act(() => { vi.advanceTimersByTime(8000) })
-    expect(screen.getByText('Yapım 1')).toBeTruthy()
+    expect(aktif().getByText('Yapım 1')).toBeTruthy()
     vi.useRealTimers()
   })
 
@@ -275,7 +279,7 @@ describe('HeroSlider — dokunmatik', () => {
     vi.useFakeTimers()
     render(<DeviceProvider><FavoritesProvider><HeroSlider items={uc} /></FavoritesProvider></DeviceProvider>)
     act(() => { vi.advanceTimersByTime(7100) })
-    expect(screen.getByText('Yapım 2')).toBeTruthy()
+    expect(aktif().getByText('Yapım 2')).toBeTruthy()
     vi.useRealTimers()
   })
 
@@ -285,12 +289,12 @@ describe('HeroSlider — dokunmatik', () => {
     const slayt = container.querySelector('.hslide')
     fireEvent.touchStart(slayt, { touches: [{ clientX: 300 }] })
     fireEvent.touchEnd(slayt, { changedTouches: [{ clientX: 200 }] })
-    expect(screen.getByText('Yapım 2')).toBeTruthy()
+    expect(aktif().getByText('Yapım 2')).toBeTruthy()
     fireEvent.touchStart(slayt, { touches: [{ clientX: 100 }] })
     fireEvent.touchEnd(slayt, { changedTouches: [{ clientX: 120 }] })
-    expect(screen.getByText('Yapım 2')).toBeTruthy()
+    expect(aktif().getByText('Yapım 2')).toBeTruthy()
     fireEvent.touchStart(slayt, { touches: [{ clientX: 100 }] })
     fireEvent.touchEnd(slayt, { changedTouches: [{ clientX: 220 }] })
-    expect(screen.getByText('Yapım 1')).toBeTruthy()
+    expect(aktif().getByText('Yapım 1')).toBeTruthy()
   })
 })

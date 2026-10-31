@@ -21,7 +21,7 @@ import RailRow      from './components/RailRow.jsx'
 import Segmented    from './components/Segmented.jsx'
 import HeroSlider   from './components/HeroSlider.jsx'
 import UndoToast    from './components/UndoToast.jsx'
-import SkeletonGrid from './components/SkeletonGrid.jsx'
+import SkeletonGrid, { HeroSkeleton } from './components/SkeletonGrid.jsx'
 import { SearchField, SearchResult } from './components/SearchBar.jsx'
 import AiSearchPanel from './components/AiSearchPanel.jsx'
 import AccountButton from './components/auth/AccountButton.jsx'
@@ -258,6 +258,11 @@ export default function App() {
   const railsEligible = Boolean(country) && !isSanaOzel && tab !== 'trend' && !aiOpen
   const { rails, loading: railsLoading } = useCountryRails(tab, railsEligible ? country : null)
   const showRails = railsEligible && !hasActiveFilter && !searchActive && !loading[dk]
+
+  // Yükleniyor YA DA henüz hiç istenmedi (ilk kare, fetch effect'i çalışmadan):
+  // ikisi de iskelet gösterir. Ayrı tutulunca ilk kare "Yükleniyor…" metni, ikinci
+  // kare iskelet oluyor ve sayfa iki kez zıplıyordu (ölçüldü: CLS 0.27).
+  const bekliyor = loading[dk] || (!error[dk] && (data[dk] || []).length === 0)
 
   // ── Vitrin ────────────────────────────────────────────────────────────────
   // Bana Özel'deki vitrinin aynısı diğer sekmelerde de: bulunulan listenin ilk
@@ -649,23 +654,21 @@ export default function App() {
           </div>
         )}
 
-        {loading[dk] && <SkeletonGrid count={8} />}
+        {/* Vitrin görünecekse iskeleti de görünür: yükleme bitince ızgara
+            yerinde kalır. Koşul showHero ile aynı, yalnız veri bağımlı
+            parçalar (liste boş mu, yükleniyor mu) hariç. */}
+        {bekliyor && !aiOpen && !searchActive && !hasActiveFilter && <HeroSkeleton />}
+        {bekliyor && <SkeletonGrid count={8} />}
 
-        {/* Boş durum */}
-        {!loading[dk] && filtered.length === 0 && !error[dk] && (
+        {/* Boş durum — veri geldi ama filtre hiçbir şey bırakmadı */}
+        {!bekliyor && filtered.length === 0 && !error[dk] && (
           <div className="empty-state">
             <SearchX size={40} className="empty-icon" aria-hidden="true" />
-            {data[dk].length === 0 ? (
-              <p className="empty-title">Yükleniyor…</p>
-            ) : (
-              <>
-                <p className="empty-title">Bu filtrelerle eşleşen içerik yok</p>
-                <p className="empty-sub">
-                  Filtrelerden birini gevşetmeyi ya da hepsini temizleyip baştan başlamayı dene.
-                </p>
-                <button className="btn" onClick={clearFilters}>Filtreleri temizle</button>
-              </>
-            )}
+            <p className="empty-title">Bu filtrelerle eşleşen içerik yok</p>
+            <p className="empty-sub">
+              Filtrelerden birini gevşetmeyi ya da hepsini temizleyip baştan başlamayı dene.
+            </p>
+            <button className="btn" onClick={clearFilters}>Filtreleri temizle</button>
           </div>
         )}
 

@@ -825,11 +825,21 @@ button, input, textarea { font: inherit; color: inherit; }
 .hslide-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .hslide-img-yok { background: linear-gradient(120deg, var(--bg-elevated), var(--bg-card)); }
 
+/* Gövde bir grid: canlı slayt ve görünmez ölçer AYNI hücrede durur, hücre
+   en uzun slayt kadar yüksek. Böylece slayt değişince yükseklik değişmez.
+   gap yalnız iskeletin satırları için (bkz. HeroSkeleton). */
 .hslide-body {
-  display: flex; flex-direction: column; justify-content: center; gap: 9px;
+  display: grid; align-content: center; gap: 9px;
   padding: 0 clamp(16px, 3vw, 26px) clamp(16px, 3vw, 26px);
   min-width: 0;
 }
+.hslide-live, .hslide-olcu { grid-area: 1 / 1; min-width: 0; }
+/* Canlı slayt hücrede ÜSTTEN hizalı: ortalansaydı kısa slayt hücre içinde
+   aşağı kayar, her dönüşte metin bloğu yer değiştirirdi. Hücrenin kendisi
+   zaten görselin ortasına hizalı (align-content). */
+.hslide-live { display: flex; flex-direction: column; gap: 9px; align-self: start; }
+.hslide-olcu { display: grid; pointer-events: none; }
+.hslide-olcu > div { grid-area: 1 / 1; display: flex; flex-direction: column; gap: 9px; min-width: 0; }
 .hslide-kick {
   display: flex; align-items: center; gap: 10px;
   font-size: var(--fs-micro); letter-spacing: 0.16em; text-transform: uppercase;
@@ -837,6 +847,7 @@ button, input, textarea { font: inherit; color: inherit; }
 }
 .hslide-kick span { color: var(--text-faint); letter-spacing: 0.04em; }
 .hslide-title {
+  margin: 0;
   font-family: 'Bebas Neue', system-ui, sans-serif;
   font-size: clamp(26px, 3vw, 40px); line-height: 1.02; letter-spacing: 0.02em;
   color: var(--text); text-wrap: balance;
@@ -874,19 +885,34 @@ button, input, textarea { font: inherit; color: inherit; }
 @media (hover: hover) and (pointer: fine) {
   .hslide-arrow:hover { background: var(--surface-hover); color: var(--text); }
 }
-.hslide-dots { display: flex; align-items: center; gap: 7px; }
+/* Nokta görsel olarak 8px ama düğmenin KENDİSİ 24×24 (WCAG 2.5.8 taban;
+   dokunmatikte 32 yüksek). Önce görünür kutu 8px'ti ve 32px'lik bir sözde-alan
+   hedef yapıyordu — noktalar 15px aralıkla dizildiği için o alanlar üst üste
+   biniyor, yanlış noktaya basılıyordu. Görünen nokta artık ::before'da,
+   hedef kutunun kendisi; alanlar birbirine girmez. */
+.hslide-dots { display: flex; align-items: center; gap: 2px; }
 .hslide-dot {
-  width: 8px; height: 8px; border-radius: 50%; padding: 0;
-  border: none; background: var(--surface-hover); cursor: pointer;
-  position: relative;
+  width: 24px; height: 24px; padding: 0; position: relative;
+  border: none; background: transparent; cursor: pointer;
+  transition: width var(--dur-1) var(--ease-out);
+}
+.hslide-dot::before {
+  content: ''; position: absolute; top: 50%; left: 50%;
+  width: 8px; height: 8px; border-radius: 4px;
+  transform: translate(-50%, -50%);
+  background: var(--surface-hover);
   transition: width var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out);
 }
-/* Nokta görsel olarak küçük ama parmak hedefi 44px. */
-.hslide-dot::after {
-  content: ''; position: absolute; top: 50%; left: 50%;
-  width: 32px; height: 44px; transform: translate(-50%, -50%);
-}
-.hslide-dot-on { width: 22px; border-radius: 4px; background: var(--accent); }
+.hslide-dot-on { width: 38px; }
+.hslide-dot-on::before { width: 22px; background: var(--accent); }
+@media (pointer: coarse) { .hslide-dot { height: 32px; } }
+
+/* Vitrin iskeleti: veri gelmeden vitrinin yerini tutar. Önce yalnız ızgara
+   iskeleti vardı; vitrin gelince ızgara ~450px aşağı zıplıyordu (CLS 0.96).
+   Aynı sınıfları (.hslide, .hslide-media, .hslide-body) kullanır — geometri
+   gerçek vitrinle birebir, ölçü tutmazsa zıplama geri gelir. */
+.hslide-skeleton .hslide-body > span { display: block; background: rgba(255,255,255,0.05); border-radius: 3px; }
+.hslide-skeleton .hslide-nav > span { width: 34px; height: 34px; }
 
 /* Yığılmış düzende görsel ve metin üst üste eklendiği için blok, önceki
    bindirmeli düzenden uzun. Özet iki satıra iner — üç satır burada blogu

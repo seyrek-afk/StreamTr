@@ -43,9 +43,11 @@ export default function ContentCard({ item, isTrend, showKind = true }) {
         tabIndex={0}
         aria-expanded={isPhone ? undefined : open}
         aria-haspopup={isPhone ? 'dialog' : undefined}
-        aria-label={isPhone
-          ? `${item.title} — detayına bak`
-          : `${item.title} — detayları ${open ? 'kapat' : 'aç'}`}
+        /* aria-label YOK — bilinçli. Önce "Başlık — detayları aç" idi; görünür
+           metnin (başlık, yıl, puan…) erişilebilir ada girmemesi WCAG 2.5.3
+           (etiket içerikte) ihlaliydi ve sesli komutla "Breaking Bad'e dokun"
+           çalışmıyordu. Ad artık içerikten gelir; durumu aria-expanded /
+           aria-haspopup taşır. */
         onClick={ac}
         onKeyDown={e => {
           if (e.target !== e.currentTarget) return
