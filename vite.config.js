@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import erkenBetik from './vite.erken.js'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), erkenBetik()],
   test: {
     environment: 'jsdom',
     globals: true,

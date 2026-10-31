@@ -347,7 +347,7 @@ export default function App() {
   return (
     <div className="app-shell">
       {/* ── BAŞLIK: iki bant ──────────────────────────────────────────────────
-          Bant 1 kimlik + gezinme, bant 2 tek araç rayı (kapsam → arama → filtre).
+          Bant 1 kimlik + gezinme, bant 2 tek araç rayı (arama → kapsam → filtre).
           Önceki dört bant içeriği ekranın beşte birine kadar aşağı itiyordu. */}
       <header className="app-header">
         {isPhone ? (
@@ -423,6 +423,13 @@ export default function App() {
         </div>
 
         <div className="toolbar">
+          {/* Arama RAYIN BAŞINDA ve her sekmede aynı yerde. Önce kapsam merceği
+              gelirdi: Bana Özel'de mercek çizilmediği için arama orada başa
+              kayıyor, katalog sekmelerinde ortada kalıyordu — göz sekme
+              değiştirince kutuyu yeniden arıyordu. Arama her sekmede var:
+              Bana Özel'de de bir yapımı bulup listeye eklemek isteniyor. */}
+          <SearchField search={search} />
+
           {/* Kapsam — "Yerli" aslında ülke=TR demektir; üçüncü segment onu
               genelleştirir. Sana Özel favori/öneri sekmesidir, köken orada anlamsız. */}
           {!isSanaOzel && (
@@ -446,10 +453,8 @@ export default function App() {
             </div>
           )}
 
-          {/* Arama her sekmede: Bana Özel'de de bir yapımı bulup listeye
-              eklemek ya da detayına bakmak isteniyor. AI araması ise katalog
-              sekmelerine ait — paneli Bana Özel'in raflarının yerini alamaz. */}
-          <SearchField search={search} />
+          {/* AI araması katalog sekmelerine ait — paneli Bana Özel'in
+              raflarının yerini alamaz. */}
           {!isSanaOzel && (
             <>
               <button

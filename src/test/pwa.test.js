@@ -49,6 +49,25 @@ describe('PWA — manifest ve ikonlar', () => {
     expect(fs.existsSync(pub('apple-touch-icon.png'))).toBe(true)
   })
 
+  // Yazı tipleri kendi sunucudan (fontsource): index.html Google Fonts'a
+  // bağlanmaz, CSP dış font/stil kaynağı açmaz. Geri eklenirse render'ı
+  // bloklayan üçüncü taraf istek ve iki CSP deliği geri gelir.
+  it('index.html Google Fonts\'a bağlanmaz; CSP yalnız kendi kaynağına izin verir', () => {
+    const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')
+    expect(html).not.toContain('fonts.googleapis.com')
+    expect(html).not.toContain('fonts.gstatic.com')
+    expect(html).toMatch(/font-src 'self';/)
+    expect(html).toMatch(/style-src 'self' 'unsafe-inline';/)
+  })
+
+  // Erken veri betiği HTML'e elle yazılmaz (Vite birleştirir); eklenti ekler.
+  it('index.html erken betiği elle bağlamaz — eklenti (vite.erken.js) ekler', () => {
+    const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')
+    expect(html).not.toContain('src="/src/erken.js"')
+    const cfg = fs.readFileSync(path.join(ROOT, 'vite.config.js'), 'utf8')
+    expect(cfg).toContain('erkenBetik()')
+  })
+
   // Dosyanın diskte durması yetmez: .gitignore'daki `*.png` kuralı ikonları bir kez
   // yuttu, yerelde test geçti, üretimde beş 404 vardı. İzlenmeyen ikon = eksik ikon.
   const izlenen = (() => {

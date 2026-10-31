@@ -83,6 +83,31 @@ describe('HeroSlider', () => {
   // Kicker çağırandan gelir: aynı bileşen Diziler'de "Listenin zirvesinde",
   // Trend'de "Bu hafta perdede", Bana Özel'de "Bana özel öneri" der. Bileşenin
   // hangi listeyi taşıdığını bilmesi gerekmez.
+  // Bana Özel: gerekçe ("Beğendiğin: …") başlığın üstünde eyebrow olarak değil,
+  // en altta "Neden önerildi" etiketiyle durur — ad önce, açıklama sonra.
+  const gerekceliUc = uc.map((d, i) => ({ ...d, _reason: i === 2 ? undefined : `Beğendiğin: Dizi ${i}` }))
+
+  it('gerekçeli öneride başlık en üstte, gerekçe en altta etiketiyle durur', () => {
+    sar(<HeroSlider items={gerekceliUc} kicker="Bana özel öneri" />)
+    const canli = document.querySelector('.hslide-live')
+    expect(canli.querySelector('.hslide-kick')).toBeNull()
+    expect(canli.firstElementChild.classList.contains('hslide-title')).toBe(true)
+    const gerekce = canli.querySelector('.hslide-reason')
+    expect(gerekce).toBe(canli.lastElementChild)
+    expect(within(gerekce).getByText('Neden önerildi')).toBeTruthy()
+    expect(within(gerekce).getByText('Beğendiğin: Dizi 0')).toBeTruthy()
+    expect(within(gerekce).getByText('1 / 3')).toBeTruthy()
+  })
+
+  it('aynı vitrinde gerekçesiz öneri etiket yerine genel kicker metnini taşır', () => {
+    const { container } = sar(<HeroSlider items={gerekceliUc} kicker="Bana özel öneri" />)
+    fireEvent.click(container.querySelectorAll('.hslide-dot')[2])
+    const gerekce = document.querySelector('.hslide-live .hslide-reason')
+    expect(within(gerekce).queryByText('Neden önerildi')).toBeNull()
+    expect(within(gerekce).getByText('Bana özel öneri')).toBeTruthy()
+    expect(document.querySelector('.hslide-live .hslide-kick')).toBeNull()
+  })
+
   it('kicker metnini ve sıra sayacını çağırandan alır', () => {
     sar(<HeroSlider items={uc} kicker="Bu hafta perdede" />)
     expect(aktif().getByText(/Bu hafta perdede/)).toBeTruthy()

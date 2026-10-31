@@ -107,7 +107,8 @@ body {
   background: var(--bg);
   color: var(--text);
   overflow-x: hidden;
-  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  /* 'DM Sans Variable' fontsource'un değişken font adı (bkz. main.jsx). */
+  font-family: 'DM Sans Variable', 'DM Sans', system-ui, -apple-system, sans-serif;
   font-size: var(--fs-body);
   -webkit-font-smoothing: antialiased;
 }
@@ -459,7 +460,8 @@ button, input, textarea { font: inherit; color: inherit; }
 }
 
 /* ── Araç rayı: kapsam → arama → filtre ────────────────────────────────────
-   Soldan sağa okunuşu "hangi katalog → ne arıyorsun → nasıl daralt". */
+   Soldan sağa okunuşu "ne arıyorsun → hangi katalog → nasıl daralt": arama
+   her sekmede rayın başında, sabit yerde. */
 /* Üst banttaki marka bloğu bandın tabanına kadar iner; ray sıfır boşlukla
    başlayınca ilk kontrol bloğun altına yapışıyordu (Sana Özel'de rayda tek
    kontrol olduğu için bu en çok orada göze batıyordu). */
@@ -858,6 +860,21 @@ button, input, textarea { font: inherit; color: inherit; }
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
 }
 .hslide-row { display: flex; align-items: center; flex-wrap: wrap; gap: 9px 12px; margin-top: 4px; }
+/* Gerekçe satırı (Bana Özel) — gövdenin EN ALTINDA: etiket vurgu renginde,
+   gerekçe sessiz, sıra sayacı sağa yaslı. Üst eyebrow'un yerini alır. */
+.hslide-reason {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px;
+  margin-top: 2px;
+  font-size: var(--fs-meta); line-height: 1.45; color: var(--text-muted);
+}
+.hslide-reason-label {
+  font-size: var(--fs-micro); letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--accent-ink); white-space: nowrap;
+}
+.hslide-reason-n {
+  margin-left: auto;
+  font-size: var(--fs-micro); letter-spacing: 0.04em; color: var(--text-faint);
+}
 .hslide-score {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 3px 9px; border-radius: var(--r-sm);

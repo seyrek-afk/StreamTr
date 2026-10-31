@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { supabase, isSupabaseConfigured } from '../lib/supabase.js'
+import { getSupabase, isSupabaseConfigured } from '../lib/supabase.js'
 
 const AuthContext = createContext(null)
 
@@ -43,18 +43,27 @@ export function AuthProvider({ children }) {
 
   // Açılışta mevcut oturumu oku + oturum değişimlerini dinle.
   useEffect(() => {
-    if (!supabase) { setLoading(false); return }
+    if (!isSupabaseConfigured) { setLoading(false); return }
     let alive = true
+    let sub = null
 
-    supabase.auth.getSession().then(({ data }) => {
+    // İstemci tembel iner (bkz. lib/supabase.js): ilk boyama kütüphaneyi
+    // beklemez. Oturum gelene dek loading=true kalır; arayüz "giriş yok"
+    // değil "bakılıyor" gösterir.
+    getSupabase().then(sb => {
       if (!alive) return
-      setUser(mapUser(data?.session?.user))
-      setLoading(false)
-    })
+      if (!sb) { setLoading(false); return }
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(mapUser(session?.user))
-      setLoading(false)
+      sb.auth.getSession().then(({ data }) => {
+        if (!alive) return
+        setUser(mapUser(data?.session?.user))
+        setLoading(false)
+      })
+
+      sub = sb.auth.onAuthStateChange((_event, session) => {
+        setUser(mapUser(session?.user))
+        setLoading(false)
+      }).data
     })
 
     return () => { alive = false; sub?.subscription?.unsubscribe?.() }
@@ -62,8 +71,9 @@ export function AuthProvider({ children }) {
 
   // Ad + e-posta ile tek kullanımlık kod/sihirli link gönder.
   const sendEmailCode = useCallback(async ({ email, firstName, lastName }) => {
-    if (!supabase) throw new Error('Giriş yapılandırılmamış.')
-    const { error } = await supabase.auth.signInWithOtp({
+    const sb = await getSupabase()
+    if (!sb) throw new Error('Giriş yapılandırılmamış.')
+    const { error } = await sb.auth.signInWithOtp({
       email: email.trim(),
       options: {
         shouldCreateUser: true,
@@ -79,8 +89,9 @@ export function AuthProvider({ children }) {
 
   // E-postadaki 6 haneli kodu doğrula → oturum açılır.
   const verifyEmailCode = useCallback(async ({ email, code, firstName, lastName }) => {
-    if (!supabase) throw new Error('Giriş yapılandırılmamış.')
-    const { data, error } = await supabase.auth.verifyOtp({
+    const sb = await getSupabase()
+    if (!sb) throw new Error('Giriş yapılandırılmamış.')
+    const { data, error } = await sb.auth.verifyOtp({
       email: email.trim(),
       token: code.trim(),
       type: 'email',
@@ -89,7 +100,7 @@ export function AuthProvider({ children }) {
     // İsim verildiyse ve hesapta yoksa profili güncelle (mevcut kullanıcılar için).
     const meta = data?.user?.user_metadata || {}
     if ((firstName || lastName) && !meta.first_name && !meta.last_name) {
-      await supabase.auth.updateUser({
+      await sb.auth.updateUser({
         data: {
           first_name: (firstName || '').trim() || null,
           last_name:  (lastName  || '').trim() || null,
@@ -102,8 +113,9 @@ export function AuthProvider({ children }) {
 
   // Google ile giriş — Supabase OAuth (tam sayfa yönlendirme).
   const googleSignIn = useCallback(async () => {
-    if (!supabase) throw new Error('Giriş yapılandırılmamış.')
-    const { error } = await supabase.auth.signInWithOAuth({
+    const sb = await getSupabase()
+    if (!sb) throw new Error('Giriş yapılandırılmamış.')
+    const { error } = await sb.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin },
     })
@@ -111,8 +123,9 @@ export function AuthProvider({ children }) {
   }, [])
 
   const signOut = useCallback(async () => {
-    if (!supabase) return
-    await supabase.auth.signOut()
+    const sb = await getSupabase()
+    if (!sb) return
+    await sb.auth.signOut()
     setUser(null)
   }, [])
 

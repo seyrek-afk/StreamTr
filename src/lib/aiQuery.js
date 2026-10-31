@@ -22,7 +22,7 @@
 
 import { VOTE_MIN } from './discover.js'
 import { COUNTRIES } from '../constants/countries.js'
-import { supabase } from './supabase.js'
+import { getSupabase, isSupabaseConfigured } from './supabase.js'
 
 // Türkçe-duyarsız normalize (searchMatch ile aynı mantık, bağımsızlık için ayrı).
 function norm(s) {
@@ -302,6 +302,8 @@ const FALLBACK_NOTICE = {
 }
 
 async function callAiEndpoint(text, signal) {
+  if (!isSupabaseConfigured) return { ok: false, reason: 'not_configured' }
+  const supabase = await getSupabase()
   if (!supabase) return { ok: false, reason: 'not_configured' }
 
   const { data } = await supabase.auth.getSession()
