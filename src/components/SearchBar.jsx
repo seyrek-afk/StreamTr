@@ -25,8 +25,8 @@ export function SearchField({ search }) {
     const handler = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) clearSuggestions()
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    document.addEventListener('pointerdown', handler)
+    return () => document.removeEventListener('pointerdown', handler)
   }, [clearSuggestions])
 
   const showSuggestions = suggestions.length > 0 && !detailLoading && !selectedItem

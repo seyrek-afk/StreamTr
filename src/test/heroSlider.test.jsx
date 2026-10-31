@@ -33,6 +33,22 @@ describe('HeroSlider', () => {
     expect(container.querySelectorAll('.hslide-dot')).toHaveLength(3)
   })
 
+  it('geniş görsel iki boyla (w780/w1280) srcset taşır — telefon küçük boyu indirir', () => {
+    const { container } = sar(<HeroSlider items={uc} />)
+    const img = container.querySelector('.hslide-img')
+    expect(img.getAttribute('src')).toContain('/w1280/b1.jpg')
+    expect(img.getAttribute('srcset')).toContain('/w780/b1.jpg 780w')
+    expect(img.getAttribute('srcset')).toContain('/w1280/b1.jpg 1280w')
+    expect(img.getAttribute('sizes')).toContain('100vw')
+  })
+
+  it('poster yedeğinde srcset yok — tek boy yeter', () => {
+    const { container } = sar(<HeroSlider items={[{ ...yapim(1), backdropPath: null, posterPath: '/p1.jpg' }]} />)
+    const img = container.querySelector('.hslide-img')
+    expect(img.getAttribute('src')).toContain('/w780/p1.jpg')
+    expect(img.hasAttribute('srcset')).toBe(false)
+  })
+
   it('count ile sınırlanır — vitrin tüm listeyi taşımaz', () => {
     const { container } = sar(<HeroSlider items={[...uc, yapim(4), yapim(5)]} count={2} />)
     expect(container.querySelectorAll('.hslide-dot')).toHaveLength(2)

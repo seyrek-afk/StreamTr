@@ -26,10 +26,10 @@ export default function AccountButton() {
     if (!menuOpen) return
     const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setMenuOpen(false) }
     const onEsc = (e) => { if (e.key === 'Escape') setMenuOpen(false) }
-    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('pointerdown', onDoc)
     document.addEventListener('keydown', onEsc)
     return () => {
-      document.removeEventListener('mousedown', onDoc)
+      document.removeEventListener('pointerdown', onDoc)
       document.removeEventListener('keydown', onEsc)
     }
   }, [menuOpen])
