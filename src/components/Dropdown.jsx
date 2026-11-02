@@ -29,6 +29,7 @@ const MIN_H = 140    // bunun altına düşecekse yukarı çevir
 
 export default function Dropdown({
   label, value, options, onChange, multi = false, align = 'left', minWidth = 150,
+  icon: Icon,
 }) {
   const [open, setOpen] = useState(false)
   const [pos, setPos]   = useState(null)
@@ -105,6 +106,12 @@ export default function Dropdown({
     ? (selected.length === 0 ? label : `${label} · ${selected.length}`)
     : (value ? (options.find(o => o.value === value)?.label || label) : label)
 
+  // Tekli seçimde tetik yalnız seçilen değeri gösterir ("Rotten Tomatoes",
+  // "Netflix"). Görsel bağlam rayda var, ama ekran okuyucu yalnız değeri
+  // duyuyordu — ekseni de adına katılır. Görünen metin adın içinde kalır
+  // (WCAG 2.5.3), sesle "Rotten Tomatoes'a dokun" yine çalışır.
+  const accessibleName = !multi && value && summary !== label ? `${label}: ${summary}` : undefined
+
   const toggle = (v) => {
     if (!multi) {
       onChange(v === value ? null : v)
@@ -148,8 +155,10 @@ export default function Dropdown({
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
         aria-haspopup="listbox"
+        aria-label={accessibleName}
         style={{ minWidth }}
       >
+        {Icon && <Icon size={14} className="dd-icon" aria-hidden="true" />}
         <span className="dd-summary">{summary}</span>
         <ChevronDown size={14} className="dd-chevron" aria-hidden="true" />
       </button>

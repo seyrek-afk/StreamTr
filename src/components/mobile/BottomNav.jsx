@@ -1,4 +1,5 @@
 import { Loader } from 'lucide-react'
+import { scrollToTop } from '../../lib/scroll.js'
 
 // Alt sekme çubuğu — telefonda birincil gezinme başparmak bölgesinde.
 //
@@ -23,7 +24,7 @@ export default function BottomNav({ tabs, active, onChange, iconFor, busyFor }) 
             className={`bnav-item${on ? ' bnav-item-on' : ''}`}
             aria-current={on ? 'page' : undefined}
             onClick={() => {
-              if (on) window.scrollTo?.({ top: 0, behavior: 'smooth' })
+              if (on) scrollToTop()
               else onChange(t.id)
             }}
           >

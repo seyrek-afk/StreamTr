@@ -223,6 +223,11 @@ button, input, textarea { font: inherit; color: inherit; }
 .ctl-compact { height: auto; padding: 6px 11px; font-size: var(--fs-meta); }
 .ctl-count { color: var(--text-faint); font-weight: 400; margin-left: 2px; }
 .ctl-on .ctl-count { color: inherit; opacity: 0.75; }
+/* Kontrol içi durum/eksen simgesi metnin mürekkebini taşır ve daralmaz. */
+.ctl-icon, .dd-icon { flex-shrink: 0; }
+/* Simgeli açılır tetikte özet simgeye yaslanır; .ctl'nin space-between'i
+   onu simge ile ok arasında ortaya itiyordu. */
+.dd-icon + .dd-summary { margin-right: auto; }
 /* İki filtre ekseni arasındaki ayırıcı: "Yayında" (var mı) ile platform
    (hangisi) tek bir liste gibi okunmasın. */
 .filter-sep {

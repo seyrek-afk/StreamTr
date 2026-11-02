@@ -5,6 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useStreamData } from '../hooks/useStreamData.js'
+import { sortItems as sortListItems } from '../lib/listLogic.js'
 
 // ── App.jsx filtering logic (extracted for testability) ────────────────────
 // Bu yardımcılar App.jsx gerçek mantığıyla birebir senkron tutulmalıdır.
@@ -31,16 +32,10 @@ function deriveYears(items) {
     .sort((a, b) => Number(b) - Number(a))
 }
 
+// Sıralama artık App'in kullandığı gerçek modülden (lib/listLogic.js) gelir;
+// Dünya merceği (country=null) eski kopyanın kapsadığı durumdur.
 function sortItems(items, tab, sortBy = 'default') {
-  const effectiveSortBy = (sortBy === 'social' && tab !== 'trend') ? 'default' : sortBy
-  return [...items].sort((a, b) => {
-    if (effectiveSortBy === 'imdb') return (b.imdbScore || 0) - (a.imdbScore || 0)
-    if (effectiveSortBy === 'year') return (Number(b.year) || 0) - (Number(a.year) || 0)
-    if (effectiveSortBy === 'social') return (b.socialScore || 0) - (a.socialScore || 0)
-    return tab === 'trend'
-      ? (b.socialScore || 0) - (a.socialScore || 0)
-      : (b.imdbScore   || 0) - (a.imdbScore   || 0)
-  })
+  return sortListItems(items, { sortBy, tab, country: null })
 }
 
 const SAMPLE_ITEMS = [

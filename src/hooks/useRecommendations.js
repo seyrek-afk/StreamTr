@@ -1,14 +1,34 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ALL_CONTENT } from '../data/mockData.js'
 import { favKey } from '../contexts/FavoritesContext.jsx'
 import { isValidTmdbRef } from '../lib/tmdb.js'
 import { genreIdsFor } from '../lib/genres.js'
 import {
-  MAX_RESULTS, seedProfile, excludedGenres, topGenres, rankRecommendations, titleKeys,
+  MAX_RESULTS, seedProfile, bannedGenres, discoveryGenres, rankRecommendations, titleKeys,
 } from '../lib/recommend.js'
+import { isAnimation } from '../lib/listLogic.js'
 
 const TMDB_BASE = 'https://api.themoviedb.org/3'
 const API_KEY   = import.meta.env.VITE_TMDB_KEY
+
+// Öneri hattının toplam süre sınırı: çözümleme → komşuluk → keşif aynı sinyali
+// taşır. Aşılırsa eldeki kısmi sonuç, o da yoksa yerel yedek gösterilir.
+export const REC_TIMEOUT_MS = 20_000
+
+// Tohum çözümü ve tohum komşuları animasyon tercihinden bağımsızdır; kanca
+// örneği boyunca saklanır ki aç/kapa yalnız keşif isteklerini yenilesin.
+// Yalnız başarılı ve iptal edilmemiş yanıtlar yazılır.
+export const REC_CACHE_LIMIT = 500
+
+function cacheGet(cache, key) {
+  return cache && cache.has(key) ? cache.get(key) : undefined
+}
+
+function cacheSet(cache, key, value, signal) {
+  if (!cache || signal?.aborted) return
+  if (cache.size >= REC_CACHE_LIMIT && !cache.has(key)) cache.delete(cache.keys().next().value)
+  cache.set(key, value)
+}
 
 // Skor tahmini — diğer hook'larla (useStreamData/useSearch) birebir aynı formül,
 // böylece öneriler de IMDB + Rotten Tomatoes + Letterboxd üçlüsünü gösterir.
@@ -63,7 +83,7 @@ function tmdbToRecCard(r) {
 }
 
 // ── Yerel fallback: favorilerin tür frekansına göre ALL_CONTENT'i puanla ───────
-function localRecommendations(favorites, excludeKeys = []) {
+export function localRecommendations(favorites, excludeKeys = [], { hideAnimation = false } = {}) {
   const favKeys = new Set([...favorites.map(f => f.key), ...excludeKeys])
 
   // Favorilerin tür ağırlıkları
@@ -75,6 +95,7 @@ function localRecommendations(favorites, excludeKeys = []) {
 
   return ALL_CONTENT
     .filter(item => !favKeys.has(favKey(item)))
+    .filter(item => !hideAnimation || !isAnimation(item))
     .map(item => {
       const score = (item.genres || []).reduce((s, g) => s + (genreWeight[g] || 0), 0)
       return { item, score }
@@ -99,7 +120,7 @@ function localRecommendations(favorites, excludeKeys = []) {
 //         Mock veriden kaydedilen bir yapım başlıkla anahtarlanır (title:…);
 //         TMDB'den aynı film gelince anahtar tutmaz ama başlık tutar
 //         ("Dövüş Kulübü" ikinci kez önerilmesin).
-async function tmdbRecommendations(seeds, signal, excludeKeys = [], excludeTitles = []) {
+async function tmdbRecommendations(seeds, signal, excludeKeys = [], excludeTitles = [], { hideAnimation = false, cache = null } = {}) {
   const favorites = seeds
 
   // 1) Her favori için tmdbId/mediaType belirle (yoksa search/multi ile çöz)
@@ -109,6 +130,9 @@ async function tmdbRecommendations(seeds, signal, excludeKeys = [], excludeTitle
       // path-injection'ı önlemek için katı doğrula. Geçersizse search/multi ile çöz.
       const base = { w: f._w || 1, title: f.title, genres: f.genres || [] }
       if (isValidTmdbRef(f.tmdbId, f.mediaType)) return { ...base, id: f.tmdbId, mediaType: f.mediaType }
+      const searchKey = `search:${(f.title || '').slice(0, 200)}`
+      const cachedHit = cacheGet(cache, searchKey)
+      if (cachedHit !== undefined) return cachedHit ? { ...base, ...cachedHit } : null
       try {
         const res = await fetch(
           `${TMDB_BASE}/search/multi?query=${encodeURIComponent((f.title || '').slice(0, 200))}` +
@@ -118,7 +142,9 @@ async function tmdbRecommendations(seeds, signal, excludeKeys = [], excludeTitle
         if (!res.ok) return null
         const json = await res.json()
         const hit = (json.results || []).find(r => r.media_type === 'movie' || r.media_type === 'tv')
-        return hit ? { ...base, id: hit.id, mediaType: hit.media_type } : null
+        const resolvedRef = hit ? { id: hit.id, mediaType: hit.media_type } : null
+        cacheSet(cache, searchKey, resolvedRef, signal)
+        return resolvedRef ? { ...base, ...resolvedRef } : null
       } catch {
         return null
       }
@@ -141,14 +167,20 @@ async function tmdbRecommendations(seeds, signal, excludeKeys = [], excludeTitle
   const seedsWithRecs = await Promise.all(
     resolved.map(async (s) => {
       try {
-        const res = await fetch(
-          `${TMDB_BASE}/${s.mediaType}/${s.id}/recommendations?language=tr-TR&page=1&api_key=${API_KEY}`,
-          { signal }
-        )
-        if (!res.ok) return { ...s, recKeys: [] }
-        const json = await res.json()
+        const recsKey = `recs:${s.mediaType}:${s.id}`
+        let results = cacheGet(cache, recsKey)
+        if (results === undefined) {
+          const res = await fetch(
+            `${TMDB_BASE}/${s.mediaType}/${s.id}/recommendations?language=tr-TR&page=1&api_key=${API_KEY}`,
+            { signal }
+          )
+          if (!res.ok) return { ...s, recKeys: [] }
+          const json = await res.json()
+          results = Array.isArray(json?.results) ? json.results : []
+          cacheSet(cache, recsKey, results, signal)
+        }
         const recKeys = []
-        ;(json.results || []).forEach(r => {
+        results.forEach(r => {
           const card = withKey(tmdbToRecCard(r))
           if (!cardsByKey.has(card.key)) cardsByKey.set(card.key, card)
           recKeys.push(card.key)
@@ -164,9 +196,10 @@ async function tmdbRecommendations(seeds, signal, excludeKeys = [], excludeTitle
   // 3) Keşif: profildeki en güçlü türlerde, yüksek oylu ve yüksek puanlı
   //    yapımlar. Komşuluk grafiğinin göremediği iyi yapımları yakalar.
   const profile = seedProfile(seedsWithRecs)
-  const discovered = await discoverByProfile(profile, signal)
+  const discovered = await discoverByProfile(profile, signal, { hideAnimation })
 
   return rankRecommendations({
+    hideAnimation,
     seeds: seedsWithRecs,
     cardsByKey,
     discovered,
@@ -186,10 +219,10 @@ const DISCOVER_FLOOR = {
   tv:    { votes: 400,  avg: 7.6 },
 }
 
-async function discoverByProfile(profile, signal) {
-  const top = topGenres(profile, 2)
+async function discoverByProfile(profile, signal, { hideAnimation = false } = {}) {
+  const top = discoveryGenres(profile, { hideAnimation })
   if (!top.length) return []
-  const without = [...excludedGenres(profile)]
+  const without = [...bannedGenres(profile, { hideAnimation })]
   const calls = []
   for (const mediaType of ['movie', 'tv']) {
     const withoutIds = genreIdsFor(without, mediaType)
@@ -215,16 +248,19 @@ async function discoverByProfile(profile, signal) {
   return (await Promise.all(calls)).flat()
 }
 
-export function useRecommendations(favorites, excludeKeys = [], excludeTitles = []) {
+export function useRecommendations(favorites, excludeKeys = [], excludeTitles = [], { hideAnimation = false } = {}) {
   const [recommendations, setRecommendations] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const cacheRef = useRef(null)
+  if (cacheRef.current === null) cacheRef.current = new Map()
 
   // Yalnızca tohum kümesi (kayıt + ağırlık) veya hariç tutulanlar değişince
   // yeniden hesapla. Ağırlık imzaya dahil: Beğendim'i Bayıldım'a yükseltmek
   // öneri kümesini gerçekten değiştirmeli.
   const favSignature = favorites.map(f => `${f.key}:${f._w || 1}`).join('|') +
-    '#' + [...excludeKeys].join('|')
+    '#' + [...excludeKeys].join('|') +
+    '#anim' + (hideAnimation ? 0 : 1)
 
   useEffect(() => {
     if (!favorites.length) {
@@ -236,7 +272,7 @@ export function useRecommendations(favorites, excludeKeys = [], excludeTitles = 
 
     // API anahtarı yoksa doğrudan yerel öneriler
     if (!API_KEY) {
-      setRecommendations(localRecommendations(favorites, excludeKeys))
+      setRecommendations(localRecommendations(favorites, excludeKeys, { hideAnimation }))
       setLoading(false)
       setError(null)
       return
@@ -244,24 +280,30 @@ export function useRecommendations(favorites, excludeKeys = [], excludeTitles = 
 
     const controller = new AbortController()
     let cancelled = false
+    let timedOut = false
+    const timer = setTimeout(() => { timedOut = true; controller.abort() }, REC_TIMEOUT_MS)
 
     setLoading(true)
     setError(null)
 
-    tmdbRecommendations(favorites, controller.signal, excludeKeys, excludeTitles)
+    tmdbRecommendations(favorites, controller.signal, excludeKeys, excludeTitles, { hideAnimation, cache: cacheRef.current })
       .then(recs => {
         if (cancelled) return
+        if (timedOut) setError('Öneriler yüklenemedi.')
         // TMDB hiç sonuç vermezse yerel fallback
-        setRecommendations(recs.length ? recs : localRecommendations(favorites, excludeKeys))
+        setRecommendations(recs.length ? recs : localRecommendations(favorites, excludeKeys, { hideAnimation }))
       })
       .catch(e => {
-        if (cancelled || e.name === 'AbortError') return
+        if (cancelled || (e.name === 'AbortError' && !timedOut)) return
         setError('Öneriler yüklenemedi.')
-        setRecommendations(localRecommendations(favorites, excludeKeys))
+        setRecommendations(localRecommendations(favorites, excludeKeys, { hideAnimation }))
       })
-      .finally(() => { if (!cancelled) setLoading(false) })
+      .finally(() => {
+        clearTimeout(timer)
+        if (!cancelled) setLoading(false)
+      })
 
-    return () => { cancelled = true; controller.abort() }
+    return () => { cancelled = true; clearTimeout(timer); controller.abort() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [favSignature])
 

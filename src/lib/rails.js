@@ -14,6 +14,7 @@
 
 import { VOTE_MIN } from './discover.js'
 import { countryContentTitle } from '../constants/countries.js'
+import { ANIMATION_GENRE_ID, withoutAnimation } from './listLogic.js'
 
 // TMDB tarih parametreleri YYYY-MM-DD ister.
 function iso(d) {
@@ -34,6 +35,26 @@ export const RAIL_PROVIDERS = '342|1826|1904' // puhutv · TOD TV · TV+
 // Bir rafın gösterilmesi için gereken en az öğe sayısı.
 // Yarım raf amatör durur; altında kalan raf hiç render edilmez.
 export const RAIL_MIN_ITEMS = 4
+
+// Animasyon gizliyken TMDB'den animasyonsuz istenir ki raf 20 yapımla dolsun;
+// mevcut without_genres korunur.
+export function railQueryParams(params = {}, { hideAnimation = false } = {}) {
+  if (!hideAnimation) return { ...params }
+  const existing = String(params.without_genres ?? '').split(',').filter(Boolean)
+  const merged = [...new Set([...existing, String(ANIMATION_GENRE_ID)])]
+  return { ...params, without_genres: merged.join(',') }
+}
+
+// Sunucu süzgecine rağmen gelen animasyon da raftan çıkar; en az öğe kuralı
+// süzgeçten SONRA uygulanır (yarım raf yine çizilmez).
+export function finalizeRailItems(items, { hideAnimation = false, max = Infinity } = {}) {
+  const visible = hideAnimation ? withoutAnimation(items) : [...(items || [])]
+  return visible.slice(0, max)
+}
+
+export function railCacheKey(country, tab, { hideAnimation = false } = {}) {
+  return `${country}:${tab}:anim${hideAnimation ? 0 : 1}`
+}
 
 export function railsFor(tab, country = 'TR', now = new Date()) {
   if (!country) return []
