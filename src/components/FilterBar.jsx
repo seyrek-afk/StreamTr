@@ -1,4 +1,4 @@
-import { X, Loader } from 'lucide-react'
+import { X, Loader, Eye, EyeOff, ArrowDownWideNarrow } from 'lucide-react'
 import Dropdown from './Dropdown.jsx'
 import { GENRES } from '../constants/index.js'
 
@@ -18,6 +18,7 @@ export default function FilterBar({
   sortOptions, sortBy, onSortChange,
   mediaType, onMediaTypeChange,
   trOnly, onTrOnlyChange, enriching,
+  showAnimation, onShowAnimationChange,
   hasActiveFilter, onClear,
 }) {
   return (
@@ -70,6 +71,7 @@ export default function FilterBar({
         options={sortOptions.filter(o => o.value !== 'default').map(o => ({ value: o.value, label: o.label }))}
         minWidth={104}
         align="right"
+        icon={ArrowDownWideNarrow}
       />
 
       <button
@@ -82,11 +84,38 @@ export default function FilterBar({
         {trOnly && enriching && <Loader size={12} className="spin" aria-hidden="true" />}
       </button>
 
+      {onShowAnimationChange && (
+        <AnimationToggle on={showAnimation} onChange={onShowAnimationChange} />
+      )}
+
       {hasActiveFilter && (
         <button className="link-btn" onClick={onClear}>
           <X size={13} aria-hidden="true" /> Temizle
         </button>
       )}
     </div>
+  )
+}
+
+// Animasyon aç/kapa — filtre değil İÇERİK TERCİHİ: açıkken listeyi genişletir,
+// yanındaki filtreler ise daraltır. Aynı çerçeveli kontrol dilini konuştuğu için
+// kapalı hâli "seçilmemiş bir tür filtresi" gibi okunuyordu (açınca yalnız
+// animasyon mu gelir?). Göz simgesi durumu renge bırakmadan söyler: kapalıyken
+// üstü çizili göz = gizli, açıkken göz = gösteriliyor. title bir sonraki
+// dokunuşun ne yapacağını anlatır; erişilebilir ad sabit kalır, durum
+// aria-pressed'de (adı duruma göre değiştirmek okuyucuda çift olumsuz yapardı).
+export function AnimationToggle({ on, onChange, compact = false }) {
+  const Icon = on ? Eye : EyeOff
+  return (
+    <button
+      type="button"
+      className={`ctl${compact ? ' ctl-compact' : ''}${on ? ' ctl-on' : ''}`}
+      onClick={() => onChange(!on)}
+      aria-pressed={Boolean(on)}
+      title={on ? 'Animasyon yapımlarını gizle' : 'Animasyon yapımlarını göster'}
+    >
+      <Icon size={compact ? 13 : 14} className="ctl-icon" aria-hidden="true" />
+      Animasyon
+    </button>
   )
 }

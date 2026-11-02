@@ -3,6 +3,7 @@ import { Search, X, Loader, AlertTriangle, RefreshCw, Star } from 'lucide-react'
 import ContentCard from './ContentCard.jsx'
 import PosterImg from './PosterImg.jsx'
 import { shouldShowOriginal } from '../lib/searchMatch.js'
+import { scheduleScrollBelowHeader } from '../lib/scroll.js'
 
 // Arama iki parçaya bölündü:
 //   SearchField  → araç rayında yaşayan kontrol (kutu + öneri listesi)
@@ -129,11 +130,39 @@ export function SuggestionList({ suggestions, correctedFrom, query, onSelect }) 
   )
 }
 
-export function SearchResult({ search }) {
+function resultScrollKey({ selectedItem, detailLoading, detailError }) {
+  if (detailLoading) return 'loading'
+  if (selectedItem) {
+    return `item:${selectedItem.key || selectedItem._tmdbId || ''}:${selectedItem.title || ''}`
+  }
+  if (detailError) return `error:${detailError}`
+  return null
+}
+
+// Sonuç içerik alanının tepesinde çizilir; arama ise yapışkan başlıkta yapılır.
+// Sayfanın altındayken seçim yapılınca görünüm sonuca kaydırılır. holdScroll:
+// telefonda arama katmanı açıkken gövde kilitli — kaydırma katman kapanınca yapılır.
+export function SearchResult({ search, holdScroll = false }) {
   const { query, selectedItem, detailLoading, detailError, retryDetail, noApiKey } = search
 
+  const anchorRef = useRef(null)
+  const scrollKey = resultScrollKey({ selectedItem, detailLoading, detailError })
+  const lastKeyRef = useRef(scrollKey)
+  const pendingRef = useRef(false)
+
+  useEffect(() => {
+    if (scrollKey && scrollKey !== lastKeyRef.current) pendingRef.current = true
+    lastKeyRef.current = scrollKey
+  }, [scrollKey])
+
+  useEffect(() => {
+    if (!pendingRef.current || holdScroll || !scrollKey) return
+    pendingRef.current = false
+    return scheduleScrollBelowHeader(() => anchorRef.current)
+  }, [scrollKey, holdScroll])
+
   return (
-    <>
+    <div ref={anchorRef} className="search-result-anchor">
       {noApiKey && (
         <div className="band">
           <div className="band-row">
@@ -178,6 +207,6 @@ export function SearchResult({ search }) {
           </div>
         </section>
       )}
-    </>
+    </div>
   )
 }

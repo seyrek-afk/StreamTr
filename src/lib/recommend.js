@@ -19,7 +19,8 @@
 //
 // Bu dosya saf fonksiyonlardan oluşur (ağ yok); getirme useRecommendations'ta.
 
-import { GENRES } from './genres.js'
+import { GENRES, isGenreKey } from './genres.js'
+import { isAnimation } from './listLogic.js'
 
 export const MAX_RESULTS = 20
 
@@ -45,7 +46,8 @@ const LABEL_KEYS = {
 export function genreKeysOf(labels) {
   const out = new Set()
   for (const l of labels || []) {
-    for (const k of LABEL_KEYS[String(l).toLocaleLowerCase('tr-TR').trim()] || []) out.add(k)
+    const label = String(l).toLocaleLowerCase('tr-TR').trim()
+    for (const k of Object.prototype.hasOwnProperty.call(LABEL_KEYS, label) ? LABEL_KEYS[label] : []) out.add(k)
   }
   return [...out]
 }
@@ -82,6 +84,20 @@ export function excludedGenres(profile) {
   return new Set(AUDIENCE_GENRES.filter(g => (profile[g] || 0) < AUDIENCE_MIN_SHARE))
 }
 
+// Kullanıcı animasyonu gizlediyse (cihaz tercihi) profil ne derse desin
+// animasyon yasaklıdır; keşif de animasyonla sorgulanmaz.
+export function bannedGenres(profile, { hideAnimation = false } = {}) {
+  const banned = excludedGenres(profile)
+  if (hideAnimation) banned.add('animasyon')
+  return banned
+}
+
+export function discoveryGenres(profile, { hideAnimation = false, n = 2 } = {}) {
+  if (!hideAnimation) return topGenres(profile, n)
+  const rest = Object.fromEntries(Object.entries(profile || {}).filter(([k]) => k !== 'animasyon'))
+  return topGenres(rest, n)
+}
+
 // Dram neredeyse her yapımda geçer: profilde hep tepededir ama zevk hakkında
 // az şey söyler. Tek başına "dram" olan bir aday tam uyum almamalı (yoksa suç
 // ve bilim kurgu seven birine Grey's Anatomy önerilir), keşif de dramla
@@ -91,7 +107,7 @@ const BROAD_GENRES = new Set(['dram'])
 // En güçlü AYIRT EDİCİ türler (keşif sorgusu ve gerekçe metni için).
 export function topGenres(profile, n = 2) {
   return Object.entries(profile)
-    .filter(([k]) => GENRES[k] && !BROAD_GENRES.has(k))
+    .filter(([k]) => isGenreKey(k) && !BROAD_GENRES.has(k))
     .sort((a, b) => b[1] - a[1])
     .slice(0, n)
     .map(([k]) => k)
@@ -219,12 +235,15 @@ function joinTitles(titles) {
 // seeds     : clusterSeeds'e girecek, öneri listeleri getirilmiş tohumlar
 // cardsByKey: anahtar → kart (tmdbToRecCard çıktısı)
 // discovered: türe göre keşiften gelen kartlar (işbirlikçi sinyali yok)
-// opts      : { profile, excludeKeys:Set, excludeTitles:Set }
-export function rankRecommendations({ seeds, cardsByKey, discovered = [], profile, excludeKeys, excludeTitles }) {
-  const banned = excludedGenres(profile)
+// opts      : { profile, excludeKeys:Set, excludeTitles:Set, hideAnimation }
+export function rankRecommendations({
+  seeds, cardsByKey, discovered = [], profile, excludeKeys, excludeTitles, hideAnimation = false,
+}) {
+  const banned = bannedGenres(profile, { hideAnimation })
   const isExcluded = card => {
     if (excludeKeys.has(card.key)) return true
     if (titleKeys(card).some(k => excludeTitles.has(k))) return true
+    if (hideAnimation && isAnimation(card)) return true
     if (genreKeysOf(card.genres).some(g => banned.has(g))) return true
     return !passesQualityFloor(card)
   }
@@ -269,7 +288,7 @@ export function rankRecommendations({ seeds, cardsByKey, discovered = [], profil
   // 2) Keşif adayları: komşulukta görünmeyen ama profile ve kaliteye uyan
   //    yapımlar. İşbirlikçi payı sıfır olduğu için ancak boşlukları doldururlar.
   const seen = new Set(scored.map(s => s.card.key))
-  const genreReason = topGenres(profile).map(g => GENRES[g].label)
+  const genreReason = discoveryGenres(profile, { hideAnimation }).map(g => GENRES[g].label)
   for (const card of discovered) {
     if (seen.has(card.key) || isExcluded(card)) continue
     seen.add(card.key)

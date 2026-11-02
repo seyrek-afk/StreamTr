@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   RefreshCw, ChevronDown, ChevronLeft, Loader, Sparkles, AlertTriangle,
   Tv, Film, Flame, Star, SearchX, Heart, Search, SlidersHorizontal, X,
@@ -15,7 +15,7 @@ import { useCikisAnimasyonu } from './hooks/useCikisAnimasyonu.js'
 import { useAiSearch } from './hooks/useAiSearch.js'
 import { useFavorites } from './contexts/FavoritesContext.jsx'
 import ContentCard  from './components/ContentCard.jsx'
-import FilterBar    from './components/FilterBar.jsx'
+import FilterBar, { AnimationToggle } from './components/FilterBar.jsx'
 import Dropdown     from './components/Dropdown.jsx'
 import RailRow      from './components/RailRow.jsx'
 import Segmented    from './components/Segmented.jsx'
@@ -31,6 +31,11 @@ import FilterSheet, { FilterSection, ChipGroup } from './components/mobile/Filte
 import SearchOverlay from './components/mobile/SearchOverlay.jsx'
 import { useTheme } from './contexts/ThemeContext.jsx'
 import { useDevice } from './contexts/DeviceContext.jsx'
+import {
+  withoutAnimation, readShowAnimation, saveShowAnimation,
+  effectiveSort, makeComparator, ANIMATION_GENRE_LABEL,
+} from './lib/listLogic.js'
+import { scheduleScrollBelowHeader, scrollToTop } from './lib/scroll.js'
 
 // Sekme ikonları lucide'dan gelir; TABS verisi yalnız anahtarı taşır (emoji yok).
 const TAB_ICON = { tv: Tv, film: Film, flame: Flame, star: Star }
@@ -87,6 +92,15 @@ export default function App() {
   const [selectedYears,   setSelectedYears]  = useState([])
   const [mediaType,       setMediaType]      = useState('all')
   const [aiOpen,          setAiOpen]         = useState(false)
+  // İçerik tercihi (filtre değil): varsayılan gizli, cihazda kalıcı. Filtre
+  // sayacına ve "Temizle"ye girmez — girseydi animasyonu açan kullanıcı için
+  // vitrin ve raflar kalıcı olarak gizlenirdi.
+  const [showAnimation, setShowAnimationState] = useState(readShowAnimation)
+  const setShowAnimation = (next) => {
+    const value = Boolean(next)
+    setShowAnimationState(value)
+    saveShowAnimation(value)
+  }
 
   // Telefon kabuğu: filtreler alt sayfada, arama tam ekran katmanda.
   const { isPhone } = useDevice()
@@ -118,7 +132,7 @@ export default function App() {
   // sürümü anahtarla yakalanamaz.
   const kayitliBasliklar = saved.flatMap(titleKeys)
   const { recommendations, loading: recLoading, error: recError } =
-    useRecommendations(oneriTohumu, kayitliAnahtarlar, kayitliBasliklar)
+    useRecommendations(oneriTohumu, kayitliAnahtarlar, kayitliBasliklar, { hideAnimation: !showAnimation })
 
   // "Tümünü gör" ile açılan liste (null = raf görünümü)
   const [acikListe, setAcikListe] = useState(null)
@@ -150,7 +164,7 @@ export default function App() {
     selectedGenres.length > 0 || platform !== 'Tümü' || trOnly ||
     sortBy !== 'default' || selectedYears.length > 0 || mediaType !== 'all'
 
-  const effectiveSortBy = (sortBy === 'social' && tab !== 'trend') ? 'default' : sortBy
+  const effectiveSortBy = effectiveSort(sortBy, tab)
 
   const availableYears = [...new Set((data[dk] || []).map(i => i.year).filter(Boolean))]
   const yearBuckets = buildYearBuckets(availableYears)
@@ -165,6 +179,7 @@ export default function App() {
   const likedZengin     = usePlatforms(liked)
   const watchlistZengin = usePlatforms(watchlist)
   const onerilerZengin  = usePlatforms(recommendations)
+  const onerilerGorunur = showAnimation ? onerilerZengin : withoutAnimation(onerilerZengin)
 
   // ── Sana Özel filtreleri ───────────────────────────────────────────────────
   // Platform çipleri genel bir listeden değil KULLANICININ KENDİ kayıtlarından
@@ -197,13 +212,16 @@ export default function App() {
   )
 
   const soListeler = {
-    oneriler:  { baslik: 'Bana özel öneriler', items: soFiltrele(onerilerZengin) },
+    oneriler:  { baslik: 'Bana özel öneriler', items: soFiltrele(onerilerGorunur) },
     loved:     { baslik: 'Bayıldıklarım',      items: soFiltrele(lovedZengin) },
     liked:     { baslik: 'Beğendiklerim',      items: soFiltrele(likedZengin) },
     watchlist: { baslik: 'İzleyeceklerim',     items: soFiltrele(watchlistZengin) },
   }
 
-  const filtered = [...(data[dk] || [])].filter(item => {
+  // Tür filtresinde "Animasyon" seçmek açık niyettir; varsayılan gizlemeyi ezer.
+  const animasyonGorunur = showAnimation || selectedGenres.includes(ANIMATION_GENRE_LABEL)
+
+  const filtreAdaylari = [...(data[dk] || [])].filter(item => {
     const mOk = tab !== 'trend' || mediaOk(item)
     const gOk = selectedGenres.length === 0 ||
       selectedGenres.some(g => (item.genres || []).includes(g))
@@ -219,19 +237,12 @@ export default function App() {
       (Number.isFinite(iy) && yearBuckets.some(b =>
         activeYearKeys.includes(b.key) && iy >= b.min && iy <= b.max))
     return mOk && gOk && pOk && tOk && yOk
-  }).sort((a, b) => {
-    if (effectiveSortBy === 'imdb') return (b.imdbScore || 0) - (a.imdbScore || 0)
-    if (effectiveSortBy === 'year') return (Number(b.year) || 0) - (Number(a.year) || 0)
-    if (effectiveSortBy === 'social') return (b.socialScore || 0) - (a.socialScore || 0)
-    if (tab === 'trend') return (b.socialScore || 0) - (a.socialScore || 0)
-    // Ülke merceğinde ham IMDB sıralaması güvenilmez: düşük oy sayısı yüzünden
-    // 3 oyla 10/10 alan yapım tepeye çıkar. Bayesian ağırlıklı puan kullanılır.
-    if (country) {
-      return (b._weightedScore || 0) - (a._weightedScore || 0) ||
-             (b._voteCount     || 0) - (a._voteCount     || 0)
-    }
-    return (b.imdbScore || 0) - (a.imdbScore || 0)
   })
+  const filtered = (animasyonGorunur ? filtreAdaylari : withoutAnimation(filtreAdaylari))
+    .sort(makeComparator(effectiveSortBy, { tab, country }))
+  // Liste YALNIZ animasyon tercihi yüzünden boşsa "Filtreleri temizle" işe
+  // yaramaz (tercih filtre değil); kullanıcıya asıl çıkış yolu sunulur.
+  const yalnizAnimasyonGizli = filtered.length === 0 && filtreAdaylari.length > 0
 
   const SORT_OPTIONS = [
     {
@@ -241,6 +252,8 @@ export default function App() {
         : country ? 'Varsayılan (Ağırlıklı Puan)' : 'Varsayılan (IMDB)',
     },
     { value: 'imdb',    label: 'IMDB Puanı' },
+    { value: 'rt',      label: 'Rotten Tomatoes' },
+    { value: 'lb',      label: 'Letterboxd' },
     { value: 'year',    label: 'Yıl (en yeni)' },
     ...(tab === 'trend' ? [{ value: 'social', label: 'Sosyal etki' }] : []),
   ]
@@ -256,7 +269,8 @@ export default function App() {
   // filtre veya arama aktifse raflar gizlenir ve yalnız ızgara kalır.
   const searchActive = Boolean(search.query)
   const railsEligible = Boolean(country) && !isSanaOzel && tab !== 'trend' && !aiOpen
-  const { rails, loading: railsLoading } = useCountryRails(tab, railsEligible ? country : null)
+  const { rails, loading: railsLoading } =
+    useCountryRails(tab, railsEligible ? country : null, { hideAnimation: !showAnimation })
   const showRails = railsEligible && !hasActiveFilter && !searchActive && !loading[dk]
 
   // Yükleniyor YA DA henüz hiç istenmedi (ilk kare, fetch effect'i çalışmadan):
@@ -311,8 +325,19 @@ export default function App() {
     if (action.type === 'yearsBefore') {
       setSelectedYears(yearBuckets.filter(b => b.max < action.value).map(b => b.key))
     }
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+    scrollToTop()
   }
+
+  // "AI ile Ara" yapışkan başlıkta: sayfa aşağıdayken açılınca panelin tepesi
+  // görünüm dışında kalıyordu.
+  const aiPanelRef = useRef(null)
+  const aiOncekiRef = useRef(aiOpen)
+  useEffect(() => {
+    const acildi = aiOpen && !aiOncekiRef.current
+    aiOncekiRef.current = aiOpen
+    if (!acildi) return
+    return scheduleScrollBelowHeader(() => aiPanelRef.current)
+  }, [aiOpen])
 
   // Mercekteki üçüncü segment: Türkiye dışındaki ülkeler.
   const otherCountries = COUNTRIES.filter(c => c.code !== HOME_COUNTRY)
@@ -337,6 +362,17 @@ export default function App() {
       Number(platform !== 'Tümü') + Number(sortBy !== 'default') + Number(trOnly) +
       Number(tab === 'trend' && mediaType !== 'all')
   const soTemizle = () => { setMediaType('all'); setTrOnly(false); setSecilenPlatformlar([]) }
+
+  const animasyonBolumu = (
+    <FilterSection title="Animasyon">
+      <ChipGroup
+        label="Animasyon" multi
+        options={[{ value: 'goster', label: 'Animasyonları göster' }]}
+        value={showAnimation ? ['goster'] : []}
+        onChange={v => setShowAnimation(v.length > 0)}
+      />
+    </FilterSection>
+  )
 
   const MEDYA_SECENEK = [
     { value: 'all',  label: 'Tümü' },
@@ -500,6 +536,8 @@ export default function App() {
                 Yayında
               </button>
 
+              <AnimationToggle compact on={showAnimation} onChange={setShowAnimation} />
+
               {platformSayaci.slice(0, 5).map(([p, n]) => {
                 const secili = secilenPlatformlar.includes(p)
                 return (
@@ -536,6 +574,7 @@ export default function App() {
               sortOptions={SORT_OPTIONS} sortBy={sortBy} onSortChange={setSortBy}
               mediaType={mediaType} onMediaTypeChange={tab === 'trend' ? setMediaType : undefined}
               trOnly={trOnly} onTrOnlyChange={setTrOnly} enriching={enriching[dk]}
+              showAnimation={showAnimation} onShowAnimationChange={setShowAnimation}
               hasActiveFilter={hasActiveFilter} onClear={clearFilters}
             />
           ))}
@@ -549,7 +588,7 @@ export default function App() {
 
        {isSanaOzel ? (
         <>
-          <SearchResult search={search} />
+          <SearchResult search={search} holdScroll={searchOpen} />
 
           {/* ── SANA ÖZEL ────────────────────────────────────────────────────
               Izgara yığını yerine vitrin + dört raf: dördü de tek ekrana sığar
@@ -592,14 +631,26 @@ export default function App() {
           ) : (
             <>
               {/* Vitrin filtreden ETKİLENMEZ: öneri motorunun sesidir, kullanıcı
-                  filtresiyle susturulmaz. Filtre yalnız listeleri daraltır. */}
-              {onerilerZengin.length > 0 && <HeroSlider items={onerilerZengin} count={10} kicker="Bana özel öneri" />}
+                  filtresiyle susturulmaz. Filtre yalnız listeleri daraltır.
+                  İstisna animasyon tercihi: o filtre değil içerik tercihidir,
+                  gizliyken vitrinde de animasyon olmaz. */}
+              {onerilerGorunur.length > 0 && <HeroSlider items={onerilerGorunur} count={10} kicker="Bana özel öneri" />}
 
-              {recLoading && recommendations.length === 0 && <SkeletonGrid count={6} />}
+              {recLoading && onerilerGorunur.length === 0 && <SkeletonGrid count={6} />}
 
-              {!recLoading && recommendations.length === 0 && saved.length > 0 && (
+              {!recLoading && onerilerGorunur.length === 0 && saved.length > 0 && (
                 <p className="muted-note">
-                  {recError || 'Beğenilerine uygun yeni öneri bulunamadı. Birkaç yapım daha beğen.'}
+                  {recError || (onerilerZengin.length > 0
+                    ? 'Önerilerin şu an yalnız animasyon yapımlardan oluşuyor; animasyonlar gizli.'
+                    : 'Beğenilerine uygun yeni öneri bulunamadı. Birkaç yapım daha beğen.')}
+                  {!recError && onerilerZengin.length > 0 && (
+                    <>
+                      {' '}
+                      <button className="link-btn" onClick={() => setShowAnimation(true)}>
+                        Animasyonları göster
+                      </button>
+                    </>
+                  )}
                 </p>
               )}
 
@@ -616,12 +667,14 @@ export default function App() {
           )}
         </>
        ) : aiOpen ? (
-        <AiSearchPanel ai={ai} onClose={() => setAiOpen(false)} />
+        <div ref={aiPanelRef} className="ai-panel-anchor">
+          <AiSearchPanel ai={ai} onClose={() => setAiOpen(false)} />
+        </div>
        ) : (
         <>
         {/* Arama sonucu ve sistem uyarıları içerik alanında yaşar; araç rayı
             yalnız kontrolleri taşır. */}
-        <SearchResult search={search} />
+        <SearchResult search={search} holdScroll={searchOpen} />
 
         {/* ── SPOT IŞIĞI ────────────────────────────────────────────────── */}
         {showHero && <HeroSlider items={vitrinItems} count={10} kicker={heroKicker} />}
@@ -666,7 +719,19 @@ export default function App() {
         {bekliyor && <SkeletonGrid count={8} />}
 
         {/* Boş durum — veri geldi ama filtre hiçbir şey bırakmadı */}
-        {!bekliyor && filtered.length === 0 && !error[dk] && (
+        {!bekliyor && filtered.length === 0 && !error[dk] && (yalnizAnimasyonGizli ? (
+          <div className="empty-state">
+            <SearchX size={40} className="empty-icon" aria-hidden="true" />
+            <p className="empty-title">Burada yalnız animasyon yapımlar var</p>
+            <p className="empty-sub">
+              Animasyonlar gizli olduğu için listede gösterilecek yapım kalmadı.
+            </p>
+            <button className="btn" onClick={() => setShowAnimation(true)}>Animasyonları göster</button>
+            {hasActiveFilter && (
+              <button className="btn btn-quiet" onClick={clearFilters}>Filtreleri temizle</button>
+            )}
+          </div>
+        ) : (
           <div className="empty-state">
             <SearchX size={40} className="empty-icon" aria-hidden="true" />
             <p className="empty-title">Bu filtrelerle eşleşen içerik yok</p>
@@ -675,7 +740,7 @@ export default function App() {
             </p>
             <button className="btn" onClick={clearFilters}>Filtreleri temizle</button>
           </div>
-        )}
+        ))}
 
         {/* İçerik ızgarası */}
         {!loading[dk] && gridItems.length > 0 && (
@@ -768,6 +833,7 @@ export default function App() {
                     onChange={v => setTrOnly(v.length > 0)}
                   />
                 </FilterSection>
+                {animasyonBolumu}
                 {platformSayaci.length > 0 && (
                   <FilterSection title="Platform">
                     <ChipGroup
@@ -829,6 +895,7 @@ export default function App() {
                     onChange={v => setTrOnly(v.length > 0)}
                   />
                 </FilterSection>
+                {animasyonBolumu}
               </>
             )}
           </FilterSheet>
