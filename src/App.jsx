@@ -111,7 +111,7 @@ export default function App() {
     data, loading, loadingMore, error,
     visible, hasMore, enriching,
     fetchTab, showMore, retry,
-  } = useStreamData()
+  } = useStreamData({ hideAnimation: !showAnimation })
 
   const search = useSearch()
   const ai     = useAiSearch()
@@ -141,7 +141,7 @@ export default function App() {
   // Veri (ülke, sekme) ikilisiyle anahtarlanır; her mercek kendi önbelleğini korur.
   const dk = dataKey(country, tab)
 
-  useEffect(() => { if (tab !== 'sanaozel') fetchTab(dk) }, [dk])
+  useEffect(() => { if (tab !== 'sanaozel') fetchTab(dk) }, [dk, showAnimation])
 
   // Sekme değişiminde sosyal sıralama sadece trend'de geçerlidir
   useEffect(() => {
@@ -238,8 +238,10 @@ export default function App() {
         activeYearKeys.includes(b.key) && iy >= b.min && iy <= b.max))
     return mOk && gOk && pOk && tOk && yOk
   })
+  const contentCap = tab === 'trend' ? 100 : 250
   const filtered = (animasyonGorunur ? filtreAdaylari : withoutAnimation(filtreAdaylari))
     .sort(makeComparator(effectiveSortBy, { tab, country }))
+    .slice(0, contentCap)
   // Liste YALNIZ animasyon tercihi yüzünden boşsa "Filtreleri temizle" işe
   // yaramaz (tercih filtre değil); kullanıcıya asıl çıkış yolu sunulur.
   const yalnizAnimasyonGizli = filtered.length === 0 && filtreAdaylari.length > 0
@@ -260,8 +262,9 @@ export default function App() {
 
   const visibleFiltered = filtered.slice(0, visible[dk])
   const canShowMore = visibleFiltered.length < filtered.length ||
-    (hasMore[dk] && filtered.length <= visible[dk])
-  const contentCap = tab === 'trend' ? 100 : 250
+    (hasMore[dk] && filtered.length <= visible[dk] && filtered.length < contentCap)
+  const tercihliHavuz = animasyonGorunur ? data[dk] : withoutAnimation(data[dk])
+  const yuklenenSayi = Math.min(tercihliHavuz.length, contentCap)
 
   // ── Editoryal raflar (yalnız ülke merceği) ─────────────────────────────────
   // Raflar küratörlü görünümlerdir; kullanıcı filtresi ile doğaları gereği çelişir
@@ -779,9 +782,9 @@ export default function App() {
           </div>
         )}
 
-        {!loading[dk] && !hasMore[dk] && data[dk].length >= contentCap && (
+        {!loading[dk] && !hasMore[dk] && tercihliHavuz.length >= contentCap && (
           <p className="more-note tnum" style={{ textAlign: 'center' }}>
-            Tümü yüklendi · {data[dk].length} içerik
+            Tümü yüklendi · {yuklenenSayi} içerik
           </p>
         )}
         </>
